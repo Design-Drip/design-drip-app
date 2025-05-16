@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: design-drip-app
+    restart: always
+    develop:
+      watch:
+        - action: sync
+          path: .
+          target: /app
+          ignore:
+            - node-modules/
+        - action: rebuild
+          path: package.json
+    ports:
+      - "3000:3000"
+    environment:
+      MONGODB_URI: mongodb://root:example@localhost:27017/design-drip-dev
+    depends_on:
+      - mongo
+    env_file: .env.local
+  mongo:
+    image: mongo
+    container_name: design-drip-mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
+    driver: local
