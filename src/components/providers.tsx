@@ -10,7 +10,7 @@ interface ProvidersProps {
 export const Providers = ({ children }: ProvidersProps) => {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <QueryProvider>{children}</QueryProvider>;
+      <QueryProvider>{children}</QueryProvider>
     </ThemeProvider>
   );
 };
