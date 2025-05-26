@@ -1,4 +1,4 @@
-import { Editor } from "@/components/editor/Editor";
+import { Editor } from "@/components/editor/editor";
 import { products } from "@/lib/data/products";
 
 function EditDesignPage({ params }: { params: { id: string } }) {
