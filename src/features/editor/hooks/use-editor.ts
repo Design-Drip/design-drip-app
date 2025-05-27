@@ -213,7 +213,6 @@ const buildEditor = ({
         value,
         (image) => {
           const workspace = getWorkspace();
-
           image.scaleToWidth(workspace?.width || 0);
           image.scaleToHeight(workspace?.height || 0);
 
@@ -230,6 +229,7 @@ const buildEditor = ({
       canvas.renderAll();
     },
     addText: (value, options) => {
+      console.log("Adding text:", value, options);
       const object = new fabric.Textbox(value, {
         ...TEXT_OPTIONS,
         fill: fillColor,
@@ -620,12 +620,9 @@ export const useEditor = ({
   const initialState = useRef(defaultState);
   const initialWidth = useRef(defaultWidth);
   const initialHeight = useRef(defaultHeight);
-  console.log('initialState', initialState.current);
-  console.log('initialWidth', initialWidth.current);
-  console.log('initialHeight', initialHeight.current);
+
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
   const [selectedObjects, setSelectedObjects] = useState<fabric.Object[]>([]);
 
   const [fontFamily, setFontFamily] = useState(FONT_FAMILY);
@@ -633,7 +630,7 @@ export const useEditor = ({
   const [strokeColor, setStrokeColor] = useState(STROKE_COLOR);
   const [strokeWidth, setStrokeWidth] = useState(STROKE_WIDTH);
   const [strokeDashArray, setStrokeDashArray] = useState<number[]>(STROKE_DASH_ARRAY);
-  console.log('canvas', canvas);
+
   useWindowEvents();
 
   const {
@@ -655,15 +652,6 @@ export const useEditor = ({
     canvas,
     container,
   });
-
-  // Wrap autoZoom to add safety check
-  const safeAutoZoom = useCallback(() => {
-    if (canvas && container && isInitialized) {
-      autoZoom();
-    } else {
-      console.log('Cannot auto zoom: editor not fully initialized');
-    }
-  }, [autoZoom, canvas, container, isInitialized]);
 
   useCanvasEvents({
     save,
@@ -691,13 +679,14 @@ export const useEditor = ({
 
   const editor = useMemo(() => {
     if (canvas) {
+      console.log('editor canvas', canvas);
       return buildEditor({
         save,
         undo,
         redo,
         canUndo,
         canRedo,
-        autoZoom: safeAutoZoom,
+        autoZoom,
         copy,
         paste,
         canvas,
@@ -723,7 +712,7 @@ export const useEditor = ({
       undo,
       redo,
       save,
-      safeAutoZoom,
+      autoZoom,
       copy,
       paste,
       canvas,
@@ -743,11 +732,7 @@ export const useEditor = ({
       initialCanvas: fabric.Canvas;
       initialContainer: HTMLDivElement;
     }) => {
-      if (!initialCanvas || !initialContainer) {
-        console.error('Cannot initialize editor: canvas or container is null');
-        return;
-      }
-
+      // Cài đặt mặc định cho tất cả các object vẽ ra
       fabric.Object.prototype.set({
         cornerColor: "#FFF",
         cornerStyle: "circle",
@@ -758,11 +743,26 @@ export const useEditor = ({
         cornerStrokeColor: "#3b82f6",
       });
 
-      const initialWorkspace = new fabric.Rect({
-        width: initialWidth.current,
-        height: initialHeight.current,
+      // Lấy kích thước thực tế của vùng chứa canvas
+      const containerWidth = initialContainer.offsetWidth;
+      const containerHeight = initialContainer.offsetHeight;
+      console.log("containerWidth", containerWidth);
+      
+      // Cập nhật kích thước canvas
+      initialCanvas.setWidth(containerWidth);
+      initialCanvas.setHeight(containerHeight);
+      initialCanvas.setBackgroundColor('transparent', () => {
+        initialCanvas.renderAll();
+      }
+      );
+
+      // Vẽ một vùng làm việc trắng ở giữa canvas
+      const workspace = new fabric.Rect({
+        width: 400,
+        height: 400,
         name: "clip",
-        fill: "white",
+        fill:'transparent',
+        backgroundColor:'transparent',
         selectable: false,
         hasControls: false,
         shadow: new fabric.Shadow({
@@ -771,26 +771,30 @@ export const useEditor = ({
         }),
       });
 
-      initialCanvas.setWidth(initialContainer.offsetWidth);
-      initialCanvas.setHeight(initialContainer.offsetHeight);
+      // Thêm workspace vào canvas
+      initialCanvas.add(workspace);
+      initialCanvas.sendToBack(workspace);
 
-      initialCanvas.add(initialWorkspace);
-      initialCanvas.centerObject(initialWorkspace);
-      initialCanvas.clipPath = initialWorkspace;
+      // Đặt vùng clip để giới hạn vùng vẽ
+      initialCanvas.clipPath = workspace;
 
+      // Lưu lại canvas và container
       setCanvas(initialCanvas);
       setContainer(initialContainer);
 
+      // Lưu trạng thái ban đầu vào lịch sử
       const currentState = JSON.stringify(
         initialCanvas.toJSON(JSON_KEYS)
       );
       canvasHistory.current = [currentState];
       setHistoryIndex(0);
+      console.log("✅ init completed");
 
-      // Mark as initialized after everything is set up
-      setIsInitialized(true);
     },
-    [canvasHistory, setHistoryIndex]
+    [
+      canvasHistory, // No need, this is from useRef
+      setHistoryIndex, // No need, this is from useState
+    ]
   );
 
   return { init, editor };

@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToolSidebarHeader } from "./tool-sidebar-header";
 import { ToolSidebarClose } from "./tool-sidebar-close";
+import Replicate from "replicate";
+import { useGenerateImage } from "@/features/ai/api/use-generate-image";
 
 interface AiSidebarProps {
   editor: Editor | undefined;
@@ -23,26 +25,23 @@ export const AiSidebar = ({
   onChangeActiveTool,
 }: AiSidebarProps) => {
   // const { shouldBlock, triggerPaywall } = usePaywall();
-  // const mutation = useGenerateImage();
+  const mutation = useGenerateImage();
 
   const [value, setValue] = useState("");
+  
+  const onSubmit = (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
+    e.preventDefault();
 
-  // const onSubmit = (
-  //   e: React.FormEvent<HTMLFormElement>
-  // ) => {
-  //   e.preventDefault();
-
-  //   if (shouldBlock) {
-  //     triggerPaywall();
-  //     return;
-  //   }
-
-  //   mutation.mutate({ prompt: value }, {
-  //     onSuccess: ({ data }) => {
-  //       editor?.addImage(data);
-  //     }
-  //   });
-  // };
+    
+    mutation.mutate({ prompt: value }, {
+      onSuccess: ({ data }) => {
+        editor?.addImage(data);
+      }
+    });
+    
+  };
 
   const onClose = () => {
     onChangeActiveTool("select");
@@ -60,9 +59,8 @@ export const AiSidebar = ({
         description="Generate an image using AI"
       />
       <ScrollArea>
-        <form className="p-4 space-y-6">
+        <form onSubmit={onSubmit} className="p-4 space-y-6">
           <Textarea
-            // disabled={mutation.isPending}
             placeholder="An astronaut riding a horse on mars, hd, dramatic lighting"
             cols={30}
             rows={10}
@@ -72,7 +70,6 @@ export const AiSidebar = ({
             onChange={(e) => setValue(e.target.value)}
           />
           <Button
-            // disabled={mutation.isPending}
             type="submit"
             className="w-full"
           >
