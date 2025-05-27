@@ -6,6 +6,8 @@ import { ChevronUp, LogOut, Settings, User } from "lucide-react";
 import { SidebarConfig } from "@/types/sidebar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Button } from "../ui/button";
+import { SignOutButton } from "@clerk/nextjs";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
     config: SidebarConfig;
@@ -106,9 +108,13 @@ export function AppSidebar({ config, onLogout, ...props }: AppSidebarProps) {
                                     <span>Cài đặt tài khoản</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={onLogout}>
-                                    <LogOut className="mr-2 h-4 w-4" />
-                                    <span>Đăng xuất</span>
+                                <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground w-full" asChild>
+                                    <SignOutButton>
+                                        <Button variant="ghost" className="w-full justify-start border-none">
+                                            <LogOut className="mr-2 h-4 w-4" />
+                                            <span>Đăng xuất</span>
+                                        </Button>
+                                    </SignOutButton>
                                 </DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>

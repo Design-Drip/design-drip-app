@@ -94,9 +94,9 @@ export default async function UsersManagementPage({
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Quản lý người dùng</h1>
+                    <h1 className="text-3xl font-bold tracking-tight">User management</h1>
                     <p className="text-muted-foreground">
-                        Quản lý thông tin tài khoản người dùng tại đây.
+                        Manage your users, roles, and permissions from this page.
                     </p>
                 </div>
             </div>
@@ -105,12 +105,12 @@ export default async function UsersManagementPage({
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Tổng người dùng</CardTitle>
+                        <CardTitle className="text-sm font-medium">Total user</CardTitle>
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.total}</div>
-                        <p className="text-xs text-muted-foreground">Tất cả người dùng</p>
+                        <p className="text-xs text-muted-foreground">Total user</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -121,7 +121,7 @@ export default async function UsersManagementPage({
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.active}</div>
                         <p className="text-xs text-muted-foreground">
-                            {stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : 0}% tổng số
+                            {stats.total > 0 ? ((stats.active / stats.total) * 100).toFixed(1) : 0}% total
                         </p>
                     </CardContent>
                 </Card>
@@ -132,17 +132,17 @@ export default async function UsersManagementPage({
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.admin}</div>
-                        <p className="text-xs text-muted-foreground">Người dùng có quyền admin</p>
+                        <p className="text-xs text-muted-foreground">User has admin rights</p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Người dùng</CardTitle>
+                        <CardTitle className="text-sm font-medium">User</CardTitle>
                         <UserX className="h-4 w-4 text-gray-600" />
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.users}</div>
-                        <p className="text-xs text-muted-foreground">Người dùng thường</p>
+                        <p className="text-xs text-muted-foreground">Normal user</p>
                     </CardContent>
                 </Card>
             </div>
@@ -165,11 +165,10 @@ export default async function UsersManagementPage({
                                 defaultValue={statusFilter}
                                 className="flex h-9 w-[200px] rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors"
                             >
-                                <option value="all">Tất cả</option>
-                                <option value="active">Hoạt động</option>
-                                <option value="inactive">Tạm dừng</option>
+                                <option value="all">All role</option>
+                                <option value="normalUser">Normal User</option>
+                                <option value="staff">Staff</option>
                                 <option value="admin">Admin</option>
-                                <option value="user">Người dùng thường</option>
                             </select>
                             <button
                                 type="submit"
@@ -178,7 +177,8 @@ export default async function UsersManagementPage({
                                 Lọc
                             </button>
                         </form>
-                    </div>                    {/* User Table */}
+                    </div>
+                    {/* User Table */}
                     <TableUsers staff={filteredUsers} />
                 </CardContent>
             </Card>
