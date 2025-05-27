@@ -156,7 +156,7 @@ export default async function UsersManagementPage({
                             <input
                                 type="text"
                                 name="search"
-                                placeholder="Tìm kiếm theo tên hoặc email..."
+                                placeholder="Find by name or email..."
                                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm pl-10"
                                 defaultValue={searchTerm}
                             />
@@ -174,7 +174,7 @@ export default async function UsersManagementPage({
                                 type="submit"
                                 className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md bg-primary text-sm font-medium text-primary-foreground shadow h-9 px-4 py-2"
                             >
-                                Lọc
+                                Search
                             </button>
                         </form>
                     </div>
