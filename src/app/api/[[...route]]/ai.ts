@@ -27,11 +27,9 @@ const app = new Hono()
         prompt_strength: 0.85
       };
       
-      const output = await replicate.run("stability-ai/stable-diffusion-3", { input });
-      
-      const res = output as Array<string>;
+      const output = await replicate.run("stability-ai/stable-diffusion-3", { input }) as Array<{ url: () => string }>;
 
-      return c.json({ data: res[0] });
+      return c.json({ data: output[0].url() });
     },
   );
 

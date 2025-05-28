@@ -72,6 +72,7 @@ export const AiSidebar = ({
           <Button
             type="submit"
             className="w-full"
+            disabled={mutation.isPending}
           >
             Generate
           </Button>
