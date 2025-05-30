@@ -102,17 +102,16 @@ export function AppSidebar({ config, onLogout, ...props }: AppSidebarProps) {
                                 side="bottom"
                                 align="end"
                                 sideOffset={4}
-                            >
-                                <DropdownMenuItem>
+                            >                                <DropdownMenuItem>
                                     <Settings className="mr-2 h-4 w-4" />
-                                    <span>Cài đặt tài khoản</span>
+                                    <span>Account Settings</span>
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={onLogout} className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground w-full" asChild>
                                     <SignOutButton>
                                         <Button variant="ghost" className="w-full justify-start border-none">
                                             <LogOut className="mr-2 h-4 w-4" />
-                                            <span>Đăng xuất</span>
+                                            <span>Sign out</span>
                                         </Button>
                                     </SignOutButton>
                                 </DropdownMenuItem>

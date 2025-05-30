@@ -231,9 +231,9 @@ export function TableUsers({ staff }: UserTableProps) {
                                 <TableCell colSpan={6} className="text-center py-8">
                                     <div className="flex flex-col items-center gap-2">
                                         <User className="h-8 w-8 text-muted-foreground" />
-                                        <h3 className="font-medium">Không tìm thấy người dùng</h3>
+                                        <h3 className="font-medium">User not found</h3>
                                         <p className="text-sm text-muted-foreground">
-                                            Không tìm thấy người dùng phù hợp với tiêu chí tìm kiếm.
+                                            No users were found matching the search criteria.
                                         </p>
                                     </div>
                                 </TableCell>
