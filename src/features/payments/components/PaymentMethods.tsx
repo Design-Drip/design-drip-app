@@ -1,11 +1,11 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { getPaymentMethodsQuery } from "../services/queries";
+import { CreditCard, Loader2, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CreditCard, Loader2, Plus } from "lucide-react";
 import PaymentMethodCard from "./PaymentMethodCard";
 import AddPaymentMethod from "./AddPaymentMethod";
-import { useState } from "react";
+import { getPaymentMethodsQuery } from "../services/queries";
 
 const PaymentMethods = () => {
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
@@ -16,16 +16,6 @@ const PaymentMethods = () => {
       <p className="text-sm text-muted-foreground">
         Add a payment method to complete purchases faster
       </p>
-      <AddPaymentMethod
-        open={addPaymentMethodOpen}
-        onOpenChange={setAddPaymentMethodOpen}
-        trigger={
-          <Button variant="default" size="sm" className="mt-2 gap-1">
-            <Plus className="h-4 w-4" />
-            Add Card
-          </Button>
-        }
-      />
     </div>
   );
 

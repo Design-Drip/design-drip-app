@@ -5,7 +5,7 @@ import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 
 const app = new Hono()
-  .get("/payment-methods", async (c) => {
+  .get("/", async (c) => {
     const { userId } = await auth();
     if (!userId) {
       return c.json({ error: "Unauthorized" }, 401);
@@ -18,7 +18,7 @@ const app = new Hono()
       | undefined;
 
     if (!stripeId) {
-      return c.json({ error: "No Stripe ID found" }, 404);
+      return c.json([]);
     }
 
     const paymentMethods = await stripe.customers.listPaymentMethods(stripeId, {
@@ -40,7 +40,7 @@ const app = new Hono()
     return c.json(newPaymentMethods);
   })
   .post(
-    "/payment-methods/default",
+    "/default",
     zValidator(
       "json",
       z.object({
@@ -81,7 +81,7 @@ const app = new Hono()
     }
   )
   .post(
-    "/payment-methods/attach",
+    "/attach",
     zValidator(
       "json",
       z.object({
@@ -154,7 +154,7 @@ const app = new Hono()
       }
     }
   )
-  .delete("/payment-methods/:id", async (c) => {
+  .delete("/:id", async (c) => {
     const { userId } = await auth();
     if (!userId) {
       return c.json({ error: "Unauthorized" }, 401);
