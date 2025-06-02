@@ -26,6 +26,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { CardBrand } from "@stripe/stripe-js";
 
 type PaymentMethodCardProps = {
   paymentMethod: Stripe.PaymentMethod & { isDefault?: boolean };
@@ -90,7 +91,7 @@ const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
           <div className="flex justify-between items-center">
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              {getCardBrandName(card.brand)}
+              {getCardBrandName(card.brand as CardBrand)}
             </CardTitle>
             <div className="text-xs text-muted-foreground">
               Expires {card.exp_month}/{card.exp_year.toString().slice(-2)}
@@ -147,8 +148,9 @@ const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete your {getCardBrandName(card.brand)}{" "}
-              card ending in {card.last4}.
+              This will permanently delete your{" "}
+              {getCardBrandName(card.brand as CardBrand)} card ending in{" "}
+              {card.last4}.
               {isDefault && (
                 <div className="mt-2 flex items-start gap-2 p-2 bg-amber-50 text-amber-700 rounded-md border border-amber-200">
                   <AlertCircle className="h-5 w-5 mt-0.5" />
@@ -186,8 +188,8 @@ const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
   );
 };
 
-const getCardBrandName = (brand: string) => {
-  const brands = {
+const getCardBrandName = (brand: CardBrand) => {
+  const brands: Record<CardBrand, string> = {
     visa: "Visa",
     mastercard: "Mastercard",
     amex: "American Express",
@@ -195,9 +197,11 @@ const getCardBrandName = (brand: string) => {
     jcb: "JCB",
     diners: "Diners Club",
     unionpay: "UnionPay",
+    eftpos_au: "EFTPOS Australia",
+    unknown: "Unknown",
   };
 
-  return brands[brand?.toLowerCase()] || brand || "Card";
+  return brands[brand] || brand || "Card";
 };
 
 export default PaymentMethodCard;
