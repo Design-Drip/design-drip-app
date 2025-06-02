@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { SessionProvider } from "next-auth/react";
-
-import { auth } from "@/auth";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Providers } from "@/components/providers";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -20,9 +18,8 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth();
   return (
-    <SessionProvider session={session}>
+    <ClerkProvider>
       <html lang="en">
         <body className={inter.className}>
           <Providers>
@@ -31,6 +28,6 @@ export default async function RootLayout({
           </Providers>
         </body>
       </html>
-    </SessionProvider>
+    </ClerkProvider>
   );
 }
