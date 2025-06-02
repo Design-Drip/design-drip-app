@@ -168,7 +168,7 @@ export default async function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="w-full" asChild>
                     <Link
-                      href="/account"
+                      href="settings/account"
                       className="flex cursor-pointer items-center"
                     >
                       <User className="mr-2 h-4 w-4" />
