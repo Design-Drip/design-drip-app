@@ -207,14 +207,36 @@ const buildEditor = ({
           canvas.renderAll();
         }
       });
-    },
-    addImage: (value: string) => {
+    },    addImage: (value: string) => {
       fabric.Image.fromURL(
         value,
         (image) => {
           const workspace = getWorkspace();
-          image.scaleToWidth(workspace?.width || 0);
-          image.scaleToHeight(workspace?.height || 0);
+          
+          // Set a minimum size for images (e.g., 200px)
+          const minSize = 200;
+          const maxSize = Math.min(workspace?.width || 400, workspace?.height || 400) * 0.8;
+          
+          // Calculate the appropriate size maintaining aspect ratio
+          const originalWidth = image.width || 1;
+          const originalHeight = image.height || 1;
+          const aspectRatio = originalWidth / originalHeight;
+          
+          let newWidth, newHeight;
+          
+          if (originalWidth > originalHeight) {
+            // Landscape image
+            newWidth = Math.max(minSize, Math.min(maxSize, originalWidth));
+            newHeight = newWidth / aspectRatio;
+          } else {
+            // Portrait or square image
+            newHeight = Math.max(minSize, Math.min(maxSize, originalHeight));
+            newWidth = newHeight * aspectRatio;
+          }
+          
+          // Apply the calculated dimensions
+          image.scaleToWidth(newWidth);
+          image.scaleToHeight(newHeight);
 
           addToCanvas(image);
         },
