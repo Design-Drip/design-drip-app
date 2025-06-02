@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 
+import ai from "./ai";
 import paymentMethods from "./payments/paymentMethods";
 
 // Revert to "edge" if planning on running on the edge
@@ -8,7 +9,9 @@ export const runtime = "nodejs";
 
 const app = new Hono().basePath("/api");
 
-const routes = app.route("/payments/payment-methods", paymentMethods);
+const routes = app
+  .route("/ai", ai)
+  .route("/payments/payment-methods", paymentMethods);
 
 export const GET = handle(app);
 export const POST = handle(app);
