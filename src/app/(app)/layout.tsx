@@ -1,12 +1,16 @@
-import React from "react";
+import { redirect } from "next/navigation";
 import Header from "@/components/ui/header";
 import Footer from "@/components/ui/footer";
+import { checkRole } from "@/lib/roles";
 
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
+export default async function AppLayout({ children }: AppLayoutProps) {
+  if (await checkRole("admin")) {
+    redirect("/admin");
+  }
   return (
     <div className="flex min-h-screen flex-col">
       <Header />

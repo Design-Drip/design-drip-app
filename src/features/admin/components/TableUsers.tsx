@@ -249,10 +249,10 @@ export function TableUsers({ staff }: UserTableProps) {
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-8">
                   <div className="flex flex-col items-center gap-2">
-                    <User className="h-8 w-8 text-muted-foreground" />{" "}
-                    <h3 className="font-medium">No users found</h3>
+                    <User className="h-8 w-8 text-muted-foreground" />
+                    <h3 className="font-medium">User not found</h3>
                     <p className="text-sm text-muted-foreground">
-                      No users match your search criteria.
+                      No users were found matching the search criteria.
                     </p>
                   </div>
                 </TableCell>

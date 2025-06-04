@@ -36,7 +36,6 @@ export const Editor = ({ initialData }: EditorProps) => {
     defaultWidth: 300,
     defaultHeight: 300,
     clearSelectionCallback: onClearSelection,
-    // saveCallback: debouncedSave,
   });
 
   const onChangeActiveTool = useCallback((tool: ActiveTool) => {

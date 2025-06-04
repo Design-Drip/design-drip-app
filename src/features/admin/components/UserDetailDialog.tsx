@@ -45,7 +45,7 @@ export function UserDetailsDialog({
 
   const formatDate = (timestamp: number | undefined | null) => {
     if (!timestamp) return "N/A";
-    return new Date(timestamp).toLocaleString("vi-VN");
+    return new Date(timestamp).toLocaleString("en-US");
   };
 
   const handleSetRole = (role: string) => {
@@ -77,10 +77,10 @@ export function UserDetailsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Chi tiết người dùng</DialogTitle>
+          <DialogTitle>User Details</DialogTitle>
           <DialogDescription>
-            Thông tin chi tiết của tài khoản người dùng. Admin chỉ có thể xem,
-            không thể chỉnh sửa thông tin cá nhân.
+            Detailed information of the user account. Admin can only view, not
+            edit personal information.
           </DialogDescription>
         </DialogHeader>
 
@@ -90,7 +90,7 @@ export function UserDetailsDialog({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Thông tin cá nhân
+                Personal Information
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -111,7 +111,7 @@ export function UserDetailsDialog({
                   </div>
                   <div className="flex gap-2">
                     <Badge variant={staff.isActive ? "default" : "secondary"}>
-                      {staff.isActive ? "Hoạt động" : "Tạm dừng"}
+                      {staff.isActive ? "Active" : "Inactive"}
                     </Badge>
                     {staff.role && (
                       <Badge
@@ -131,7 +131,7 @@ export function UserDetailsDialog({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Mail className="h-5 w-5" />
-                Thông tin liên hệ
+                Contact Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -147,41 +147,33 @@ export function UserDetailsDialog({
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5" />
-                Thông tin tài khoản
+                Account Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span>
-                  Created: <strong>{formatDate(staff.createdAt)}</strong>
+                  Created on: <strong>{formatDate(staff.createdAt)}</strong>
                 </span>
               </div>
               {staff.lastSignInAt && (
                 <div className="flex items-center gap-3">
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span>
-                    Last login:{" "}
+                    Last sign in:{" "}
                     <strong>{formatDate(staff.lastSignInAt)}</strong>
                   </span>
                 </div>
               )}
             </CardContent>
           </Card>
-
-          <Separator />
-
-          {/* System Information */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>User ID: {staff.id}</p>
-            <p>Cập nhật lúc: {formatDate(staff.updatedAt)}</p>
-          </div>
         </div>
 
         {/* Role management buttons */}
         <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2">
           <div className="flex-1 text-left mt-1 text-sm text-muted-foreground">
-            {isPending && "Đang cập nhật..."}
+            {isPending && "Updating..."}
           </div>
           <div className="flex gap-2">
             <Button
@@ -191,7 +183,7 @@ export function UserDetailsDialog({
               onClick={() => handleSetRole("admin")}
             >
               <ShieldCheck className="mr-2 h-4 w-4" />
-              Đặt làm Admin
+              Make Admin
             </Button>
             <Button
               variant="outline"
@@ -200,7 +192,7 @@ export function UserDetailsDialog({
               onClick={() => handleSetRole("staff")}
             >
               <Shield className="mr-2 h-4 w-4" />
-              Đặt làm Staff
+              Make Staff
             </Button>
             <Button
               variant="outline"
@@ -209,7 +201,7 @@ export function UserDetailsDialog({
               onClick={handleRemoveRole}
             >
               <User className="mr-2 h-4 w-4" />
-              Xóa vai trò
+              Remove Role
             </Button>
           </div>
         </DialogFooter>
