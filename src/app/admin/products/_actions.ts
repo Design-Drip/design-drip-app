@@ -3,7 +3,7 @@
 import { checkRole } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
 import mongoose from 'mongoose';
-import { Shirt, ShirtVariant, ShirtImage, Category } from '@/models/product';
+import { Shirt, ShirtSizeVariant, ShirtColor, Category } from '@/models/product';
 import type { Product } from "./page";
 
 // Connect to MongoDB
@@ -41,8 +41,8 @@ export async function getProducts(): Promise<Product[]> {
     
     // For each shirt, get its variants and images
     const productsWithDetails = await Promise.all(shirts.map(async (shirt: any) => {
-      const variantsCount = await ShirtVariant.countDocuments({ shirt_id: shirt._id });
-      const imagesCount = await ShirtImage.countDocuments({ shirt_id: shirt._id });
+      const variantsCount = await ShirtSizeVariant.countDocuments({ shirt_id: shirt._id });
+      const imagesCount = await ShirtColor.countDocuments({ shirt_id: shirt._id });
       
       // Map categories to strings if they exist
       const categories = shirt.categories?.map((cat: any) => 
@@ -53,7 +53,7 @@ export async function getProducts(): Promise<Product[]> {
         id: shirt._id.toString(),
         name: shirt.name,
         description: shirt.description || "",
-        default_price: shirt.default_price,
+        default_price: shirt.base_price || 0, // Handle both old and new property names
         isActive: shirt.isActive ?? true,
         categories,
         imagesCount,
@@ -86,17 +86,17 @@ export async function getProductDetails(productId: string) {
     }
     
     // Get variants for this product
-    const variants = await ShirtVariant.find({ shirt_id: productId }).lean() as any[];
+    const variants = await ShirtSizeVariant.find({ shirt_id: productId }).lean() as any[];
     
     // Get images for this product
-    const images = await ShirtImage.find({ shirt_id: productId }).lean() as any[];
+    const images = await ShirtColor.find({ shirt_id: productId }).lean() as any[];
     
     // Parse the shirt data including the string ID
     const product = {
       id: shirt._id.toString(),
       name: shirt.name,
       description: shirt.description || "",
-      default_price: shirt.default_price,
+      default_price: shirt.base_price,
       isActive: shirt.isActive ?? true,
       categories: (shirt.categories || []).map((cat: any) => ({
         id: cat._id.toString(),
@@ -160,8 +160,8 @@ export async function deleteProduct(formData: FormData) {
     await connectMongoDB();
 
     // Delete associated variants and images first
-    await ShirtVariant.deleteMany({ shirt_id: productId });
-    await ShirtImage.deleteMany({ shirt_id: productId });
+    await ShirtSizeVariant.deleteMany({ shirt_id: productId });
+    await ShirtColor.deleteMany({ shirt_id: productId });
     
     // Then delete the shirt itself
     await Shirt.findByIdAndDelete(productId);
@@ -174,8 +174,10 @@ export async function deleteProduct(formData: FormData) {
 }
 
 export async function createProduct(formData: FormData) {
-  if (!await checkRole("admin")) {
-    return { success: false, message: "Insufficient permissions" };
+  // Check for admin permissions
+  const isAdmin = await checkRole("admin");
+  if (!isAdmin) {
+    return { success: false, message: "Unauthorized" };
   }
 
   try {
@@ -185,35 +187,30 @@ export async function createProduct(formData: FormData) {
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
     const default_price = parseFloat(formData.get("default_price") as string);
-    const categoryNames = (formData.get("categories") as string).split(',').map(cat => cat.trim());
+    const isActive = formData.get("isActive") === "true";
+    const categoriesRaw = formData.get("categories") as string;
     
-    if (!name || !default_price) {
-      return { success: false, message: "Name and price are required" };
+    if (!name || isNaN(default_price)) {
+      return { success: false, message: "Name and valid price are required" };
     }
-    
-    // Find or create categories
-    const categoryIds = [];
-    for (const categoryName of categoryNames) {
-      if (!categoryName) continue;
-      
-      // Find existing category or create new one
-      let category = await Category.findOne({ name: categoryName });
-      if (!category) {
-        category = await Category.create({ name: categoryName });
-        console.log(`Created new category: ${categoryName}`);
-      }
-      categoryIds.push(category._id);
-    }
-    
-    // Create new shirt product
+
+    // Convert comma-separated category IDs to array of ObjectIds
+    const categoryIds = categoriesRaw 
+      ? categoriesRaw
+          .split(",")
+          .filter(id => id.trim() !== "")
+          .map(id => new mongoose.Types.ObjectId(id))
+      : [];
+
+    // Create new shirt product - use base_price instead of default_price to match schema
     const newShirt = await Shirt.create({
       name,
       description,
-      default_price,
+      base_price: default_price, // Ensure correct field name
       categories: categoryIds,
-      isActive: true
+      isActive
     });
-    
+
     console.log(`Product created successfully with ID: ${newShirt._id}`);
     
     // Revalidate the products page to show updated data
@@ -231,8 +228,10 @@ export async function createProduct(formData: FormData) {
 }
 
 export async function updateProduct(formData: FormData) {
-  if (!await checkRole("admin")) {
-    return { success: false, message: "Insufficient permissions" };
+  // Check for admin permissions
+  const isAdmin = await checkRole("admin");
+  if (!isAdmin) {
+    return { success: false, message: "Unauthorized" };
   }
 
   try {
@@ -244,33 +243,31 @@ export async function updateProduct(formData: FormData) {
     const description = formData.get("description") as string;
     const default_price = parseFloat(formData.get("default_price") as string);
     const isActive = formData.get("isActive") === "true";
-    const categoryNames = (formData.get("categories") as string).split(',').map(cat => cat.trim());
+    const categoriesRaw = formData.get("categories") as string;
     
-    if (!productId || !name || !default_price) {
-      return { success: false, message: "Product ID, name, and price are required" };
+    console.log("Categories raw data:", categoriesRaw);
+    
+    if (!productId || !name || isNaN(default_price)) {
+      return { success: false, message: "Product ID, name, and valid price are required" };
     }
+
+    // Convert comma-separated category IDs to array of ObjectIds
+    const categoryIds = categoriesRaw 
+      ? categoriesRaw
+          .split(",")
+          .filter(id => id.trim() !== "")
+          .map(id => new mongoose.Types.ObjectId(id))
+      : [];
     
-    // Find or create categories
-    const categoryIds = [];
-    for (const categoryName of categoryNames) {
-      if (!categoryName) continue;
-      
-      // Find existing category or create new one
-      let category = await Category.findOne({ name: categoryName });
-      if (!category) {
-        category = await Category.create({ name: categoryName });
-        console.log(`Created new category: ${categoryName}`);
-      }
-      categoryIds.push(category._id);
-    }
-    
-    // Update the shirt product
+    console.log("Processed category IDs:", categoryIds);
+
+    // Update the shirt product - use base_price instead of default_price
     const updatedShirt = await Shirt.findByIdAndUpdate(
       productId,
       {
         name,
         description,
-        default_price,
+        base_price: default_price,
         categories: categoryIds,
         isActive
       },

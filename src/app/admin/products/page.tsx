@@ -1,14 +1,18 @@
 import * as React from "react";
-import { Package, CheckCircle2, XCircle, Eye } from "lucide-react";
+import { Package, CheckCircle2, XCircle } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Separator } from "@/components/ui/separator";
 
 import { TableProducts } from "@/features/admin/components/TableProducts";
 import { AddProductButton } from "@/features/admin/components/AddProductButton";
+import { ProductFilters } from "@/features/admin/components/ProductFilters";
+import { CategoriesManager } from "@/features/admin/components/CategoriesManager";
 import { checkRole } from "@/lib/roles";
 import { getProducts } from "./_actions";
+import { getCategories } from "../categories/_actions";
 
 export interface Product {
   id: string;
@@ -42,6 +46,9 @@ export default async function ProductsManagementPage({
   // Fetch products
   const products = await getProducts();
 
+  // Fetch categories
+  const categories = await getCategories();
+
   // Filter products based on search term, status, and category
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -72,6 +79,7 @@ export default async function ProductsManagementPage({
   const uniqueCategories = Array.from(
     new Set(products.flatMap((product) => product.categories))
   ).sort();
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -85,38 +93,61 @@ export default async function ProductsManagementPage({
         </div>
         <AddProductButton />
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Total Products
-            </CardTitle>
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{products.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeCount}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive</CardTitle>
-            <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{inactiveCount}</div>
-          </CardContent>
-        </Card>
-      </div>{" "}
-      <TableProducts products={filteredProducts} />
+
+      <Tabs defaultValue="products" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="products">Products</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="products" className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Total Products
+                </CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{products.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active</CardTitle>
+                <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{activeCount}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Inactive</CardTitle>
+                <XCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{inactiveCount}</div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Client component for filters */}
+          <ProductFilters
+            searchTerm={searchTerm}
+            statusFilter={statusFilter}
+            categoryFilter={categoryFilter}
+            uniqueCategories={uniqueCategories}
+          />
+
+          <TableProducts products={filteredProducts} />
+        </TabsContent>
+
+        <TabsContent value="categories">
+          <CategoriesManager initialCategories={categories} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -17,7 +17,7 @@ services:
         - action: rebuild
           path: package.json
     environment:
-      MONGODB_URI: mongodb://root:example@mongo:27017/design-drip-dev?authSource=admin
+      MONGODB_URI: mongodb://root:example@mongo:27017/design-drip-dev
     depends_on:
       - mongo
     env_file: .env.local

@@ -8,9 +8,13 @@ import {
   ToggleLeft,
   ToggleRight,
   Pencil,
+  DollarSign,
+  AlertTriangle,
+  CheckCircle,
 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 import {
   Dialog,
@@ -30,11 +34,13 @@ import {
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // Import Product type and actions
 import type { Product } from "@/app/admin/products/page";
 import { toggleProductStatus } from "@/app/admin/products/_actions";
 import { EditProductForm } from "./EditProductForm";
+import { ProductImageManager } from "./ProductImageManager";
 
 interface ProductDetailsDialogProps {
   product: Product | null;
@@ -49,6 +55,7 @@ export function ProductDetailsDialog({
 }: ProductDetailsDialogProps) {
   const [isPending, startTransition] = useTransition();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isImageManagerOpen, setIsImageManagerOpen] = useState(false);
   const router = useRouter();
 
   if (!product) return null;
@@ -81,158 +88,184 @@ export function ProductDetailsDialog({
 
   return (
     <>
-      {" "}
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Product Details</DialogTitle>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Package className="h-5 w-5" />
+              Product Details
+            </DialogTitle>
             <DialogDescription>
               Detailed product information including price, status, categories
               and creation time.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Product Info Section */}
-            <Card>
-              {" "}
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Package className="h-5 w-5" />
-                  Product Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">{product.name}</h3>{" "}
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {product.description || "No description"}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    {" "}
-                    <Badge variant={product.isActive ? "default" : "secondary"}>
+          <Tabs defaultValue="info" className="mt-4">
+            <TabsContent value="info" className="space-y-4">
+              {/* Product Info Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{product.name}</CardTitle>
+                      {product.categories.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {product.categories.map((cat, index) => (
+                            <Badge key={index} variant="secondary">
+                              {cat}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-xs text-muted-foreground mt-1">
+                          Product does not belong to any category
+                        </div>
+                      )}
+                    </div>
+                    <Badge
+                      variant={product.isActive ? "default" : "outline"}
+                      className="ml-2"
+                    >
                       {product.isActive ? "Active" : "Inactive"}
                     </Badge>
-                    {product.categories.map((cat, index) => (
-                      <Badge key={index} variant="outline">
-                        {cat}
-                      </Badge>
-                    ))}
                   </div>
-                  <Separator />{" "}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Price:</p>
-                      <p className="font-medium">
-                        {formatPrice(product.default_price)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">
-                        Product ID:
-                      </p>
-                      <p className="font-medium truncate">{product.id}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Stats Section */}
-            <div className="grid grid-cols-2 gap-4">
-              <Card>
-                {" "}
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Layers className="h-4 w-4" />
-                    Number of Variants
-                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-2xl font-bold">{product.variantsCount}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Sizes and colors
-                  </p>
+                  {/* Price */}
+                  <div className="flex items-center py-1">
+                    <DollarSign className="h-4 w-4 text-muted-foreground mr-2" />
+                    <span className="text-muted-foreground">Price:</span>
+                    <span className="ml-auto font-medium">
+                      {formatPrice(product.default_price)}
+                    </span>
+                  </div>
+
+                  {/* Product ID */}
+                  <div className="flex items-center py-1">
+                    <Tag className="h-4 w-4 text-muted-foreground mr-2" />
+                    <span className="text-muted-foreground">ID:</span>
+                    <span className="ml-auto font-mono text-xs text-muted-foreground">
+                      {product.id}
+                    </span>
+                  </div>
+
+                  <Separator className="my-3" />
+
+                  {/* Description */}
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <span className="text-muted-foreground">
+                        Description:
+                      </span>
+                    </div>
+                    <div className="text-sm">
+                      {product.description || "No description provided"}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
+
+              {/* Dates Card */}
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-sm flex items-center gap-2">
-                    <Image className="h-4 w-4" />
-                    Number of Images
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Time Information
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{product.imagesCount}</p>
-                  <p className="text-xs text-muted-foreground">Images</p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Dates Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
-                  Dates
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+                <CardContent className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-muted-foreground">Created At:</p>
-                    <p className="font-medium">
-                      {formatDate(product.createdAt)}
-                    </p>
+                    <div className="text-sm text-muted-foreground">
+                      Created:
+                    </div>
+                    <div>{formatDate(product.createdAt)}</div>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">
+                    <div className="text-sm text-muted-foreground">
                       Last Updated:
-                    </p>
-                    <p className="font-medium">
-                      {formatDate(product.updatedAt)}
-                    </p>
+                    </div>
+                    <div>{formatDate(product.updatedAt)}</div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+                </CardContent>
+              </Card>
 
-          <DialogFooter className="flex justify-between items-center mt-4">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Close
-            </Button>
+              {/* Status Card */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    {product.isActive ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    )}
+                    Product Status
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm">
+                    This product is currently
+                    <span
+                      className={
+                        product.isActive
+                          ? "text-green-500 font-medium"
+                          : "text-amber-500 font-medium"
+                      }
+                    >
+                      {product.isActive ? " active " : " inactive "}
+                    </span>
+                    and{" "}
+                    {product.isActive
+                      ? "visible to customers"
+                      : "not visible to customers"}
+                    .
+                  </div>
+                  <Button
+                    variant={product.isActive ? "outline" : "default"}
+                    size="sm"
+                    onClick={handleToggleStatus}
+                    disabled={isPending}
+                    className="mt-4"
+                  >
+                    {isPending ? (
+                      "Processing..."
+                    ) : product.isActive ? (
+                      <>
+                        <ToggleLeft className="mr-2 h-4 w-4" />
+                        Set as Inactive
+                      </>
+                    ) : (
+                      <>
+                        <ToggleRight className="mr-2 h-4 w-4" />
+                        Set as Active
+                      </>
+                    )}
+                  </Button>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter className="flex justify-end items-center pt-4 border-t">
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(true)}
-              >
-                <Pencil className="mr-2 h-4 w-4" />
-                Edit
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Close
               </Button>
-              <Button
-                variant={product.isActive ? "destructive" : "default"}
-                onClick={handleToggleStatus}
-                disabled={isPending}
-              >
-                {product.isActive ? (
-                  <>
-                    <ToggleLeft className="mr-2 h-4 w-4" />
-                    Stop Selling
-                  </>
-                ) : (
-                  <>
-                    <ToggleRight className="mr-2 h-4 w-4" />
-                    For Sale
-                  </>
-                )}
+              <Button variant="outline" asChild>
+                <Link href={`/admin/products/${product.id}/variants`}>
+                  <Layers className="mr-2 h-4 w-4" />
+                  Manage Shirt Colors
+                </Link>
+              </Button>
+              <Button onClick={() => setIsEditDialogOpen(true)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit Product
               </Button>
             </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
       {/* Edit Product Form Dialog */}
       {product && (
         <EditProductForm
@@ -249,6 +282,15 @@ export function ProductDetailsDialog({
           }}
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
+        />
+      )}
+
+      {/* Product Image Manager */}
+      {product && (
+        <ProductImageManager
+          productId={product.id}
+          open={isImageManagerOpen}
+          onOpenChange={setIsImageManagerOpen}
         />
       )}
     </>
