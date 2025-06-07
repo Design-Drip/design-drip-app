@@ -5,6 +5,8 @@ services:
       dockerfile: Dockerfile
     container_name: design-drip-app
     restart: always
+    ports:
+      - "3000:3000"
     develop:
       watch:
         - action: sync
@@ -14,10 +16,8 @@ services:
             - node-modules/
         - action: rebuild
           path: package.json
-    ports:
-      - "3000:3000"
     environment:
-      MONGODB_URI: mongodb://root:example@localhost:27017/design-drip-dev
+      MONGODB_URI: mongodb://root:example@mongo:27017/design-drip-dev
     depends_on:
       - mongo
     env_file: .env.local

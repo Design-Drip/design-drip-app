@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const uri = process.env.MONGODB_URI!;
+const uri = process.env.MONGODB_URI;
 if (!uri) {
   throw new Error(
     "Please define the MONGODB_URI environment variable inside .env.local"
@@ -13,6 +13,8 @@ const options: mongoose.ConnectOptions = {
     strict: true,
     deprecationErrors: true,
   },
+  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of default 30s
+  connectTimeoutMS: 10000,
 };
 
 let client: mongoose.mongo.MongoClient;
