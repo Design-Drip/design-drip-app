@@ -29,20 +29,23 @@ const connectMongoDB = async () => {
 export async function getCategories() {
   try {
     await connectMongoDB();
-    
+
     console.log("Fetching categories from database...");
     // Fetch all categories
-    const categories = await Category.find().lean() as any[];
+    const categories = (await Category.find().lean()) as any[];
     console.log("Raw categories from DB:", JSON.stringify(categories, null, 2));
-    
+
     // Format the categories before returning
-    const formattedCategories = categories.map(category => ({
+    const formattedCategories = categories.map((category) => ({
       id: category._id.toString(),
       name: category.name,
-      description: category.description || ""
+      description: category.description || "",
     }));
-    
-    console.log("Formatted categories:", JSON.stringify(formattedCategories, null, 2));
+
+    console.log(
+      "Formatted categories:",
+      JSON.stringify(formattedCategories, null, 2)
+    );
     return formattedCategories;
   } catch (err) {
     console.error("Error fetching categories:", err);
@@ -67,29 +70,32 @@ export async function addCategory(formData: FormData) {
     }
 
     await connectMongoDB();
-    
+
     // Check if category with the same name already exists
     const existingCategory = await Category.findOne({ name });
     if (existingCategory) {
-      return { success: false, message: "Category with this name already exists" };
+      return {
+        success: false,
+        message: "Category with this name already exists",
+      };
     }
 
     // Create new category
     const category = await Category.create({ name, description });
-    
+
     console.log(`Category created successfully with ID: ${category._id}`);
-    
+
     // Revalidate the admin pages
     revalidatePath("/admin/products");
     revalidatePath("/admin/categories");
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: {
-        id: category._id.toString(),
+        id: category._id?.toString(),
         name: category.name,
-        description: category.description || ""
-      }
+        description: category.description || "",
+      },
     };
   } catch (err) {
     console.error("Error adding category:", err);
@@ -115,11 +121,14 @@ export async function updateCategory(formData: FormData) {
     }
 
     await connectMongoDB();
-    
+
     // Check if category with the same name already exists (excluding this one)
     const existingCategory = await Category.findOne({ name, _id: { $ne: id } });
     if (existingCategory) {
-      return { success: false, message: "Another category with this name already exists" };
+      return {
+        success: false,
+        message: "Another category with this name already exists",
+      };
     }
 
     // Update category
@@ -128,24 +137,24 @@ export async function updateCategory(formData: FormData) {
       { name, description },
       { new: true }
     );
-    
+
     if (!category) {
       return { success: false, message: "Category not found" };
     }
-    
+
     console.log(`Category updated successfully with ID: ${id}`);
-    
+
     // Revalidate the admin pages
     revalidatePath("/admin/products");
     revalidatePath("/admin/categories");
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       data: {
-        id: category._id.toString(),
+        id: category._id?.toString(),
         name: category.name,
-        description: category.description || ""
-      }
+        description: category.description || "",
+      },
     };
   } catch (err) {
     console.error("Error updating category:", err);
@@ -174,17 +183,17 @@ export async function deleteCategory(formData: FormData) {
 
     // Delete category
     const result = await Category.findByIdAndDelete(id);
-    
+
     if (!result) {
       return { success: false, message: "Category not found" };
     }
-    
+
     console.log(`Category deleted successfully with ID: ${id}`);
-    
+
     // Revalidate the admin pages
     revalidatePath("/admin/products");
     revalidatePath("/admin/categories");
-    
+
     return { success: true };
   } catch (err) {
     console.error("Error deleting category:", err);

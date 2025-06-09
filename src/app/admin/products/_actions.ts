@@ -2,8 +2,13 @@
 
 import { checkRole } from "@/lib/roles";
 import { revalidatePath } from "next/cache";
-import mongoose from 'mongoose';
-import { Shirt, ShirtSizeVariant, ShirtColor, Category } from '@/models/product';
+import mongoose from "mongoose";
+import {
+  Shirt,
+  ShirtSizeVariant,
+  ShirtColor,
+  Category,
+} from "@/models/product";
 import type { Product } from "./page";
 
 // Connect to MongoDB
@@ -12,57 +17,66 @@ const connectMongoDB = async () => {
     if (mongoose.connection.readyState === 0) {
       const uri = process.env.MONGODB_URI;
       if (!uri) {
-        throw new Error('MONGODB_URI is not defined in environment variables');
+        throw new Error("MONGODB_URI is not defined in environment variables");
       }
-      
-      console.log('Connecting to MongoDB...');
+
+      console.log("Connecting to MongoDB...");
       await mongoose.connect(uri, {
         serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of default 30s
         connectTimeoutMS: 10000,
       });
-      console.log('Connected to MongoDB successfully');
+      console.log("Connected to MongoDB successfully");
     }
   } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
-    throw new Error('Failed to connect to database');
+    console.error("Error connecting to MongoDB:", error);
+    throw new Error("Failed to connect to database");
   }
 };
 
 export async function getProducts(): Promise<Product[]> {
-  if (!await checkRole("admin")) {
+  if (!(await checkRole("admin"))) {
     return [];
   }
 
   try {
     await connectMongoDB();
-    
+
     // Fetch shirts with populated categories
-    const shirts = await Shirt.find().populate('categories').lean();
-    
+    const shirts = await Shirt.find().populate("categories").lean();
+
     // For each shirt, get its variants and images
-    const productsWithDetails = await Promise.all(shirts.map(async (shirt: any) => {
-      const variantsCount = await ShirtSizeVariant.countDocuments({ shirt_id: shirt._id });
-      const imagesCount = await ShirtColor.countDocuments({ shirt_id: shirt._id });
-      
-      // Map categories to strings if they exist
-      const categories = shirt.categories?.map((cat: any) => 
-        cat.name || "Unknown"
-      ) || [];
-      
-      return {
-        id: shirt._id.toString(),
-        name: shirt.name,
-        description: shirt.description || "",
-        default_price: shirt.base_price || 0, // Handle both old and new property names
-        isActive: shirt.isActive ?? true,
-        categories,
-        imagesCount,
-        variantsCount,
-        createdAt: shirt.createdAt ? new Date(shirt.createdAt).getTime() : Date.now(),
-        updatedAt: shirt.updatedAt ? new Date(shirt.updatedAt).getTime() : Date.now(),
-      };
-    }));
-    
+    const productsWithDetails = await Promise.all(
+      shirts.map(async (shirt: any) => {
+        const variantsCount = await ShirtSizeVariant.countDocuments({
+          shirt_id: shirt._id,
+        });
+        const imagesCount = await ShirtColor.countDocuments({
+          shirt_id: shirt._id,
+        });
+
+        // Map categories to strings if they exist
+        const categories =
+          shirt.categories?.map((cat: any) => cat.name || "Unknown") || [];
+
+        return {
+          id: shirt._id.toString(),
+          name: shirt.name,
+          description: shirt.description || "",
+          default_price: shirt.base_price || 0, // Handle both old and new property names
+          isActive: shirt.isActive ?? true,
+          categories,
+          imagesCount,
+          variantsCount,
+          createdAt: shirt.createdAt
+            ? new Date(shirt.createdAt).getTime()
+            : Date.now(),
+          updatedAt: shirt.updatedAt
+            ? new Date(shirt.updatedAt).getTime()
+            : Date.now(),
+        };
+      })
+    );
+
     return productsWithDetails;
   } catch (err) {
     console.error("Error fetching products:", err);
@@ -71,26 +85,32 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function getProductDetails(productId: string) {
-  if (!await checkRole("admin")) {
+  if (!(await checkRole("admin"))) {
     return null;
   }
 
   try {
     await connectMongoDB();
-    
+
     // Fetch the shirt with populated categories
-    const shirt = await Shirt.findById(productId).populate('categories').lean() as any;
-    
+    const shirt = (await Shirt.findById(productId)
+      .populate("categories")
+      .lean()) as any;
+
     if (!shirt) {
       return null;
     }
-    
+
     // Get variants for this product
-    const variants = await ShirtSizeVariant.find({ shirt_id: productId }).lean() as any[];
-    
+    const variants = (await ShirtSizeVariant.find({
+      shirt_id: productId,
+    }).lean()) as any[];
+
     // Get images for this product
-    const images = await ShirtColor.find({ shirt_id: productId }).lean() as any[];
-    
+    const images = (await ShirtColor.find({
+      shirt_id: productId,
+    }).lean()) as any[];
+
     // Parse the shirt data including the string ID
     const product = {
       id: shirt._id.toString(),
@@ -101,13 +121,13 @@ export async function getProductDetails(productId: string) {
       categories: (shirt.categories || []).map((cat: any) => ({
         id: cat._id.toString(),
         name: cat.name,
-        description: cat.description || ""
+        description: cat.description || "",
       })),
       variants: variants.map((variant: any) => ({
         id: variant._id.toString(),
         size: variant.size,
         color: variant.color,
-        additional_price: variant.additional_price || 0
+        additional_price: variant.additional_price || 0,
       })),
       images: images.map((image: any) => ({
         id: image._id.toString(),
@@ -115,12 +135,16 @@ export async function getProductDetails(productId: string) {
         is_primary: image.is_primary,
         view_side: image.view_side,
         width_editable_zone: image.width_editable_zone,
-        height_editable_zone: image.height_editable_zone
+        height_editable_zone: image.height_editable_zone,
       })),
-      createdAt: shirt.createdAt ? new Date(shirt.createdAt).getTime() : Date.now(),
-      updatedAt: shirt.updatedAt ? new Date(shirt.updatedAt).getTime() : Date.now()
+      createdAt: shirt.createdAt
+        ? new Date(shirt.createdAt).getTime()
+        : Date.now(),
+      updatedAt: shirt.updatedAt
+        ? new Date(shirt.updatedAt).getTime()
+        : Date.now(),
     };
-    
+
     return product;
   } catch (err) {
     console.error("Error fetching product details:", err);
@@ -132,13 +156,13 @@ export async function toggleProductStatus(formData: FormData) {
   const productId = formData.get("id") as string;
   const isActive = formData.get("isActive") === "true";
 
-  if (!await checkRole("admin")) {
+  if (!(await checkRole("admin"))) {
     return;
   }
 
   try {
     await connectMongoDB();
-    
+
     // Update the product status
     await Shirt.findByIdAndUpdate(productId, { isActive: !isActive });
 
@@ -152,7 +176,7 @@ export async function toggleProductStatus(formData: FormData) {
 export async function deleteProduct(formData: FormData) {
   const productId = formData.get("id") as string;
 
-  if (!await checkRole("admin")) {
+  if (!(await checkRole("admin"))) {
     return;
   }
 
@@ -162,7 +186,7 @@ export async function deleteProduct(formData: FormData) {
     // Delete associated variants and images first
     await ShirtSizeVariant.deleteMany({ shirt_id: productId });
     await ShirtColor.deleteMany({ shirt_id: productId });
-    
+
     // Then delete the shirt itself
     await Shirt.findByIdAndDelete(productId);
 
@@ -182,24 +206,24 @@ export async function createProduct(formData: FormData) {
 
   try {
     await connectMongoDB();
-    
+
     // Extract product data from form
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
     const default_price = parseFloat(formData.get("default_price") as string);
     const isActive = formData.get("isActive") === "true";
     const categoriesRaw = formData.get("categories") as string;
-    
+
     if (!name || isNaN(default_price)) {
       return { success: false, message: "Name and valid price are required" };
     }
 
     // Convert comma-separated category IDs to array of ObjectIds
-    const categoryIds = categoriesRaw 
+    const categoryIds = categoriesRaw
       ? categoriesRaw
           .split(",")
-          .filter(id => id.trim() !== "")
-          .map(id => new mongoose.Types.ObjectId(id))
+          .filter((id) => id.trim() !== "")
+          .map((id) => new mongoose.Types.ObjectId(id))
       : [];
 
     // Create new shirt product - use base_price instead of default_price to match schema
@@ -208,18 +232,18 @@ export async function createProduct(formData: FormData) {
       description,
       base_price: default_price, // Ensure correct field name
       categories: categoryIds,
-      isActive
+      isActive,
     });
 
     console.log(`Product created successfully with ID: ${newShirt._id}`);
-    
+
     // Revalidate the products page to show updated data
     revalidatePath("/admin/products");
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: "Product created successfully",
-      productId: newShirt._id.toString()
+      productId: newShirt._id?.toString(),
     };
   } catch (err) {
     console.error("Error creating product:", err);
@@ -236,7 +260,7 @@ export async function updateProduct(formData: FormData) {
 
   try {
     await connectMongoDB();
-    
+
     // Extract product data from form
     const productId = formData.get("id") as string;
     const name = formData.get("name") as string;
@@ -244,21 +268,24 @@ export async function updateProduct(formData: FormData) {
     const default_price = parseFloat(formData.get("default_price") as string);
     const isActive = formData.get("isActive") === "true";
     const categoriesRaw = formData.get("categories") as string;
-    
+
     console.log("Categories raw data:", categoriesRaw);
-    
+
     if (!productId || !name || isNaN(default_price)) {
-      return { success: false, message: "Product ID, name, and valid price are required" };
+      return {
+        success: false,
+        message: "Product ID, name, and valid price are required",
+      };
     }
 
     // Convert comma-separated category IDs to array of ObjectIds
-    const categoryIds = categoriesRaw 
+    const categoryIds = categoriesRaw
       ? categoriesRaw
           .split(",")
-          .filter(id => id.trim() !== "")
-          .map(id => new mongoose.Types.ObjectId(id))
+          .filter((id) => id.trim() !== "")
+          .map((id) => new mongoose.Types.ObjectId(id))
       : [];
-    
+
     console.log("Processed category IDs:", categoryIds);
 
     // Update the shirt product - use base_price instead of default_price
@@ -269,24 +296,24 @@ export async function updateProduct(formData: FormData) {
         description,
         base_price: default_price,
         categories: categoryIds,
-        isActive
+        isActive,
       },
       { new: true }
     );
-    
+
     if (!updatedShirt) {
       return { success: false, message: "Product not found" };
     }
-    
+
     console.log(`Product updated successfully with ID: ${productId}`);
-    
+
     // Revalidate the products page to show updated data
     revalidatePath("/admin/products");
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       message: "Product updated successfully",
-      productId: updatedShirt._id.toString()
+      productId: updatedShirt._id?.toString(),
     };
   } catch (err) {
     console.error("Error updating product:", err);
@@ -297,15 +324,15 @@ export async function updateProduct(formData: FormData) {
 export async function getCategories() {
   try {
     await connectMongoDB();
-    
+
     // Fetch all categories
-    const categories = await Category.find().lean() as any[];
-    
+    const categories = (await Category.find().lean()) as any[];
+
     // Format the categories
-    return categories.map(category => ({
+    return categories.map((category) => ({
       id: category._id.toString(),
       name: category.name,
-      description: category.description || ""
+      description: category.description || "",
     }));
   } catch (err) {
     console.error("Error fetching categories:", err);

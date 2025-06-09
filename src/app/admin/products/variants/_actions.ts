@@ -146,7 +146,7 @@ export async function addProductColor(formData: FormData) {
     
     return { 
       success: true,
-      colorId: newColor._id.toString()
+      colorId: newColor._id?.toString()
     };
   } catch (error: any) {
     console.error("Error adding product color:", error);
@@ -257,7 +257,7 @@ export async function addProductSize(formData: FormData) {
     
     return { 
       success: true,
-      sizeId: newSize._id.toString()
+      sizeId: newSize._id?.toString()
     };
   } catch (error: any) {
     console.error("Error adding product size:", error);

@@ -158,7 +158,7 @@ export async function addProductColor(formData: FormData) {
     return {
       success: true,
       data: {
-        id: newColor._id.toString(),
+        id: newColor._id?.toString(),
         name: newColor.color,
         value: newColor.color_value,
       },
@@ -212,7 +212,7 @@ export async function updateProductColor(formData: FormData) {
     return {
       success: true,
       data: {
-        id: updatedColor._id.toString(),
+        id: updatedColor._id?.toString(),
         name: updatedColor.color,
         value: updatedColor.color_value,
       },
@@ -278,7 +278,7 @@ export async function getProductColors(productId: string) {
       id: color._id.toString(),
       name: color.color,
       value: color.color_value,
-      images: color.images?.map((img) => ({
+      images: color.images?.map((img: any) => ({
         id: img._id?.toString(),
         url: img.url,
         view_side: img.view_side,
