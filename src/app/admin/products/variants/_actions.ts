@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import { revalidatePath } from "next/cache";
 import { ShirtColor, ShirtSizeVariant, Shirt } from '@/models/product';
 import { checkRole } from "@/lib/roles";
+import { FIXED_SIZES } from '@/constants/size';
 
 // Connect to MongoDB
 const connectMongoDB = async () => {
@@ -26,14 +27,6 @@ const connectMongoDB = async () => {
     throw new Error('Failed to connect to database');
   }
 };
-
-// Sizes cố định cho tất cả sản phẩm - không export mà sử dụng nội bộ trong file này
-const FIXED_SIZES = ["S", "M", "L", "XL", "XXL"];
-
-// Thêm một hàm async để có thể export danh sách sizes
-export async function getFixedSizes() {
-  return FIXED_SIZES;
-}
 
 // Get colors for a product
 export async function getProductColors(productId: string) {

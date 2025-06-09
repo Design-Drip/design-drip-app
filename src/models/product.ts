@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { Model } from "mongoose";
 
 //
 // 1. Category Schema (tuỳ chọn, dùng để phân loại sản phẩm)
@@ -32,11 +32,10 @@ const categorySchema = new mongoose.Schema(
 );
 
 const Category =
-  mongoose.models.Category ||
-  mongoose.model<CategoryDoc>('Category', categorySchema);
+  (mongoose.models.Category as Model<CategoryDoc>) ||
+  mongoose.model<CategoryDoc>("Category", categorySchema);
 
 export type { CategoryDoc };
-
 
 //
 // 2. Shirt (Product) Schema
@@ -71,7 +70,7 @@ const shirtSchema = new mongoose.Schema(
     categories: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category',
+        ref: "Category",
       },
     ],
   },
@@ -88,10 +87,10 @@ const shirtSchema = new mongoose.Schema(
 );
 
 const Shirt =
-  mongoose.models.Shirt || mongoose.model<ShirtDoc>('Shirt', shirtSchema);
+  (mongoose.models.Shirt as Model<ShirtDoc>) ||
+  mongoose.model<ShirtDoc>("Shirt", shirtSchema);
 
 export type { ShirtDoc };
-
 
 //
 // 3. Subdocument cho Ảnh (ImageSubdoc)
@@ -99,7 +98,7 @@ export type { ShirtDoc };
 
 // Cập nhật interface với đầy đủ các trường bắt buộc
 interface ImageSubdoc {
-  view_side: 'front' | 'back' | 'left' | 'right';
+  view_side: "front" | "back" | "left" | "right";
   url: string;
   is_primary: boolean;
   width: number; // Chiều rộng của ảnh
@@ -116,7 +115,7 @@ const imageSubSchema = new mongoose.Schema<ImageSubdoc>(
     view_side: {
       type: String,
       required: true,
-      enum: ['front', 'back', 'left', 'right'],
+      enum: ["front", "back", "left", "right"],
     },
     url: {
       type: String,
@@ -130,35 +129,35 @@ const imageSubSchema = new mongoose.Schema<ImageSubdoc>(
     width: {
       type: Number,
       default: 800, // Kích thước cố định
-      required: true
+      required: true,
     },
     height: {
       type: Number,
       default: 1120, // Kích thước cố định
-      required: true
+      required: true,
     },
     width_editable_zone: {
       type: Number,
       default: 300,
-      required: true
+      required: true,
     },
     height_editable_zone: {
       type: Number,
       default: 300,
-      required: true
+      required: true,
     },
     x_editable_zone: {
       type: Number,
       default: 250,
-      required: true
+      required: true,
     },
     y_editable_zone: {
       type: Number,
       default: 400,
-      required: true
+      required: true,
     },
   },
-  { 
+  {
     _id: true,
     toJSON: {
       transform(_, ret) {
@@ -166,10 +165,9 @@ const imageSubSchema = new mongoose.Schema<ImageSubdoc>(
         delete ret._id;
         delete ret.__v;
       },
-    }, 
+    },
   }
 );
-
 
 //
 // 4. ShirtColor Schema (mỗi màu + 4 ảnh)
@@ -186,7 +184,7 @@ const shirtColorSchema = new mongoose.Schema<ShirtColorDoc>(
   {
     shirt_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Shirt',
+      ref: "Shirt",
       required: true,
     },
     color: {
@@ -207,20 +205,20 @@ const shirtColorSchema = new mongoose.Schema<ShirtColorDoc>(
           // Cho phép mảng rỗng hoặc đủ 4 ảnh với đúng view_side
           if (arr.length === 0) return true;
           if (arr.length !== 4) return false;
-          
+
           // Kiểm tra có đủ 4 view_side khác nhau không
           const sides = arr.map((img) => img.view_side);
           return (
-            sides.includes('front') &&
-            sides.includes('back') &&
-            sides.includes('left') &&
-            sides.includes('right') &&
+            sides.includes("front") &&
+            sides.includes("back") &&
+            sides.includes("left") &&
+            sides.includes("right") &&
             // Đảm bảo không có view_side trùng nhau
             new Set(sides).size === 4
           );
         },
         message:
-          'Mỗi color variant phải có 0 ảnh hoặc đủ 4 ảnh với view_side khác nhau: front/back/left/right.',
+          "Mỗi color variant phải có 0 ảnh hoặc đủ 4 ảnh với view_side khác nhau: front/back/left/right.",
       },
     },
   },
@@ -237,17 +235,13 @@ const shirtColorSchema = new mongoose.Schema<ShirtColorDoc>(
 );
 
 // Đảm bảo mỗi Shirt chỉ có một document ShirtColor cho mỗi màu
-shirtColorSchema.index(
-  { shirt_id: 1, color: 1 },
-  { unique: true }
-);
+shirtColorSchema.index({ shirt_id: 1, color: 1 }, { unique: true });
 
 const ShirtColor =
-  mongoose.models.ShirtColor ||
-  mongoose.model<ShirtColorDoc>('ShirtColor', shirtColorSchema);
+  (mongoose.models.ShirtColor as Model<ShirtColorDoc>) ||
+  mongoose.model<ShirtColorDoc>("ShirtColor", shirtColorSchema);
 
 export type { ShirtColorDoc };
-
 
 //
 // 5. ShirtSizeVariant Schema (size + giá cộng thêm + kho, tham chiếu đến ShirtColor)
@@ -262,7 +256,7 @@ const shirtSizeVariantSchema = new mongoose.Schema<ShirtSizeVariantDoc>(
   {
     shirtColor: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'ShirtColor',
+      ref: "ShirtColor",
       required: true,
     },
     size: {
@@ -274,7 +268,6 @@ const shirtSizeVariantSchema = new mongoose.Schema<ShirtSizeVariantDoc>(
       type: Number,
       default: 0,
     },
-
   },
   {
     timestamps: true,
@@ -289,27 +282,18 @@ const shirtSizeVariantSchema = new mongoose.Schema<ShirtSizeVariantDoc>(
 );
 
 // Đảm bảo mỗi ShirtColor chỉ có một document SizeVariant cho mỗi size
-shirtSizeVariantSchema.index(
-  { shirtColor: 1, size: 1 },
-  { unique: true }
-);
+shirtSizeVariantSchema.index({ shirtColor: 1, size: 1 }, { unique: true });
 
 const ShirtSizeVariant =
-  mongoose.models.ShirtSizeVariant ||
+  (mongoose.models.ShirtSizeVariant as Model<ShirtSizeVariantDoc>) ||
   mongoose.model<ShirtSizeVariantDoc>(
-    'ShirtSizeVariant',
+    "ShirtSizeVariant",
     shirtSizeVariantSchema
   );
 
 export type { ShirtSizeVariantDoc };
 
-
 //
 // 6. Export tất cả models
 //
-export {
-  Category,
-  Shirt,
-  ShirtColor,
-  ShirtSizeVariant,
-};
+export { Category, Shirt, ShirtColor, ShirtSizeVariant };
