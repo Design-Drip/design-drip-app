@@ -1,19 +1,15 @@
 import { Hono } from "hono";
-import { auth, clerkClient } from "@clerk/nextjs/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { stripe } from "@/lib/stripe";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import verifyAuth from "@/lib/middlewares/verifyAuth";
 
 const app = new Hono()
+  .use(verifyAuth)
   .get("/", async (c) => {
-    const { userId } = await auth();
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const stripeId = user.privateMetadata?.["stripe_cus_id"] as
+    const user = c.get("user");
+    const stripeId = user?.privateMetadata?.["stripe_cus_id"] as
       | string
       | undefined;
 
@@ -26,7 +22,7 @@ const app = new Hono()
     });
 
     const defaultPaymentMethod = paymentMethods.data.find(
-      (pm) => pm.id === user.privateMetadata?.["default_payment_method"]
+      (pm) => pm.id === user?.privateMetadata?.["default_payment_method"]
     );
     if (!defaultPaymentMethod) return c.json(paymentMethods.data);
 
@@ -48,14 +44,9 @@ const app = new Hono()
       })
     ),
     async (c) => {
-      const { userId } = await auth();
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
+      const user = c.get("user");
       const client = await clerkClient();
-      const user = await client.users.getUser(userId);
-      const stripeId = user.privateMetadata?.["stripe_cus_id"] as
+      const stripeId = user?.privateMetadata?.["stripe_cus_id"] as
         | string
         | undefined;
 
@@ -71,7 +62,7 @@ const app = new Hono()
         },
       });
 
-      await client.users.updateUserMetadata(userId, {
+      await client.users.updateUserMetadata(user?.id!, {
         privateMetadata: {
           default_payment_method: paymentMethodId,
         },
@@ -90,30 +81,24 @@ const app = new Hono()
       })
     ),
     async (c) => {
-      const { userId } = await auth();
-      if (!userId) {
-        return c.json({ error: "Unauthorized" }, 401);
-      }
-
+      const user = c.get("user");
       const client = await clerkClient();
-      const user = await client.users.getUser(userId);
-
-      let stripeId = user.privateMetadata?.["stripe_cus_id"] as
+      let stripeId = user?.privateMetadata?.["stripe_cus_id"] as
         | string
         | undefined;
 
       if (!stripeId) {
         const customer = await stripe.customers.create({
-          email: user.emailAddresses[0]?.emailAddress,
-          name: user.fullName || undefined,
+          email: user?.emailAddresses[0]?.emailAddress,
+          name: user?.fullName || undefined,
           metadata: {
-            userId,
+            userId: user?.id!,
           },
         });
 
         stripeId = customer.id;
 
-        await client.users.updateUserMetadata(userId, {
+        await client.users.updateUserMetadata(user?.id!, {
           privateMetadata: {
             stripe_cus_id: stripeId,
           },
@@ -134,7 +119,7 @@ const app = new Hono()
             },
           });
 
-          await client.users.updateUserMetadata(userId, {
+          await client.users.updateUserMetadata(user?.id!, {
             privateMetadata: {
               default_payment_method: paymentMethodId,
             },
@@ -155,14 +140,10 @@ const app = new Hono()
     }
   )
   .delete("/:id", async (c) => {
-    const { userId } = await auth();
-    if (!userId) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
+    const user = c.get("user");
 
     const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const stripeId = user.privateMetadata?.["stripe_cus_id"] as
+    const stripeId = user?.privateMetadata?.["stripe_cus_id"] as
       | string
       | undefined;
 
@@ -174,12 +155,12 @@ const app = new Hono()
 
     try {
       const isDefault =
-        user.privateMetadata?.["default_payment_method"] === paymentMethodId;
+        user?.privateMetadata?.["default_payment_method"] === paymentMethodId;
 
       await stripe.paymentMethods.detach(paymentMethodId);
 
       if (isDefault) {
-        await client.users.updateUserMetadata(userId, {
+        await client.users.updateUserMetadata(user?.id!, {
           privateMetadata: {
             default_payment_method: null,
           },

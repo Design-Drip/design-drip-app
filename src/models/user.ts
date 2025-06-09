@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Model } from "mongoose";
 import { Password } from "@/lib/password";
 
 // An interface that describes the properties that a User Document has
@@ -43,5 +43,5 @@ userSchema.pre("save", async function (done) {
   done();
 });
 
-export default mongoose.models.User ||
+export default (mongoose.models.User as Model<UserDoc>) ||
   mongoose.model<UserDoc>("User", userSchema);

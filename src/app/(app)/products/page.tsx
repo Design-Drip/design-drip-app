@@ -1,11 +1,9 @@
+import { FilterSidebar } from "@/components/filter/FilterSidebar";
+import { ProductGrid } from "@/components/products/ProductGrid";
+import { products } from "@/lib/data/products";
+import React from "react";
 
-import { FilterSidebar } from '@/components/filter/FilterSidebar'
-import { ProductGrid } from '@/components/products/ProductGrid'
-import { products } from '@/lib/data/products'
-import React from 'react'
-
-function ShirtsPage() {
-
+function ProductsPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row gap-8">
@@ -16,12 +14,15 @@ function ShirtsPage() {
         <div className="flex-1">
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Design Your Own T-Shirt</h1>
-            <p className="text-gray-600">Choose from our wide range of styles and colors</p>
+            <p className="text-gray-600">
+              Choose from our wide range of styles and colors
+            </p>
           </div>
 
           <div className="flex justify-between items-center mb-6">
             <div className="text-sm text-gray-500">
-              Showing <span className="font-medium">{products.length}</span> products
+              Showing <span className="font-medium">{products.length}</span>{" "}
+              products
             </div>
             <div className="flex items-center">
               <span className="text-sm mr-2">Sort by:</span>
@@ -38,7 +39,7 @@ function ShirtsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default ShirtsPage
+export default ProductsPage;
