@@ -65,7 +65,6 @@ import {
   getProductColors,
   getProductSizes,
   updateSizePrice,
-  getFixedSizes,
 } from "@/app/admin/products/variants/_actions";
 
 interface ProductVariantsManagerProps {
@@ -170,7 +169,7 @@ export function ProductVariantsManager({
           setColors([
             ...colors,
             {
-              id: result.colorId,
+              id: result.colorId!,
               name: newColor.name,
               value: newColor.value,
               hasImages: false,

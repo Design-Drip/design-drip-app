@@ -153,9 +153,9 @@ export function CategoriesManager({
             setCategories((prev) => [
               ...prev,
               {
-                id: result.data.id,
-                name: formData.name,
-                description: formData.description,
+                id: result.data.id!,
+                name: result.data.name,
+                description: result.data.description,
               },
             ]);
             setIsDialogOpen(false);
