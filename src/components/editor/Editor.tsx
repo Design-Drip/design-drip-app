@@ -1,29 +1,38 @@
-'use client'
-import { useEditor } from '@/features/editor/hooks/use-editor';
-import { ActiveTool, JSON_KEYS, selectionDependentTools } from '@/features/editor/types';
-import { Product } from '@/lib/data/products';
-import { fabric } from 'fabric';
+"use client";
+import { useEditor } from "@/features/editor/hooks/use-editor";
+import {
+  ActiveTool,
+  JSON_KEYS,
+  selectionDependentTools,
+} from "@/features/editor/types";
+import { Product } from "@/lib/data/products";
+import { fabric } from "fabric";
 import debounce from "lodash.debounce";
-import Image from 'next/image';
-import React, { use, useCallback, useEffect, useRef, useState } from 'react'
-import { Navbar } from './components/navbar';
-import { Sidebar } from './components/sidebar';
-import { Toolbar } from './components/toolbar';
-import { Footer } from './components/footer';
-import { TextSidebar } from './components/text-sidebar';
-import { AiSidebar } from './components/ai-sidebar';
-import { SettingsSidebar } from './components/settings-sidebar';
-import { FontSidebar } from './components/font-sidebar';
-import { ImageSidebar } from './components/image-sidebar';
-
+import Image from "next/image";
+import React, {
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { Navbar } from "./components/navbar";
+import { Sidebar } from "./components/sidebar";
+import { Toolbar } from "./components/toolbar";
+import { Footer } from "./components/footer";
+import { TextSidebar } from "./components/text-sidebar";
+import { AiSidebar } from "./components/ai-sidebar";
+import { SettingsSidebar } from "./components/settings-sidebar";
+import { FontSidebar } from "./components/font-sidebar";
+import { ImageSidebar } from "./components/image-sidebar";
+import { Shirt } from "@/models/product";
 
 interface EditorProps {
-  initialData: Product
+  initialData: Product;
 }
 
 export const Editor = ({ initialData }: EditorProps) => {
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
-
 
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
@@ -37,22 +46,26 @@ export const Editor = ({ initialData }: EditorProps) => {
     defaultHeight: 300,
     clearSelectionCallback: onClearSelection,
   });
+  console.log("activeTool", activeTool);
 
-  const onChangeActiveTool = useCallback((tool: ActiveTool) => {
-    if (tool === "draw") {
-      editor?.enableDrawingMode();
-    }
+  const onChangeActiveTool = useCallback(
+    (tool: ActiveTool) => {
+      if (tool === "draw") {
+        editor?.enableDrawingMode();
+      }
 
-    if (activeTool === "draw") {
-      editor?.disableDrawingMode();
-    }
+      if (activeTool === "draw") {
+        editor?.disableDrawingMode();
+      }
 
-    if (tool === activeTool) {
-      return setActiveTool("select");
-    }
+      if (tool === activeTool) {
+        return setActiveTool("select");
+      }
 
-    setActiveTool(tool);
-  }, [activeTool, editor]);
+      setActiveTool(tool);
+    },
+    [activeTool, editor]
+  );
 
   const canvasRef = useRef(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -114,34 +127,99 @@ export const Editor = ({ initialData }: EditorProps) => {
           onChangeActiveTool={onChangeActiveTool}
         />
         <div className="h-full flex flex-col w-full">
-
-          <main className='bg-muted flex-1 overflow-auto relative flex justify-center items-center flex-col w-full'>
-            <div
-              className="w-[800px] h-[1120px] relative"
-              style={{
-                backgroundImage: `url(${initialData.thumbnail})`,
-                backgroundRepeat: 'no-repeat',
-                backgroundSize: 'contain',
-                backgroundPosition: 'center',
-              }}
-            >
-              <div ref={containerRef} style={{ width: '300px', height: '300px', backgroundColor: 'transparent' }} >
-                <div style={{ position: "absolute", border: "1px dotted gray", top: "30%", left: "30%" }} className="relative"
+          <Toolbar
+            editor={editor}
+            activeTool={activeTool}
+            onChangeActiveTool={onChangeActiveTool}
+            key={JSON.stringify(editor?.canvas.getActiveObject())}
+          />
+          <main className="bg-muted overflow-auto flex justify-between items-center w-full flex-1 p-4 ">
+            <div className="w-[80%] h-full flex justify-center items-center">
+              <div
+                className="w-[800px] h-full relative"
+                style={{
+                  backgroundImage: `url(${initialData.thumbnail})`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                }}
+              >
+                <div
+                  style={{
+                    position: "absolute",
+                    border: "1px dotted gray",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: "300px",
+                    height: "300px",
+                  }}
+                  ref={containerRef}
                 >
-                  <canvas
-                    width="300"
-                    height="300"
-                    ref={canvasRef}
-                  />
+                  <canvas ref={canvasRef} width="300" height="300" />
                 </div>
               </div>
-
             </div>
 
+            <div className="flex-1 h-full flex flex-col p-4 items-center">
+              <h3>Locations</h3>
+              <div className="flex flex-col gap-2 overflow-y-auto h-full w-full">
+                <div className="flex flex-col items-center gap-2 cursor-pointer group">
+                  <Image
+                    src={initialData.thumbnail}
+                    alt="Product Thumbnail"
+                    width={100}
+                    height={100}
+                    className="p-4 rounded-lg bg-white  transition-all duration-300 group-hover:shadow-md group-hover:border-[1px] group-hover:border-black "
+                  />
+                  <p className="text-sm text-center group-hover:font-medium">
+                    Front
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 cursor-pointer group">
+                  <Image
+                    src={initialData.thumbnail}
+                    alt="Product Thumbnail"
+                    width={100}
+                    height={100}
+                    className="p-4 rounded-lg bg-white  transition-all duration-300 group-hover:shadow-md group-hover:border-[1px] group-hover:border-black "
+                  />
+                  <p className="text-sm text-center group-hover:font-medium">
+                    Back
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 cursor-pointer group">
+                  <Image
+                    src={initialData.thumbnail}
+                    alt="Product Thumbnail"
+                    width={100}
+                    height={100}
+                    className="p-4 rounded-lg bg-white  transition-all duration-300 group-hover:shadow-md group-hover:border-[1px] group-hover:border-black"
+                  />
+                  <p className="text-sm text-center group-hover:font-medium">
+                    Left Side
+                  </p>
+                </div>
+
+                <div className="flex flex-col items-center gap-2 cursor-pointer group">
+                  <Image
+                    src={initialData.thumbnail}
+                    alt="Product Thumbnail"
+                    width={100}
+                    height={100}
+                    className="p-4 rounded-lg bg-white  transition-all duration-300 group-hover:shadow-md group-hover:border-[1px] group-hover:border-black"
+                  />
+                  <p className="text-sm text-center group-hover:font-medium">
+                    Right Side
+                  </p>
+                </div>
+              </div>
+            </div>
           </main>
         </div>
-
       </div>
     </div>
   );
-}
+};

@@ -1,7 +1,10 @@
 import { FIXED_SIZES } from "@/constants/size";
 import { ProductSort } from "@/constants/sort";
 import { Category, Shirt, ShirtColor } from "@/models/product";
-import { ProductsQueryOptions, ProductsSortOptions } from "@/types/request";
+import {
+  ProductsQueryOptions,
+  ProductsSortOptions,
+} from "@/types/request";
 import { ListResponse } from "@/types/response";
 import { auth } from "@clerk/nextjs/server";
 import { zValidator } from "@hono/zod-validator";
@@ -27,7 +30,8 @@ app.get(
         .array()
         .optional()
         .refine(
-          (val) => !val || val.some((size) => FIXED_SIZES.includes(size)),
+          (val) =>
+            !val || val.some((size) => FIXED_SIZES.includes(size)),
           {
             message: "Invalid size provided",
           }
@@ -152,7 +156,6 @@ app.get(
           .lean(),
         Shirt.countDocuments(query),
       ]);
-
       return c.json({
         items: products,
         totalItems: totalCount,
