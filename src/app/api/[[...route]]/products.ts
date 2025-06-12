@@ -26,30 +26,52 @@ const app = new Hono()
         // Sort options
         sort: z.enum(ProductSort).optional(),
         // Filter options
-        sizes: z
-          .string()
-          .array()
-          .optional()
-          .refine(
-            (val) => !val || val.some((size) => FIXED_SIZES.includes(size)),
-            {
-              message: "Invalid size provided",
+        sizes: z.preprocess(
+          (val) => {
+            if (typeof val === "string") {
+              return [val as string];
             }
-          ),
-        colors: z.string().array().optional(),
+
+            return val;
+          },
+          z
+            .array(z.string())
+            .optional()
+            .refine(
+              (val) => !val || val.some((size) => FIXED_SIZES.includes(size)),
+              {
+                message: "Invalid size provided",
+              }
+            )
+        ),
+        colors: z.preprocess((val) => {
+          if (typeof val === "string") {
+            return [val as string];
+          }
+
+          return val;
+        }, z.array(z.string()).optional()),
         minPrice: z.coerce.number().optional(),
         maxPrice: z.coerce.number().optional(),
-        categories: z
-          .string()
-          .array()
-          .optional()
-          .refine(async (val) => {
-            if (!val || val.length === 0) return true;
-            const categoryIds = await Category.find({
-              _id: { $in: val },
-            });
-            return categoryIds.length === val.length;
-          }),
+        categories: z.preprocess(
+          (val) => {
+            if (typeof val === "string") {
+              return [val as string];
+            }
+
+            return val;
+          },
+          z
+            .array(z.string())
+            .optional()
+            .refine(async (val) => {
+              if (!val || val.length === 0) return true;
+              const categoryIds = await Category.find({
+                _id: { $in: val },
+              });
+              return categoryIds.length === val.length;
+            })
+        ),
         isActive: z.boolean().optional(),
         search: z.string().trim().optional(),
       })
@@ -102,12 +124,12 @@ const app = new Hono()
 
       // Handle price range filter
       if (minPrice || maxPrice) {
-        query.price = {};
+        query.base_price = {};
         if (minPrice) {
-          query.price.$gte = minPrice;
+          query.base_price.$gte = minPrice;
         }
         if (maxPrice) {
-          query.price.$lte = maxPrice;
+          query.base_price.$lte = maxPrice;
         }
       }
 
@@ -147,18 +169,49 @@ const app = new Hono()
 
       const skip = (page - 1) * limit;
       try {
+        const results = [];
+
         const [products, totalCount] = await Promise.all([
           Shirt.find(query)
             .sort(sortOptions)
             .skip(skip)
             .limit(limit)
-            .populate("categories")
-            .lean(),
+            .lean()
+            .select(["name", "base_price"]),
           Shirt.countDocuments(query),
         ]);
 
+        for (const product of products) {
+          const colors = await ShirtColor.find({
+            shirt_id: product._id,
+          }).select(["color", "color_value", "images"]);
+
+          const transformedColors = colors.map((color) => {
+            const primaryImage =
+              color.images?.find((img) => img.is_primary) || color.images?.[0];
+
+            return {
+              id: color._id,
+              color: color.color,
+              color_value: color.color_value,
+              image: primaryImage
+                ? {
+                    id: primaryImage._id,
+                    url: primaryImage.url,
+                    view_side: primaryImage.view_side,
+                  }
+                : null,
+            };
+          });
+
+          results.push({
+            ...product,
+            colors: transformedColors,
+          });
+        }
+
         return c.json({
-          items: products,
+          items: results,
           totalItems: totalCount,
           page,
           pageSize: limit,
@@ -190,19 +243,28 @@ const app = new Hono()
   })
   .get("/colors", async (c) => {
     try {
-      const colors = await ShirtColor.distinct("color");
+      // Fetch distinct color names and color values from ShirtColor
+      const results = await ShirtColor.aggregate([
+        {
+          $group: {
+            _id: "$color_value",
+            color: { $first: "$color" },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $project: {
+            _id: 0,
+            color_value: "$_id",
+            color: 1,
+            count: 1,
+          },
+        },
+      ]);
 
-      const colorCounts = await Promise.all(
-        colors.map(async (color) => {
-          const count = await ShirtColor.countDocuments({ color });
-          return {
-            name: color,
-            count,
-          };
-        })
-      );
-
-      return c.json({ colors: colorCounts });
+      return c.json({ colors: results } as {
+        colors: { color_value: string; color: string; count: number }[];
+      });
     } catch (err) {
       console.error("Error fetching colors:", err);
       throw new HTTPException(500, {

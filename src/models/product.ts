@@ -97,7 +97,7 @@ export type { ShirtDoc };
 //
 
 // Cập nhật interface với đầy đủ các trường bắt buộc
-interface ImageSubdoc {
+interface ImageSubdoc extends mongoose.Document {
   view_side: "front" | "back" | "left" | "right";
   url: string;
   is_primary: boolean;

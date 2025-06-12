@@ -196,7 +196,7 @@ export function FilterSidebar({ className }: FilterSidebarProps) {
           </div>
 
           {/* Size */}
-          <div className="mb-4">
+          {/* <div className="mb-4">
             <h4 className="text-xs font-medium text-gray-500 mb-2">Size</h4>
             <div className="grid grid-cols-2 gap-2 mb-4">
               {FIXED_SIZES.map((size) => (
@@ -215,7 +215,7 @@ export function FilterSidebar({ className }: FilterSidebarProps) {
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Color */}
           <div className="mb-4">
@@ -228,17 +228,23 @@ export function FilterSidebar({ className }: FilterSidebarProps) {
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {colors.map((color) => (
-                  <div key={color.name} className="flex items-center">
+                  <div key={color.color} className="flex items-center">
                     <Checkbox
-                      id={`color-${color.name}`}
-                      checked={selectedColors.includes(color.name)}
-                      onCheckedChange={() => toggleColor(color.name)}
+                      id={`color-${color.color}`}
+                      checked={selectedColors.includes(color.color)}
+                      onCheckedChange={() => toggleColor(color.color)}
                     />
                     <label
-                      htmlFor={`color-${color.name}`}
-                      className="ml-2 text-sm font-medium text-gray-700 flex-1"
+                      htmlFor={`color-${color.color}`}
+                      className="ml-2 text-sm font-medium text-gray-700 flex-1 flex items-center gap-2"
                     >
-                      {color.name}
+                      <div
+                        className="w-4 h-4 rounded-full border border-gray-200"
+                        style={{
+                          backgroundColor: color.color_value || "#ffffff",
+                        }}
+                      />
+                      {color.color}
                     </label>
                     <span className="text-xs text-gray-500">
                       ({color.count})
@@ -259,8 +265,8 @@ export function FilterSidebar({ className }: FilterSidebarProps) {
             <h4 className="text-xs font-medium text-gray-500 mb-2">Price</h4>
             <div className="px-2">
               <Slider
-                defaultValue={[0, 100]}
-                max={100}
+                defaultValue={[0, 10000000]}
+                max={10000000}
                 step={1}
                 value={priceRange as [number, number]}
                 onValueChange={handlePriceChange}

@@ -32,20 +32,27 @@ export const getProductsQuery = () => {
         limit,
       },
     ],
-    queryFn: async () => {
-      const response = await client.api.products.$get({
-        query: {
-          search: search.length > 0 ? search : undefined,
-          categories: categories.map((cat) => cat.id),
-          sizes,
-          colors,
-          minPrice: minPrice?.toString(),
-          maxPrice: maxPrice?.toString(),
-          sort,
-          page: page.toString(),
-          limit: limit.toString(),
+    queryFn: async ({ signal }) => {
+      const response = await client.api.products.$get(
+        {
+          query: {
+            search: search.length > 0 ? search : undefined,
+            categories: categories.map((cat) => cat.id),
+            sizes,
+            colors,
+            minPrice: minPrice?.toString(),
+            maxPrice: maxPrice?.toString(),
+            sort,
+            page: page.toString(),
+            limit: limit.toString(),
+          },
         },
-      });
+        {
+          init: {
+            signal,
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch products");
