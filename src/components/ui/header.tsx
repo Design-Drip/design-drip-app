@@ -27,27 +27,17 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 const productCategories = [
   {
     title: "T-Shirts",
-    href: "/products/t-shirts",
+    href: "/products",
     description: "Casual everyday wear t-shirts with unique designs",
-  },
-  {
-    title: "Sweatshirts",
-    href: "/products/sweatshirts",
-    description: "Comfortable sweatshirts perfect for any weather",
-  },
-  {
-    title: "Hoodies",
-    href: "/products/hoodies",
-    description: "Stay warm with our designer hoodies",
   },
 ];
 
 const shirtFilters = [
-  { name: "Men's", href: "/products/shirts?gender=men" },
-  { name: "Women's", href: "/products/shirts?gender=women" },
-  { name: "New Arrivals", href: "/products/shirts?filter=new" },
-  { name: "Best Sellers", href: "/products/shirts?filter=popular" },
-  { name: "Sale", href: "/products/shirts?filter=sale" },
+  { name: "Men's", href: "/products?gender=men" },
+  { name: "Women's", href: "/products?gender=women" },
+  { name: "New Arrivals", href: "/products?filter=new" },
+  { name: "Best Sellers", href: "/products?filter=popular" },
+  { name: "Sale", href: "/products?filter=sale" },
 ];
 
 export default async function Header() {
