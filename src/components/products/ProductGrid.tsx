@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { ProductColorSelector } from "./ProductColorSelector";
 import { Card, CardContent, CardHeader } from "../ui/card";
+import { formatPrice } from "@/lib/price";
 
 interface ProductGridProps {
   products: any[];
@@ -29,7 +30,7 @@ export function ProductGrid({ products }: ProductGridProps) {
                 {product.name}
               </h3>
               <p className="text-sm text-gray-600">
-                ${product.base_price.toLocaleString()}
+                ${formatPrice(product.base_price)}
               </p>
             </Link>
           </CardContent>
