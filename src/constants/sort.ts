@@ -4,3 +4,5 @@ export const ProductSort = [
   "price_high",
   "price_low",
 ] as const;
+
+export type ProductSortType = (typeof ProductSort)[number];

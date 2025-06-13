@@ -63,6 +63,7 @@ export async function addProductImage(formData: FormData) {
 
     // Prepare the new image data with all fields
     const newImage = {
+      _id: new mongoose.Types.ObjectId(),
       view_side: viewSide,
       url: imageUrl,
       is_primary: isPrimary,

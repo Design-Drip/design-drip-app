@@ -7,7 +7,7 @@ export type ProductsQueryOptions = {
   categories?: mongoose.Types.ObjectId[];
   isActive?: boolean;
   name?: mongoose.RootFilterQuery<ShirtDoc>;
-  price?: mongoose.RootFilterQuery<ShirtDoc>;
+  base_price?: mongoose.RootFilterQuery<ShirtDoc>;
   _id?: mongoose.RootFilterQuery<ShirtDoc>;
 };
 
