@@ -99,7 +99,7 @@ export default async function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/all-products" legacyBehavior passHref>
+                <Link href="/products" legacyBehavior passHref>
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     All Products
                   </NavigationMenuLink>

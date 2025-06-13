@@ -13,6 +13,7 @@ import {
   getColorsQuery,
 } from "@/features/products/services/queries";
 import { Badge } from "@/components/ui/badge";
+import { formatPrice } from "@/lib/price";
 
 interface FilterSidebarProps {
   className?: string;
@@ -272,8 +273,8 @@ export function FilterSidebar({ className }: FilterSidebarProps) {
                 onValueChange={handlePriceChange}
               />
               <div className="flex justify-between mt-2 text-xs text-gray-500">
-                <span>${priceRange[0]}</span>
-                <span>${priceRange[1]}</span>
+                <span>{formatPrice(priceRange[0])}</span>
+                <span>{formatPrice(priceRange[1])}</span>
               </div>
             </div>
           </div>
