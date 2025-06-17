@@ -24,7 +24,7 @@ import {
   createFilter,
   downloadFile,
   isTextType,
-  transformText
+  transformText,
 } from "@/features/editor/utils";
 import { useHotkeys } from "@/features/editor/hooks/use-hotkeys";
 import { useClipboard } from "@/features/editor/hooks//use-clipboard";
@@ -56,7 +56,7 @@ const buildEditor = ({
   setStrokeDashArray,
 }: BuildEditorProps): Editor => {
   const generateSaveOptions = () => {
-    const { width, height, left, top } = getWorkspace() as fabric.Rect;
+    const { width, height } = canvas;
 
     return {
       name: "Image",
@@ -64,49 +64,9 @@ const buildEditor = ({
       quality: 1,
       width,
       height,
-      left,
-      top,
+      left: 0,
+      top: 0,
     };
-  };
-
-  const savePng = () => {
-    const options = generateSaveOptions();
-
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "png");
-    autoZoom();
-  };
-
-  const saveSvg = () => {
-    const options = generateSaveOptions();
-
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "svg");
-    autoZoom();
-  };
-
-  const saveJpg = () => {
-    const options = generateSaveOptions();
-
-    canvas.setViewportTransform([1, 0, 0, 1, 0, 0]);
-    const dataUrl = canvas.toDataURL(options);
-
-    downloadFile(dataUrl, "jpg");
-    autoZoom();
-  };
-
-  const saveJson = async () => {
-    const dataUrl = canvas.toJSON(JSON_KEYS);
-
-    await transformText(dataUrl.objects);
-    const fileString = `data:text/json;charset=utf-8,${encodeURIComponent(
-      JSON.stringify(dataUrl, null, "\t"),
-    )}`;
-    downloadFile(fileString, "json");
   };
 
   const loadJson = (json: string) => {
@@ -117,20 +77,10 @@ const buildEditor = ({
     });
   };
 
-  const getWorkspace = () => {
-    return canvas
-      .getObjects()
-      .find((object) => object.name === "clip");
-  };
-
   const center = (object: fabric.Object) => {
-    const workspace = getWorkspace();
-    const center = workspace?.getCenterPoint();
-
-    if (!center) return;
-
+    const center = canvas.getCenter();
     // @ts-ignore
-    canvas._centerObject(object, center);
+    canvas._centerObject(object, new fabric.Point(center.left, center.top));
   };
 
   const addToCanvas = (object: fabric.Object) => {
@@ -140,15 +90,10 @@ const buildEditor = ({
   };
 
   return {
-    savePng,
-    saveJpg,
-    saveSvg,
-    saveJson,
     loadJson,
     canUndo,
     canRedo,
     autoZoom,
-    getWorkspace,
     zoomIn: () => {
       let zoomRatio = canvas.getZoom();
       zoomRatio += 0.05;
@@ -164,21 +109,19 @@ const buildEditor = ({
       const center = canvas.getCenter();
       canvas.zoomToPoint(
         new fabric.Point(center.left, center.top),
-        zoomRatio < 0.2 ? 0.2 : zoomRatio,
+        zoomRatio < 0.2 ? 0.2 : zoomRatio
       );
     },
     changeSize: (value: { width: number; height: number }) => {
-      const workspace = getWorkspace();
-
-      workspace?.set(value);
+      canvas.setDimensions(value);
       autoZoom();
       save();
     },
     changeBackground: (value: string) => {
-      const workspace = getWorkspace();
-      workspace?.set({ fill: value });
-      canvas.renderAll();
-      save();
+      canvas.setBackgroundColor(value, () => {
+        canvas.renderAll();
+        save();
+      });
     },
     enableDrawingMode: () => {
       canvas.discardActiveObject();
@@ -207,23 +150,23 @@ const buildEditor = ({
           canvas.renderAll();
         }
       });
-    },    addImage: (value: string) => {
+    },
+    addImage: (value: string) => {
       fabric.Image.fromURL(
         value,
         (image) => {
-          const workspace = getWorkspace();
-          
           // Set a minimum size for images (e.g., 200px)
           const minSize = 200;
-          const maxSize = Math.min(workspace?.width || 400, workspace?.height || 400) * 0.8;
-          
+          const maxSize =
+            Math.min(canvas.width || 400, canvas.height || 400) * 0.8;
+
           // Calculate the appropriate size maintaining aspect ratio
           const originalWidth = image.width || 1;
           const originalHeight = image.height || 1;
           const aspectRatio = originalWidth / originalHeight;
-          
+
           let newWidth, newHeight;
-          
+
           if (originalWidth > originalHeight) {
             // Landscape image
             newWidth = Math.max(minSize, Math.min(maxSize, originalWidth));
@@ -233,7 +176,7 @@ const buildEditor = ({
             newHeight = Math.max(minSize, Math.min(maxSize, originalHeight));
             newWidth = newHeight * aspectRatio;
           }
-          
+
           // Apply the calculated dimensions
           image.scaleToWidth(newWidth);
           image.scaleToHeight(newHeight);
@@ -242,7 +185,7 @@ const buildEditor = ({
         },
         {
           crossOrigin: "anonymous",
-        },
+        }
       );
     },
     delete: () => {
@@ -408,9 +351,6 @@ const buildEditor = ({
       });
 
       canvas.renderAll();
-
-      const workspace = getWorkspace();
-      workspace?.sendToBack();
     },
     sendBackwards: () => {
       canvas.getActiveObjects().forEach((object) => {
@@ -418,8 +358,6 @@ const buildEditor = ({
       });
 
       canvas.renderAll();
-      const workspace = getWorkspace();
-      workspace?.sendToBack();
     },
     changeFontFamily: (value: string) => {
       setFontFamily(value);
@@ -651,22 +589,16 @@ export const useEditor = ({
   const [fillColor, setFillColor] = useState(FILL_COLOR);
   const [strokeColor, setStrokeColor] = useState(STROKE_COLOR);
   const [strokeWidth, setStrokeWidth] = useState(STROKE_WIDTH);
-  const [strokeDashArray, setStrokeDashArray] = useState<number[]>(STROKE_DASH_ARRAY);
+  const [strokeDashArray, setStrokeDashArray] =
+    useState<number[]>(STROKE_DASH_ARRAY);
 
   useWindowEvents();
 
-  const {
-    save,
-    canRedo,
-    canUndo,
-    undo,
-    redo,
-    canvasHistory,
-    setHistoryIndex,
-  } = useHistory({
-    canvas,
-    saveCallback
-  });
+  const { save, canRedo, canUndo, undo, redo, canvasHistory, setHistoryIndex } =
+    useHistory({
+      canvas,
+      saveCallback,
+    });
 
   const { copy, paste } = useClipboard({ canvas });
 
@@ -701,7 +633,6 @@ export const useEditor = ({
 
   const editor = useMemo(() => {
     if (canvas) {
-      console.log('editor canvas', canvas);
       return buildEditor({
         save,
         undo,
@@ -727,24 +658,23 @@ export const useEditor = ({
     }
 
     return undefined;
-  },
-    [
-      canRedo,
-      canUndo,
-      undo,
-      redo,
-      save,
-      autoZoom,
-      copy,
-      paste,
-      canvas,
-      fillColor,
-      strokeWidth,
-      strokeColor,
-      selectedObjects,
-      strokeDashArray,
-      fontFamily,
-    ]);
+  }, [
+    canRedo,
+    canUndo,
+    undo,
+    redo,
+    save,
+    autoZoom,
+    copy,
+    paste,
+    canvas,
+    fillColor,
+    strokeWidth,
+    strokeColor,
+    selectedObjects,
+    strokeDashArray,
+    fontFamily,
+  ]);
 
   const init = useCallback(
     ({
@@ -754,69 +684,32 @@ export const useEditor = ({
       initialCanvas: fabric.Canvas;
       initialContainer: HTMLDivElement;
     }) => {
-      // Cài đặt mặc định cho tất cả các object vẽ ra
-      fabric.Object.prototype.set({
-        cornerColor: "#FFF",
-        cornerStyle: "circle",
-        borderColor: "#3b82f6",
-        borderScaleFactor: 1.5,
-        transparentCorners: false,
-        borderOpacityWhenMoving: 1,
-        cornerStrokeColor: "#3b82f6",
-      });
-
-      // Lấy kích thước thực tế của vùng chứa canvas
+      // Get actual container dimensions
       const containerWidth = initialContainer.offsetWidth;
       const containerHeight = initialContainer.offsetHeight;
-      console.log("containerWidth", containerWidth);
-      
-      // Cập nhật kích thước canvas
+
+      // Update canvas dimensions
       initialCanvas.setWidth(containerWidth);
       initialCanvas.setHeight(containerHeight);
-      initialCanvas.setBackgroundColor('transparent', () => {
+      initialCanvas.setBackgroundColor("transparent", () => {
         initialCanvas.renderAll();
-      }
-      );
-
-      // Vẽ một vùng làm việc trắng ở giữa canvas
-      const workspace = new fabric.Rect({
-        width: 400,
-        height: 400,
-        name: "clip",
-        fill:'transparent',
-        backgroundColor:'transparent',
-        selectable: false,
-        hasControls: false,
-        shadow: new fabric.Shadow({
-          color: "rgba(0,0,0,0.8)",
-          blur: 5,
-        }),
+      });
+      console.log("✅ canvas size:", {
+        width: initialCanvas.width,
+        height: initialCanvas.height,
       });
 
-      // Thêm workspace vào canvas
-      initialCanvas.add(workspace);
-      initialCanvas.sendToBack(workspace);
-
-      // Đặt vùng clip để giới hạn vùng vẽ
-      initialCanvas.clipPath = workspace;
-
-      // Lưu lại canvas và container
+      // Save canvas and container
       setCanvas(initialCanvas);
       setContainer(initialContainer);
 
-      // Lưu trạng thái ban đầu vào lịch sử
-      const currentState = JSON.stringify(
-        initialCanvas.toJSON(JSON_KEYS)
-      );
+      // Save initial state to history
+      const currentState = JSON.stringify(initialCanvas.toJSON(JSON_KEYS));
       canvasHistory.current = [currentState];
       setHistoryIndex(0);
       console.log("✅ init completed");
-
     },
-    [
-      canvasHistory, // No need, this is from useRef
-      setHistoryIndex, // No need, this is from useState
-    ]
+    [canvasHistory, setHistoryIndex]
   );
 
   return { init, editor };

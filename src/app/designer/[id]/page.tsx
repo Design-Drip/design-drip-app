@@ -2,16 +2,11 @@ import { getProductColors } from "@/app/admin/products/images/_actions";
 import { Editor } from "@/components/editor/Editor";
 import { products } from "@/lib/data/products";
 
-async function EditDesignPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+async function EditDesignPage({ params }: { params: { id: string } }) {
   const { id } = params;
   const data = products.find((product) => product.id === id);
   const product = await getProductColors("684322b1e6c9364d7ef35335");
   const productWhite = product.find((item) => item.name === "White");
-  console.log("productWhite", productWhite);
 
   if (!data) return;
   // Fetch the project data using the id from the URL
@@ -39,7 +34,7 @@ async function EditDesignPage({
   //     </div>
   //   );
   // }
-  return <Editor initialData={data} />;
+  return <Editor initialData={data} productWhite={productWhite} />;
 }
 
 export default EditDesignPage;

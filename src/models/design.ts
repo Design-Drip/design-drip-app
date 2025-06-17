@@ -1,0 +1,49 @@
+import mongoose, { Model } from "mongoose";
+
+interface ElementDesign {
+  images_id: mongoose.Types.ObjectId;
+  element_Json: string;
+}
+interface DesignDoc extends mongoose.Document {
+  shirt_color_id: mongoose.Types.ObjectId;
+  element_design: { [key: string]: ElementDesign }; // Store multiple image designs
+}
+const designSchema = new mongoose.Schema(
+  {
+    shirt_color_id: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      trim: true,
+    },
+    element_design: {
+      type: Map,
+      of: {
+        images_id: {
+          type: mongoose.Types.ObjectId,
+          required: true,
+        },
+        element_Json: {
+          type: String, // Store the canvas JSON as string
+          required: true,
+        },
+      },
+      default: new Map(),
+    },
+  },
+  {
+    toJSON: {
+      transform(_, ret) {
+        ret.id = ret._id;
+        delete ret._id;
+        delete ret.__v;
+      },
+    },
+  }
+);
+
+const Design =
+  (mongoose.models.Design as Model<DesignDoc>) ||
+  mongoose.model<DesignDoc>("Design", designSchema);
+
+export type { DesignDoc };
+export { Design };
