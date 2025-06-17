@@ -571,13 +571,13 @@ const buildEditor = ({
 };
 
 export const useEditor = ({
-  defaultState,
+  // defaultState,
   defaultHeight,
   defaultWidth,
   clearSelectionCallback,
   saveCallback,
 }: EditorHookProps) => {
-  const initialState = useRef(defaultState);
+  // const initialState = useRef(defaultState);
   const initialWidth = useRef(defaultWidth);
   const initialHeight = useRef(defaultHeight);
 
@@ -621,14 +621,6 @@ export const useEditor = ({
     paste,
     save,
     canvas,
-  });
-
-  useLoadState({
-    canvas,
-    autoZoom,
-    initialState,
-    canvasHistory,
-    setHistoryIndex,
   });
 
   const editor = useMemo(() => {

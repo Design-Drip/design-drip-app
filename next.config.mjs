@@ -10,10 +10,6 @@ const nextConfig = {
         protocol: "https",
         hostname: "ext.same-assets.com",
       },
-      {
-        protocol: "https",
-        hostname: "utfs.io",
-      },
     ],
   },
 };

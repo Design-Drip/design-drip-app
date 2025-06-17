@@ -1,11 +1,6 @@
 "use client";
 import { useEditor } from "@/features/editor/hooks/use-editor";
-import {
-  ActiveTool,
-  JSON_KEYS,
-  selectionDependentTools,
-} from "@/features/editor/types";
-import { Product } from "@/lib/data/products";
+import { ActiveTool, selectionDependentTools } from "@/features/editor/types";
 import { fabric } from "fabric";
 import debounce from "lodash.debounce";
 import Image from "next/image";
@@ -14,30 +9,27 @@ import { Navbar } from "./components/navbar";
 import { Sidebar } from "./components/sidebar";
 import { Toolbar } from "./components/toolbar";
 import { Footer } from "./components/footer";
-import { TextSidebar } from "./components/text-sidebar";
 import { AiSidebar } from "./components/ai-sidebar";
 import { SettingsSidebar } from "./components/settings-sidebar";
 import { FontSidebar } from "./components/font-sidebar";
 import { ImageSidebar } from "./components/image-sidebar";
-import { Shirt } from "@/models/product";
 import { useCreateDesign } from "@/features/design/use-create-design";
 import { toast } from "sonner";
+import { ProductImage } from "@/types/product";
 
 interface EditorProps {
-  initialData: Product;
-  productWhite: any;
+  images: ProductImage[];
+  productColorId: string;
 }
 
-export const Editor = ({ initialData, productWhite }: EditorProps) => {
+export const Editor = ({ images, productColorId }: EditorProps) => {
+  //State management
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
-  const images = productWhite?.images || [];
-  const [selectedImage, setSelectedImage] = useState<any>(images[0] || {});
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-
-  // Store canvas states for each image
   const [canvasStates, setCanvasStates] = useState<{ [key: number]: string }>(
     {}
   );
+  const [selectedImage, setSelectedImage] = useState<any>(images[0] || {});
 
   //mutation
   const createDesignMutation = useCreateDesign();
@@ -49,9 +41,9 @@ export const Editor = ({ initialData, productWhite }: EditorProps) => {
   }, [activeTool]);
 
   const { init, editor } = useEditor({
-    defaultState: initialData.json,
-    defaultWidth: selectedImage.editable_area?.width,
-    defaultHeight: selectedImage.editable_area?.height,
+    // defaultState: initialData.json,
+    defaultWidth: selectedImage.width_editable_zone,
+    defaultHeight: selectedImage.height_editable_zone,
     clearSelectionCallback: onClearSelection,
   });
 
@@ -73,9 +65,9 @@ export const Editor = ({ initialData, productWhite }: EditorProps) => {
 
         // Only save if there's design data
         if (Object.keys(elementDesign).length > 0) {
-          const result = createDesignMutation.mutate(
+          createDesignMutation.mutate(
             {
-              shirt_color_id: productWhite.id,
+              shirt_color_id: productColorId,
               element_design: elementDesign,
             },
             {
@@ -92,7 +84,7 @@ export const Editor = ({ initialData, productWhite }: EditorProps) => {
         toast.error("Failed to save design.");
       }
     }, 3000), // Save after 3 seconds of inactivity
-    [initialData.id, images, createDesignMutation]
+    [images, createDesignMutation]
   );
 
   // Save current canvas state before switching
@@ -240,7 +232,6 @@ export const Editor = ({ initialData, productWhite }: EditorProps) => {
   return (
     <div className="h-full flex flex-col">
       <Navbar
-        id={initialData.id}
         editor={editor}
         activeTool={activeTool}
         onChangeActiveTool={onChangeActiveTool}
@@ -300,18 +291,18 @@ export const Editor = ({ initialData, productWhite }: EditorProps) => {
                   style={{
                     position: "absolute",
                     border: "1px dotted gray",
-                    top: `${selectedImage.editable_area?.y}px`,
-                    left: `${selectedImage.editable_area?.x}px`,
+                    top: `${selectedImage.y_editable_zone}px`,
+                    left: `${selectedImage.x_editable_zone}px`,
                     transform: "translate(-50%, -50%)",
-                    width: selectedImage.editable_area?.width,
-                    height: selectedImage.editable_area?.height,
+                    width: selectedImage.width_editable_zone,
+                    height: selectedImage.height_editable_zone,
                   }}
                   ref={containerRef}
                 >
                   <canvas
                     ref={canvasRef}
-                    width={selectedImage.editable_area?.width}
-                    height={selectedImage.editable_area?.height}
+                    width={selectedImage.width_editable_zone}
+                    height={selectedImage.height_editable_zone}
                   />
                 </div>
               </div>

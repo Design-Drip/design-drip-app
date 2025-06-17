@@ -1,4 +1,6 @@
+import verifyAuth from "@/lib/middlewares/verifyAuth";
 import { Design } from "@/models/design";
+import user from "@/models/user";
 import { auth } from "@clerk/nextjs/server";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
@@ -24,11 +26,16 @@ const createDesignSchema = z.object({
   element_design: z.record(z.string(), elementDesignSchema),
 });
 
-const app = new Hono().post(
+const app = new Hono().use(verifyAuth).post(
   "/",
+
   zValidator("json", createDesignSchema),
   async (c) => {
     try {
+      const user = c.get("user");
+      if (!user) {
+        throw new HTTPException(401, { message: "Unauthorized" });
+      }
       const { shirt_color_id, element_design } = c.req.valid("json");
 
       // Convert string IDs to ObjectIds for the database
@@ -48,6 +55,7 @@ const app = new Hono().post(
 
       // Check if design already exists for this shirt variant
       const existingDesign = await Design.findOne({
+        user_id: user.id,
         shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
       });
 
@@ -58,6 +66,7 @@ const app = new Hono().post(
         design = await existingDesign.save();
       } else {
         design = new Design({
+          user_id: user.id,
           shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
           element_design: elementDesignObj,
         });

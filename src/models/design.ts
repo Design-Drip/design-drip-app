@@ -5,11 +5,17 @@ interface ElementDesign {
   element_Json: string;
 }
 interface DesignDoc extends mongoose.Document {
+  user_id: string;
   shirt_color_id: mongoose.Types.ObjectId;
   element_design: { [key: string]: ElementDesign }; // Store multiple image designs
 }
 const designSchema = new mongoose.Schema(
   {
+    user_id: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     shirt_color_id: {
       type: mongoose.Types.ObjectId,
       required: true,

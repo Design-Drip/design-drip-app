@@ -10,7 +10,7 @@ import {
   Loader,
   MousePointerClick,
   Redo2,
-  Undo2
+  Undo2,
 } from "lucide-react";
 
 // import { UserButton } from "@/features/auth/components/user-button";
@@ -30,44 +30,42 @@ import {
 import { Hint } from "@/components/hint";
 
 interface NavbarProps {
-  id: string;
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
-};
+}
 
 export const Navbar = ({
-  id,
   editor,
   activeTool,
   onChangeActiveTool,
 }: NavbarProps) => {
-  const data = useMutationState({
-    filters: {
-      mutationKey: ["project", { id }],
-      exact: true,
-    },
-    select: (mutation) => mutation.state.status,
-  });
+  // const data = useMutationState({
+  //   filters: {
+  //     mutationKey: ["project", { id }],
+  //     exact: true,
+  //   },
+  //   select: (mutation) => mutation.state.status,
+  // });
 
-  const currentStatus = data[data.length - 1];
+  // const currentStatus = data[data.length - 1];
 
-  const isError = currentStatus === "error";
-  const isPending = currentStatus === "pending";
+  // const isError = currentStatus === "error";
+  // const isPending = currentStatus === "pending";
 
-  const { openFilePicker } = useFilePicker({
-    accept: ".json",
-    onFilesSuccessfullySelected: ({ plainFiles }: any) => {
-      if (plainFiles && plainFiles.length > 0) {
-        const file = plainFiles[0];
-        const reader = new FileReader();
-        reader.readAsText(file, "UTF-8");
-        reader.onload = () => {
-          editor?.loadJson(reader.result as string);
-        };
-      }
-    },
-  });
+  // const { openFilePicker } = useFilePicker({
+  //   accept: ".json",
+  //   onFilesSuccessfullySelected: ({ plainFiles }: any) => {
+  //     if (plainFiles && plainFiles.length > 0) {
+  //       const file = plainFiles[0];
+  //       const reader = new FileReader();
+  //       reader.readAsText(file, "UTF-8");
+  //       reader.onload = () => {
+  //         editor?.loadJson(reader.result as string);
+  //       };
+  //     }
+  //   },
+  // });
 
   return (
     <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
@@ -82,7 +80,7 @@ export const Navbar = ({
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="min-w-60">
             <DropdownMenuItem
-              onClick={() => openFilePicker()}
+              // onClick={() => openFilePicker()}
               className="flex items-center gap-x-2"
             >
               <CiFileOn className="size-8" />
@@ -127,30 +125,24 @@ export const Navbar = ({
           </Button>
         </Hint>
         <Separator orientation="vertical" className="mx-2" />
-        {isPending && (
+        {/* {isPending && (
           <div className="flex items-center gap-x-2">
             <Loader className="size-4 animate-spin text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              Saving...
-            </div>
+            <div className="text-xs text-muted-foreground">Saving...</div>
           </div>
-        )}
-        {!isPending && isError && (
+        )} */}
+        {/* {!isPending && isError && (
           <div className="flex items-center gap-x-2">
             <BsCloudSlash className="size-[20px] text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              Failed to save
-            </div>
+            <div className="text-xs text-muted-foreground">Failed to save</div>
           </div>
-        )}
-        {!isPending && !isError && (
+        )} */}
+        {/* {!isPending && !isError && (
           <div className="flex items-center gap-x-2">
             <BsCloudCheck className="size-[20px] text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              Saved
-            </div>
+            <div className="text-xs text-muted-foreground">Saved</div>
           </div>
-        )}
+        )} */}
         <div className="ml-auto flex items-center gap-x-4">
           <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
@@ -162,7 +154,7 @@ export const Navbar = ({
             <DropdownMenuContent align="end" className="min-w-60">
               <DropdownMenuItem
                 className="flex items-center gap-x-2"
-                onClick={() => editor?.saveJson()}
+                // onClick={() => editor?.saveJson()}
               >
                 <CiFileOn className="size-8" />
                 <div>
@@ -174,7 +166,7 @@ export const Navbar = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center gap-x-2"
-                onClick={() => editor?.savePng()}
+                // onClick={() => editor?.savePng()}
               >
                 <CiFileOn className="size-8" />
                 <div>
@@ -186,7 +178,7 @@ export const Navbar = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center gap-x-2"
-                onClick={() => editor?.saveJpg()}
+                // onClick={() => editor?.saveJpg()}
               >
                 <CiFileOn className="size-8" />
                 <div>
@@ -198,7 +190,7 @@ export const Navbar = ({
               </DropdownMenuItem>
               <DropdownMenuItem
                 className="flex items-center gap-x-2"
-                onClick={() => editor?.saveSvg()}
+                // onClick={() => editor?.saveSvg()}
               >
                 <CiFileOn className="size-8" />
                 <div>
