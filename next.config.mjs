@@ -4,12 +4,12 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "www.thetshirtmill.com.au",
+        hostname: "utfs.io",
       },
       {
         protocol: "https",
         hostname: "ext.same-assets.com",
-      }
+      },
     ],
   },
 };

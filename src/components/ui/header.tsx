@@ -28,27 +28,17 @@ import CartWidget from "../cart/CartWidget";
 const productCategories = [
   {
     title: "T-Shirts",
-    href: "/products/t-shirts",
+    href: "/products",
     description: "Casual everyday wear t-shirts with unique designs",
-  },
-  {
-    title: "Sweatshirts",
-    href: "/products/sweatshirts",
-    description: "Comfortable sweatshirts perfect for any weather",
-  },
-  {
-    title: "Hoodies",
-    href: "/products/hoodies",
-    description: "Stay warm with our designer hoodies",
   },
 ];
 
 const shirtFilters = [
-  { name: "Men's", href: "/products/shirts?gender=men" },
-  { name: "Women's", href: "/products/shirts?gender=women" },
-  { name: "New Arrivals", href: "/products/shirts?filter=new" },
-  { name: "Best Sellers", href: "/products/shirts?filter=popular" },
-  { name: "Sale", href: "/products/shirts?filter=sale" },
+  { name: "Men's", href: "/products?gender=men" },
+  { name: "Women's", href: "/products?gender=women" },
+  { name: "New Arrivals", href: "/products?filter=new" },
+  { name: "Best Sellers", href: "/products?filter=popular" },
+  { name: "Sale", href: "/products?filter=sale" },
 ];
 
 export default async function Header() {
@@ -111,7 +101,7 @@ export default async function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/shirts" legacyBehavior passHref>
+                <Link href="/products" legacyBehavior passHref>
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     All Products
                   </NavigationMenuLink>
@@ -171,7 +161,7 @@ export default async function Header() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="w-full" asChild>
                     <Link
-                      href="settings/account"
+                      href="/settings"
                       className="flex cursor-pointer items-center"
                     >
                       <User className="mr-2 h-4 w-4" />
