@@ -31,27 +31,6 @@ function EditDesignPage({
 
   const images = productColor?.images || [];
 
-  if (!productColor) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <p className="text-red-600 mb-4">Failed to load product color.</p>
-        </div>
-      </div>
-    );
-  }
-  if (images.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex flex-col items-center">
-          <p className="text-red-600 mb-4">
-            No images available for this product.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -69,6 +48,26 @@ function EditDesignPage({
         <div className="flex flex-col items-center">
           <p className="text-red-600 mb-4">Failed to load product design.</p>
           <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
+  if (!productColor) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <p className="text-red-600 mb-4">Failed to load product color.</p>
+        </div>
+      </div>
+    );
+  }
+  if (images.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <p className="text-red-600 mb-4">
+            No images available for this product.
+          </p>
         </div>
       </div>
     );
