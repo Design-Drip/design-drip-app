@@ -1,10 +1,19 @@
 "use client";
 import { useEditor } from "@/features/editor/hooks/use-editor";
-import { ActiveTool, selectionDependentTools } from "@/features/editor/types";
+import {
+  ActiveTool,
+  selectionDependentTools,
+} from "@/features/editor/types";
 import { fabric } from "fabric";
 import debounce from "lodash.debounce";
 import Image from "next/image";
-import React, { use, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Navbar } from "./components/navbar";
 import { Sidebar } from "./components/sidebar";
 import { Toolbar } from "./components/toolbar";
@@ -18,7 +27,11 @@ import { toast } from "sonner";
 import { ProductImage } from "@/types/product";
 import { TextSidebar } from "./components/text-sidebar";
 import { useUser } from "@clerk/clerk-react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import {
+  useRouter,
+  usePathname,
+  useSearchParams,
+} from "next/navigation";
 
 interface EditorProps {
   images: ProductImage[];
@@ -29,10 +42,12 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   //State management
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [canvasStates, setCanvasStates] = useState<{ [key: number]: string }>(
-    {}
+  const [canvasStates, setCanvasStates] = useState<{
+    [key: number]: string;
+  }>({});
+  const [selectedImage, setSelectedImage] = useState<any>(
+    images[0] || {}
   );
-  const [selectedImage, setSelectedImage] = useState<any>(images[0] || {});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | null>(null);
@@ -88,7 +103,10 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       };
 
       // Check if state is actually different before updating
-      if (JSON.stringify(newCanvasStates) !== JSON.stringify(canvasStates)) {
+      if (
+        JSON.stringify(newCanvasStates) !==
+        JSON.stringify(canvasStates)
+      ) {
         setCanvasStates(newCanvasStates);
       }
 
@@ -98,47 +116,6 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       return canvasStates;
     }
   }, [editor, selectedImageIndex, selectedImage, canvasStates]);
-
-  // Save design to localStorage (only when user is not logged in)
-  const saveToLocalStorage = useCallback(() => {
-    if (!editor?.canvas) return;
-
-    try {
-      // First get the current canvas state
-      const currentStates = { ...canvasStates };
-      // Update current canvas state if needed
-      if (editor.canvas.getObjects().length > 0) {
-        const canvasJson = editor.canvas.toJSON();
-        const timestamp = new Date().toISOString();
-
-        currentStates[selectedImageIndex] = JSON.stringify({
-          canvas: canvasJson,
-          metadata: {
-            lastModified: timestamp,
-            objectCount: editor.canvas.getObjects().length,
-            canvasDimensions: {
-              width: selectedImage.width_editable_zone,
-              height: selectedImage.height_editable_zone,
-            },
-          },
-        });
-      }
-      // Store data with product information
-      const storageData = {
-        productColorId,
-        canvasStates: currentStates,
-        timestamp: new Date().toISOString(),
-      };
-
-      localStorage.setItem(
-        "designDripEditorState",
-        JSON.stringify(storageData)
-      );
-      console.log("Design saved to localStorage");
-    } catch (error) {
-      console.error("Error saving to localStorage:", error);
-    }
-  }, [editor, productColorId, selectedImageIndex, selectedImage, canvasStates]);
 
   // Save to database function with authentication check
   const saveToDatabase = useCallback(async () => {
@@ -221,15 +198,17 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       };
 
       // Process all canvas states
-      Object.entries(allStates).forEach(([imageIndex, canvasJson]) => {
-        const image = images[parseInt(imageIndex)];
-        if (image && image.id) {
-          elementDesign[imageIndex] = {
-            images_id: image.id,
-            element_Json: canvasJson,
-          };
+      Object.entries(allStates).forEach(
+        ([imageIndex, canvasJson]) => {
+          const image = images[parseInt(imageIndex)];
+          if (image && image.id) {
+            elementDesign[imageIndex] = {
+              images_id: image.id,
+              element_Json: canvasJson,
+            };
+          }
         }
-      });
+      );
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
@@ -271,20 +250,38 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   // Load canvas state for selected image
   const loadCanvasState = useCallback(
     (imageIndex: number) => {
-      if (!editor?.canvas || isUpdatingCanvas.current) return;
+      if (!editor?.canvas) {
+        console.error(
+          "Cannot load canvas state: editor or canvas is null"
+        );
+        return;
+      }
 
       try {
+        console.log(
+          `Loading canvas state for image index: ${imageIndex}`
+        );
+
+        // Clear the canvas first to avoid artifacts
+        editor.canvas.clear();
         isUpdatingCanvas.current = true;
 
         if (canvasStates[imageIndex]) {
+          console.log(`Found saved state for index ${imageIndex}`);
           const savedState = JSON.parse(canvasStates[imageIndex]);
           const canvasData = savedState.canvas || savedState; // Backward compatibility
 
           editor.canvas.loadFromJSON(canvasData, () => {
             editor.canvas.renderAll();
+            console.log(
+              `Canvas state loaded for index ${imageIndex}`
+            );
             isUpdatingCanvas.current = false;
           });
         } else {
+          console.log(
+            `No saved state found for index ${imageIndex}, clearing canvas`
+          );
           editor.canvas.clear();
           isUpdatingCanvas.current = false;
         }
@@ -339,7 +336,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   // Handle image selection
   const handleImageSelect = useCallback(
     (image: any, index: number) => {
-      if (isUpdatingCanvas.current || index === selectedImageIndex) return;
+      if (isUpdatingCanvas.current) return;
       isUpdatingCanvas.current = true;
 
       // First save current canvas state
@@ -349,11 +346,20 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       setSelectedImage(image);
       setSelectedImageIndex(index);
 
+      if (editor?.canvas) {
+        editor.canvas.setDimensions({
+          width: image.editable_area?.width,
+          height: image.editable_area?.height,
+        });
+
+        // Load saved state for new image after a brief delay
+        setTimeout(() => {
+          loadCanvasState(index);
+          isUpdatingCanvas.current = false;
+        }, 100);
+      }
       // Update canvas dimensions
       // Load the canvas state after a brief delay
-      setTimeout(() => {
-        loadCanvasState(index);
-      }, 100);
     },
     [editor, selectedImageIndex, selectedImage, canvasStates]
   );
@@ -365,7 +371,9 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       didAttemptLocalStorageLoad.current = true;
 
       try {
-        const storedData = localStorage.getItem("designDripEditorState");
+        const storedData = localStorage.getItem(
+          "designDripEditorState"
+        );
         console.log("Stored data found:", !!storedData);
 
         if (storedData) {
@@ -392,7 +400,8 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
               console.log("Timeout completed, loading canvas state");
               try {
                 // Get the state for the selected image
-                const stateData = parsedData.canvasStates[selectedImageIndex];
+                const stateData =
+                  parsedData.canvasStates[selectedImageIndex];
                 if (!stateData) {
                   console.log(
                     "No state data for selected image index:",
@@ -401,7 +410,10 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                   return;
                 }
 
-                console.log("Found state data for index:", selectedImageIndex);
+                console.log(
+                  "Found state data for index:",
+                  selectedImageIndex
+                );
 
                 // Parse the state data
                 const parsedState = JSON.parse(stateData);
@@ -426,8 +438,10 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                     parsedState.metadata.canvasDimensions
                   );
                   editor.canvas.setDimensions({
-                    width: parsedState.metadata.canvasDimensions.width,
-                    height: parsedState.metadata.canvasDimensions.height,
+                    width:
+                      parsedState.metadata.canvasDimensions.width,
+                    height:
+                      parsedState.metadata.canvasDimensions.height,
                   });
                 }
 
@@ -466,7 +480,10 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                   );
                 });
               } catch (error) {
-                console.error("Error loading canvas state in timeout:", error);
+                console.error(
+                  "Error loading canvas state in timeout:",
+                  error
+                );
               }
             }, 800); // Longer timeout for more reliability
           }
