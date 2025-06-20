@@ -10,9 +10,11 @@ import { z } from "zod";
 
 // Schema for validating element design data
 const elementDesignSchema = z.object({
-  images_id: z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
-    message: "Invalid images_id format",
-  }),
+  images_id: z
+    .string()
+    .refine((val) => mongoose.Types.ObjectId.isValid(val), {
+      message: "Invalid images_id format",
+    }),
   element_Json: z.string().min(1, "element_Json cannot be empty"),
 });
 
@@ -24,6 +26,7 @@ const createDesignSchema = z.object({
       message: "Invalid shirt_color_id format",
     }),
   element_design: z.record(z.string(), elementDesignSchema),
+  name: z.string().default("Shirt Design"), // Add this line
 });
 
 const app = new Hono().use(verifyAuth).post(
@@ -36,7 +39,8 @@ const app = new Hono().use(verifyAuth).post(
       if (!user) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
-      const { shirt_color_id, element_design } = c.req.valid("json");
+      const { shirt_color_id, element_design, name } =
+        c.req.valid("json");
 
       // Convert string IDs to ObjectIds for the database
       const elementDesignObj: {
@@ -63,12 +67,14 @@ const app = new Hono().use(verifyAuth).post(
 
       if (existingDesign) {
         existingDesign.element_design = elementDesignObj;
+        existingDesign.name = name;
         design = await existingDesign.save();
       } else {
         design = new Design({
           user_id: user.id,
           shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
           element_design: elementDesignObj,
+          name: name,
         });
         await design.save();
       }

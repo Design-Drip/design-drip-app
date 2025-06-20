@@ -20,7 +20,7 @@ export const ColorPicker = ({
           const formattedValue = rgbaObjectToString(color.rgb);
           onChange(formattedValue);
         }}
-        className="border rounded-lg"
+        className="border rounded-lg p-4 bg-white !shadow-none"
       />
       <CirclePicker
         color={value}

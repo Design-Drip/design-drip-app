@@ -52,6 +52,8 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | null>(null);
+  const [designName, setDesignName] =
+    useState<string>("Shirt Design");
 
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
@@ -118,6 +120,12 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     }
   }, [editor, selectedImageIndex, selectedImage, canvasStates]);
 
+  // Handle design name change
+  const handleDesignNameChange = useCallback((name: string) => {
+    setDesignName(name);
+    setHasUnsavedChanges(true);
+  }, []);
+
   // Save to database function with authentication check
   const saveToDatabase = useCallback(async () => {
     // Check if user is authenticated
@@ -138,6 +146,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
           JSON.stringify({
             productColorId,
             canvasStates: currentState,
+            designName,
             timestamp: new Date().toISOString(),
           })
         );
@@ -216,6 +225,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
         await createDesignMutation.mutateAsync({
           shirt_color_id: productColorId,
           element_design: elementDesign,
+          name: designName || "Shirt Design", // Add design name to the mutation
         });
 
         // Update canvasStates without triggering effects
@@ -246,6 +256,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     pathname,
     searchParams,
     saveCurrentCanvasState,
+    designName,
   ]);
 
   // Load canvas state for selected image
@@ -388,13 +399,15 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
           if (
             parsedData.productColorId === productColorId &&
-            parsedData.canvasStates
+            parsedData.canvasStates &&
+            parsedData.designName
           ) {
             console.log("Product ID matches, setting canvas states");
 
             // Set canvas states from localStorage
             setCanvasStates(parsedData.canvasStates);
             setHasUnsavedChanges(true);
+            setDesignName(parsedData.designName);
 
             // Use a longer timeout to ensure states are set before loading
             setTimeout(() => {
@@ -572,6 +585,8 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
         isSaving={isSaving}
         hasUnsavedChanges={hasUnsavedChanges}
         saveError={saveError}
+        designName={designName}
+        onDesignNameChange={handleDesignNameChange}
       />
       <div className="absolute h-[calc(100%-68px)] w-full top-[68px] flex">
         <Sidebar

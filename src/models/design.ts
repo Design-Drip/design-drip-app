@@ -8,6 +8,7 @@ interface DesignDoc extends mongoose.Document {
   user_id: string;
   shirt_color_id: mongoose.Types.ObjectId;
   element_design: { [key: string]: ElementDesign }; // Store multiple image designs
+  name: string; // Add design name to the interface
 }
 const designSchema = new mongoose.Schema(
   {
@@ -20,6 +21,12 @@ const designSchema = new mongoose.Schema(
       type: mongoose.Types.ObjectId,
       required: true,
       trim: true,
+    },
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      default: "Shirt Design", // Default name
     },
     element_design: {
       type: Map,
