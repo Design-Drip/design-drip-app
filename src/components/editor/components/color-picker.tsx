@@ -6,7 +6,7 @@ import { rgbaObjectToString } from "@/features/editor/utils";
 interface ColorPickerProps {
   value: string;
   onChange: (value: string) => void;
-};
+}
 
 export const ColorPicker = ({
   value,

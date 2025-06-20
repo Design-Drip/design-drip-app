@@ -32,6 +32,7 @@ import {
   usePathname,
   useSearchParams,
 } from "next/navigation";
+import { FillColorSidebar } from "./components/fill-color-sidebar";
 
 interface EditorProps {
   images: ProductImage[];
@@ -577,7 +578,11 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-
+        <FillColorSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <TextSidebar
           editor={editor}
           activeTool={activeTool}
@@ -619,7 +624,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                 style={{
                   backgroundImage: `url(${selectedImage.url || ""})`,
                   backgroundRepeat: "no-repeat",
-                  backgroundSize: "cover",
+                  backgroundSize: "contain",
                   backgroundPosition: "center",
                 }}
               >
