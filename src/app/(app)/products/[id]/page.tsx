@@ -12,6 +12,7 @@ import { ProductImage } from "@/types/product";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/price";
 import { FIXED_SIZES } from "@/constants/size";
+import colors from "material-colors";
 
 interface ProductDetailPageProps {
   params: { id: string; slug: string };
@@ -87,7 +88,8 @@ export default function ProductDetailPage({
   };
 
   const createNewDesign = () => {
-    router.push(`/designer/${data.product.id}`);
+    const colorId = currentColor?.id || "";
+    router.push(`/designer/${data.product.id}?colorId=${colorId}`);
   };
 
   return (
