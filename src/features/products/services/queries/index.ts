@@ -2,6 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { ProductsKeys } from "./keys";
 import { useProductsQueryStore } from "../../store/useProductsQueryStore";
+import { ProductDetailResponse } from "@/types/product";
 
 // Get products based on filters and sort options
 export const getProductsQuery = () => {
@@ -32,20 +33,27 @@ export const getProductsQuery = () => {
         limit,
       },
     ],
-    queryFn: async () => {
-      const response = await client.api.products.$get({
-        query: {
-          search: search.length > 0 ? search : undefined,
-          categories: categories.map((cat) => cat.id),
-          sizes,
-          colors,
-          minPrice: minPrice?.toString(),
-          maxPrice: maxPrice?.toString(),
-          sort,
-          page: page.toString(),
-          limit: limit.toString(),
+    queryFn: async ({ signal }) => {
+      const response = await client.api.products.$get(
+        {
+          query: {
+            search: search.length > 0 ? search : undefined,
+            categories: categories.map((cat) => cat.id),
+            sizes,
+            colors,
+            minPrice: minPrice?.toString(),
+            maxPrice: maxPrice?.toString(),
+            sort,
+            page: page.toString(),
+            limit: limit.toString(),
+          },
         },
-      });
+        {
+          init: {
+            signal,
+          },
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to fetch products");
@@ -83,5 +91,22 @@ export const getColorsQuery = () =>
       }
 
       return response.json();
+    },
+  });
+
+// Get product details by ID
+export const getProductDetailQuery = (productId: string) =>
+  queryOptions({
+    queryKey: [ProductsKeys.GetProductDetailsQuery, productId],
+    queryFn: async () => {
+      const response = await client.api.products[":id"].$get({
+        param: { id: productId },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch product details");
+      }
+
+      return response.json() as Promise<ProductDetailResponse>;
     },
   });

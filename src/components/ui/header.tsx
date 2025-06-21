@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import CartWidget from "../cart/CartWidget";
 
 const productCategories = [
   {
@@ -42,6 +43,7 @@ const shirtFilters = [
 
 export default async function Header() {
   const user = await currentUser();
+  const itemCount = 0
 
   return (
     <header className="border-b border-border sticky top-0 z-40 w-full bg-background/95 backdrop-blur">
@@ -99,7 +101,7 @@ export default async function Header() {
                 </NavigationMenuContent>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <Link href="/all-products" legacyBehavior passHref>
+                <Link href="/products" legacyBehavior passHref>
                   <NavigationMenuLink className={navigationMenuTriggerStyle()}>
                     All Products
                   </NavigationMenuLink>
@@ -110,6 +112,7 @@ export default async function Header() {
         </div>
 
         <div className="flex items-center gap-4">
+          <CartWidget itemCount={itemCount} />
           {!user ? (
             <div className="flex items-center gap-2">
               <Link href="/sign-in">
