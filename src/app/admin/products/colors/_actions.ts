@@ -36,9 +36,8 @@ export async function addProductImage(formData: FormData) {
     const isPrimary = formData.get("isPrimary") === "true";
     
     // Đảm bảo lấy đúng giá trị cho tất cả trường
-    // Sử dụng ép kiểu parseInt và mặc định nếu cần
-    const width = 800; // Kích thước cố định 
-    const height = 1120; // Kích thước cố định
+    // Sử dụng ép kiểu parseInt và mặc định nếu cần    const width = 800; // Kích thước cố định 
+    const height = 797; // Kích thước cố định
 
     // Đọc các giá trị editable zone từ form và ép kiểu thành số
     const widthEditableZone = parseInt(formData.get("widthEditableZone") as string, 10) || 300;
@@ -285,7 +284,7 @@ export async function getProductColors(productId: string) {
         view_side: img.view_side,
         is_primary: img.is_primary,
         width: img.width || 800,
-        height: img.height || 1120,
+        height: img.height || 797,
         editable_area: {
           width: img.width_editable_zone || 300,
           height: img.height_editable_zone || 300,

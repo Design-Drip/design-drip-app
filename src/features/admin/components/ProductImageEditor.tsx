@@ -57,7 +57,7 @@ import { Image as ImageIconOutline } from "lucide-react";
 
 // Cố định kích thước ảnh
 const IMAGE_WIDTH = 800;
-const IMAGE_HEIGHT = 1120;
+const IMAGE_HEIGHT = 797;
 
 // Mặc định cho vùng chỉnh sửa
 const DEFAULT_EDITABLE_AREA = {
@@ -739,7 +739,7 @@ export function ProductImageEditor({
     }
 
     toast.info(
-      "Images will be saved with 800×1120 dimensions and the design area will be scaled from the interface to the correct coordinates.",
+      "Images will be saved with 800×797 dimensions and the design area will be scaled from the interface to the correct coordinates.",
       { duration: 3000 }
     );
 

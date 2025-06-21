@@ -117,7 +117,7 @@ export const Editor = ({ initialData }: EditorProps) => {
 
           <main className='bg-muted flex-1 overflow-auto relative flex justify-center items-center flex-col w-full'>
             <div
-              className="w-[800px] h-[1120px] relative"
+              className="w-[800px] h-[797px] relative"
               style={{
                 backgroundImage: `url(${initialData.thumbnail})`,
                 backgroundRepeat: 'no-repeat',
