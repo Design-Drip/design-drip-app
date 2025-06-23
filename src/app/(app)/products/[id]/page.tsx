@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getProductDetailQuery } from "@/features/products/services/queries";
-import { ChevronRight, Heart, Plus, Minus, Check, Loader2 } from "lucide-react";
+import { Heart, Plus, Minus, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProductImage } from "@/types/product";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/price";
 import { FIXED_SIZES } from "@/constants/size";
-import colors from "material-colors";
+import { useWishlist } from "@/hooks/useWishlist";
+import { cn } from "@/lib/utils";
+import { SignInButton } from "@clerk/nextjs";
 
 interface ProductDetailPageProps {
   params: { id: string; slug: string };
@@ -23,6 +23,13 @@ export default function ProductDetailPage({
 }: ProductDetailPageProps) {
   const router = useRouter();
   const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
+  const {
+    isInWishlist,
+    addItem,
+    removeItem,
+    isLoading: isWishlistLoading,
+    isSignedIn,
+  } = useWishlist();
 
   const uniqueSizes = Array.from(new Set(data?.sizes.map((size) => size.size)));
 
@@ -33,6 +40,20 @@ export default function ProductDetailPage({
   const [expandedSection, setExpandedSection] = useState<string | null>(
     "description"
   );
+
+  const inWishlist = useMemo(() => {
+    return isSignedIn && id ? isInWishlist(id) : false;
+  }, [id, isInWishlist, isSignedIn]);
+
+  const handleWishlistToggle = () => {
+    if (!id || !isSignedIn) return;
+
+    if (inWishlist) {
+      removeItem(id);
+    } else {
+      addItem(id);
+    }
+  };
 
   // Get images for the selected color
   const currentColor =
@@ -248,13 +269,32 @@ export default function ProductDetailPage({
                       Start Designing
                     </Button>
                   </div>
-                  <Button
-                    variant="outline"
-                    className="flex items-center justify-center py-3 h-auto"
-                  >
-                    <Heart className="h-4 w-4 mr-2" />
-                    Save
-                  </Button>
+                  {isSignedIn ? (
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex items-center justify-center py-3 h-auto",
+                        inWishlist && "bg-gray-100"
+                      )}
+                      onClick={handleWishlistToggle}
+                      disabled={isWishlistLoading}
+                    >
+                      {isWishlistLoading ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : inWishlist ? (
+                        <Heart className="h-4 w-4 mr-2 fill-red-600 text-red-600" />
+                      ) : (
+                        <Heart className="h-4 w-4 mr-2" />
+                      )}
+                      {inWishlist ? "Saved" : "Save"}
+                    </Button>
+                  ) : (
+                    <SignInButton mode="modal">
+                      <Button variant="outline" className="py-3 h-auto">
+                        Sign in to Save
+                      </Button>
+                    </SignInButton>
+                  )}
                 </div>
               </div>
 

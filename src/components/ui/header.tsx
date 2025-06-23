@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignOutButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
-import { ShoppingCart, User, LogOut } from "lucide-react";
+import { ShoppingCart, User, Heart, LogOut } from "lucide-react";
 
 import {
   NavigationMenu,
@@ -43,7 +43,7 @@ const shirtFilters = [
 
 export default async function Header() {
   const user = await currentUser();
-  const itemCount = 0
+  const itemCount = 0;
 
   return (
     <header className="border-b border-border sticky top-0 z-40 w-full bg-background/95 backdrop-blur">
@@ -166,6 +166,16 @@ export default async function Header() {
                     >
                       <User className="mr-2 h-4 w-4" />
                       <span>My Account</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="w-full" asChild>
+                    <Link
+                      href="/wishlist"
+                      className="flex cursor-pointer items-center"
+                    >
+                      <Heart className="mr-2 h-4 w-4" />
+                      <span>Wishlist</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
