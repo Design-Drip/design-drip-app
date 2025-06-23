@@ -54,6 +54,7 @@ import {
 
 // Sử dụng Icon nào đó cho hình ảnh (có thể từ một thư viện khác nếu cần)
 import { Image as ImageIconOutline } from "lucide-react";
+import { OurFileRouter } from "@/app/api/uploadthing/core";
 
 // Cố định kích thước ảnh
 const IMAGE_WIDTH = 800;
@@ -1382,7 +1383,7 @@ export function ProductImageEditor({
                       <p className="text-xs mb-2 text-muted-foreground">
                         Recommended size: {IMAGE_WIDTH}x{IMAGE_HEIGHT}px
                       </p>
-                      <UploadDropzone
+                      <UploadDropzone<OurFileRouter, "imageUploader">
                         endpoint="imageUploader"
                         onClientUploadComplete={(res) => {
                           if (res && res[0]?.url) {

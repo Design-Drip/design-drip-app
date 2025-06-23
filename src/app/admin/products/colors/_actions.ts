@@ -31,19 +31,28 @@ export async function addProductImage(formData: FormData) {
 
   try {
     const colorId = formData.get("colorId") as string;
-    const viewSide = formData.get("viewSide") as "front" | "back" | "left" | "right";
+    const viewSide = formData.get("viewSide") as
+      | "front"
+      | "back"
+      | "left"
+      | "right";
     const imageUrl = formData.get("imageUrl") as string;
     const isPrimary = formData.get("isPrimary") === "true";
-    
+
     // Đảm bảo lấy đúng giá trị cho tất cả trường
-    // Sử dụng ép kiểu parseInt và mặc định nếu cần    const width = 800; // Kích thước cố định 
+    // Sử dụng ép kiểu parseInt và mặc định nếu cần
+    const width = 800; // Kích thước cố định
     const height = 797; // Kích thước cố định
 
     // Đọc các giá trị editable zone từ form và ép kiểu thành số
-    const widthEditableZone = parseInt(formData.get("widthEditableZone") as string, 10) || 300;
-    const heightEditableZone = parseInt(formData.get("heightEditableZone") as string, 10) || 300;
-    const xEditableZone = parseInt(formData.get("xEditableZone") as string, 10) || 250;
-    const yEditableZone = parseInt(formData.get("yEditableZone") as string, 10) || 400;
+    const widthEditableZone =
+      parseInt(formData.get("widthEditableZone") as string, 10) || 300;
+    const heightEditableZone =
+      parseInt(formData.get("heightEditableZone") as string, 10) || 300;
+    const xEditableZone =
+      parseInt(formData.get("xEditableZone") as string, 10) || 250;
+    const yEditableZone =
+      parseInt(formData.get("yEditableZone") as string, 10) || 400;
 
     if (!colorId || !viewSide || !imageUrl) {
       return {
@@ -271,27 +280,28 @@ export async function deleteProductColor(formData: FormData) {
 export async function getProductColors(productId: string) {
   try {
     await connectMongoDB();
-    
+
     const colors = await ShirtColor.find({ shirt_id: productId }).lean();
-    
+
     return colors.map((color) => ({
       id: color._id.toString(),
       name: color.color,
       value: color.color_value,
-      images: color.images?.map((img: any) => ({
-        id: img._id?.toString(),
-        url: img.url,
-        view_side: img.view_side,
-        is_primary: img.is_primary,
-        width: img.width || 800,
-        height: img.height || 797,
-        editable_area: {
-          width: img.width_editable_zone || 300,
-          height: img.height_editable_zone || 300,
-          x: img.x_editable_zone || 250,
-          y: img.y_editable_zone || 400,
-        },
-      })) || [],
+      images:
+        color.images?.map((img: any) => ({
+          id: img._id?.toString(),
+          url: img.url,
+          view_side: img.view_side,
+          is_primary: img.is_primary,
+          width: img.width || 800,
+          height: img.height || 797,
+          editable_area: {
+            width: img.width_editable_zone || 300,
+            height: img.height_editable_zone || 300,
+            x: img.x_editable_zone || 250,
+            y: img.y_editable_zone || 400,
+          },
+        })) || [],
     }));
   } catch (error) {
     console.error("Error getting product colors:", error);
