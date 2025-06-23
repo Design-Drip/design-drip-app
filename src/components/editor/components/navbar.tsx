@@ -3,109 +3,90 @@
 import { CiFileOn } from "react-icons/ci";
 import { BsCloudCheck, BsCloudSlash } from "react-icons/bs";
 import { useFilePicker } from "use-file-picker";
-import { useMutationState } from "@tanstack/react-query";
 import {
   ChevronDown,
   Download,
+  HomeIcon,
   Loader,
   MousePointerClick,
   Redo2,
-  Undo2
+  Save,
+  Undo2,
 } from "lucide-react";
 
-// import { UserButton } from "@/features/auth/components/user-button";
-
 import { ActiveTool, Editor } from "@/features/editor/types";
-// import { Logo } from "@/features/editor/components/logo";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import {
-  DropdownMenu,
-  DropdownMenuItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 import { Hint } from "@/components/hint";
+import { UserButton } from "@clerk/nextjs";
+import { Input } from "@/components/ui/input";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavbarProps {
-  id: string;
   editor: Editor | undefined;
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
-};
+  onSave: () => Promise<void>;
+  isSaving: boolean;
+  hasUnsavedChanges: boolean;
+  saveError: Error | null;
+  designName: string;
+  onDesignNameChange: (name: string) => void;
+}
 
 export const Navbar = ({
-  id,
   editor,
   activeTool,
   onChangeActiveTool,
+  onSave,
+  isSaving,
+  hasUnsavedChanges,
+  saveError,
+  designName,
+  onDesignNameChange,
 }: NavbarProps) => {
-  const data = useMutationState({
-    filters: {
-      mutationKey: ["project", { id }],
-      exact: true,
-    },
-    select: (mutation) => mutation.state.status,
-  });
+  const [isEditing, setIsEditing] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const currentStatus = data[data.length - 1];
+  // Focus the input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
 
-  const isError = currentStatus === "error";
-  const isPending = currentStatus === "pending";
+  const handleInputBlur = () => {
+    setIsEditing(false);
+  };
 
-  const { openFilePicker } = useFilePicker({
-    accept: ".json",
-    onFilesSuccessfullySelected: ({ plainFiles }: any) => {
-      if (plainFiles && plainFiles.length > 0) {
-        const file = plainFiles[0];
-        const reader = new FileReader();
-        reader.readAsText(file, "UTF-8");
-        reader.onload = () => {
-          editor?.loadJson(reader.result as string);
-        };
-      }
-    },
-  });
-
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      setIsEditing(false);
+    }
+  };
   return (
     <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
-      {/* <Logo /> */}
+      <Link href="/">
+        <Tooltip>
+          <TooltipTrigger className="flex items-center gap-x-2">
+            <HomeIcon className="size-6 text-muted-foreground hover:text-foreground transition-colors" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <span className="text-sm">Home</span>
+          </TooltipContent>
+        </Tooltip>
+      </Link>
       <div className="w-full flex items-center gap-x-1 h-full">
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button size="sm" variant="ghost">
-              File
-              <ChevronDown className="size-4 ml-2" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="min-w-60">
-            <DropdownMenuItem
-              onClick={() => openFilePicker()}
-              className="flex items-center gap-x-2"
-            >
-              <CiFileOn className="size-8" />
-              <div>
-                <p>Open</p>
-                <p className="text-xs text-muted-foreground">
-                  Open a JSON file
-                </p>
-              </div>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Separator orientation="vertical" className="mx-2" />
-        <Hint label="Select" side="bottom" sideOffset={10}>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => onChangeActiveTool("select")}
-            className={cn(activeTool === "select" && "bg-gray-100")}
-          >
-            <MousePointerClick className="size-4" />
-          </Button>
-        </Hint>
         <Hint label="Undo" side="bottom" sideOffset={10}>
           <Button
             disabled={!editor?.canUndo()}
@@ -127,90 +108,61 @@ export const Navbar = ({
           </Button>
         </Hint>
         <Separator orientation="vertical" className="mx-2" />
-        {isPending && (
-          <div className="flex items-center gap-x-2">
-            <Loader className="size-4 animate-spin text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              Saving...
+
+        <div className="flex items-center gap-x-2">
+          {isSaving ? (
+            <>
+              <Loader className="size-4 animate-spin text-muted-foreground" />
+              <div className="text-xs text-muted-foreground">Saving...</div>
+            </>
+          ) : saveError ? (
+            <>
+              <BsCloudSlash className="size-[20px] text-red-500" />
+              <div className="text-xs text-red-500">Failed to save</div>
+            </>
+          ) : !hasUnsavedChanges ? (
+            <>
+              <BsCloudCheck className="size-[20px] text-green-500" />
+              <div className="text-xs text-green-500">Saved</div>
+            </>
+          ) : (
+            <>
+              <BsCloudSlash className="size-[20px] text-amber-500" />
+              <div className="text-xs text-amber-500">Unsaved changes</div>
+            </>
+          )}
+        </div>
+        <div className="mx-4 min-w-[180px]">
+          {isEditing ? (
+            <Input
+              ref={inputRef}
+              value={designName}
+              onChange={(e) => onDesignNameChange(e.target.value)}
+              onBlur={handleInputBlur}
+              onKeyDown={handleInputKeyDown}
+              className="font-medium"
+            />
+          ) : (
+            <div
+              onClick={() => setIsEditing(true)}
+              className="px-3 py-2 h-10 rounded-md border border-input hover:bg-accent cursor-text flex items-center font-medium text-sm"
+            >
+              {designName || "Shirt Design"}
             </div>
-          </div>
-        )}
-        {!isPending && isError && (
-          <div className="flex items-center gap-x-2">
-            <BsCloudSlash className="size-[20px] text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              Failed to save
-            </div>
-          </div>
-        )}
-        {!isPending && !isError && (
-          <div className="flex items-center gap-x-2">
-            <BsCloudCheck className="size-[20px] text-muted-foreground" />
-            <div className="text-xs text-muted-foreground">
-              Saved
-            </div>
-          </div>
-        )}
+          )}
+        </div>
         <div className="ml-auto flex items-center gap-x-4">
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost">
-                Export
-                <Download className="size-4 ml-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-60">
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveJson()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>JSON</p>
-                  <p className="text-xs text-muted-foreground">
-                    Save for later editing
-                  </p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.savePng()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>PNG</p>
-                  <p className="text-xs text-muted-foreground">
-                    Best for sharing on the web
-                  </p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveJpg()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>JPG</p>
-                  <p className="text-xs text-muted-foreground">
-                    Best for printing
-                  </p>
-                </div>
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="flex items-center gap-x-2"
-                onClick={() => editor?.saveSvg()}
-              >
-                <CiFileOn className="size-8" />
-                <div>
-                  <p>SVG</p>
-                  <p className="text-xs text-muted-foreground">
-                    Best for editing in vector software
-                  </p>
-                </div>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          {/* <UserButton /> */}
+          <Button
+            size="sm"
+            variant={hasUnsavedChanges ? "outline" : "ghost"}
+            onClick={onSave}
+            disabled={isSaving || !hasUnsavedChanges}
+          >
+            Save
+            <Save className="size-4 ml-2" />
+          </Button>
+
+          <UserButton />
         </div>
       </div>
     </nav>

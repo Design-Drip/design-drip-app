@@ -4,8 +4,10 @@ import { handle } from "hono/vercel";
 import dbConnect from "@/lib/db";
 
 import ai from "./ai";
+import design from "./design";
 import paymentMethods from "./payments/paymentMethods";
 import products from "./products";
+import wishlist from "./wishlist";
 
 await dbConnect();
 
@@ -16,8 +18,10 @@ const app = new Hono().basePath("/api");
 
 const routes = app
   .route("/ai", ai)
+  .route("/design", design)
   .route("/payments/payment-methods", paymentMethods)
-  .route("/products", products);
+  .route("/products", products)
+  .route("/wish-list", wishlist);
 
 export const GET = handle(app);
 export const POST = handle(app);
