@@ -6,6 +6,7 @@ import dbConnect from "@/lib/db";
 import ai from "./ai";
 import paymentMethods from "./payments/paymentMethods";
 import products from "./products";
+import designTemplate from "./designTemplates";
 
 await dbConnect();
 
@@ -17,7 +18,8 @@ const app = new Hono().basePath("/api");
 const routes = app
   .route("/ai", ai)
   .route("/payments/payment-methods", paymentMethods)
-  .route("/products", products);
+  .route("/products", products)
+  .route("/design-templates", designTemplate);
 
 export const GET = handle(app);
 export const POST = handle(app);
