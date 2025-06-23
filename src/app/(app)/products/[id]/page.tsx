@@ -5,13 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getProductDetailQuery } from "@/features/products/services/queries";
-import {
-  Heart,
-  Plus,
-  Minus,
-  Check,
-  Loader2,
-} from "lucide-react";
+import { Heart, Plus, Minus, Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/price";
