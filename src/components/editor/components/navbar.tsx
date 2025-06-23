@@ -6,6 +6,7 @@ import { useFilePicker } from "use-file-picker";
 import {
   ChevronDown,
   Download,
+  HomeIcon,
   Loader,
   MousePointerClick,
   Redo2,
@@ -23,6 +24,13 @@ import { Hint } from "@/components/hint";
 import { UserButton } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface NavbarProps {
   editor: Editor | undefined;
@@ -61,16 +69,23 @@ export const Navbar = ({
     setIsEditing(false);
   };
 
-  const handleInputKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>
-  ) => {
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       setIsEditing(false);
     }
   };
   return (
     <nav className="w-full flex items-center p-4 h-[68px] gap-x-8 border-b lg:pl-[34px]">
-      {/* <Logo /> */}
+      <Link href="/">
+        <Tooltip>
+          <TooltipTrigger className="flex items-center gap-x-2">
+            <HomeIcon className="size-6 text-muted-foreground hover:text-foreground transition-colors" />
+          </TooltipTrigger>
+          <TooltipContent>
+            <span className="text-sm">Home</span>
+          </TooltipContent>
+        </Tooltip>
+      </Link>
       <div className="w-full flex items-center gap-x-1 h-full">
         <Hint label="Undo" side="bottom" sideOffset={10}>
           <Button
@@ -98,16 +113,12 @@ export const Navbar = ({
           {isSaving ? (
             <>
               <Loader className="size-4 animate-spin text-muted-foreground" />
-              <div className="text-xs text-muted-foreground">
-                Saving...
-              </div>
+              <div className="text-xs text-muted-foreground">Saving...</div>
             </>
           ) : saveError ? (
             <>
               <BsCloudSlash className="size-[20px] text-red-500" />
-              <div className="text-xs text-red-500">
-                Failed to save
-              </div>
+              <div className="text-xs text-red-500">Failed to save</div>
             </>
           ) : !hasUnsavedChanges ? (
             <>
@@ -117,9 +128,7 @@ export const Navbar = ({
           ) : (
             <>
               <BsCloudSlash className="size-[20px] text-amber-500" />
-              <div className="text-xs text-amber-500">
-                Unsaved changes
-              </div>
+              <div className="text-xs text-amber-500">Unsaved changes</div>
             </>
           )}
         </div>
