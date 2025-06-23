@@ -1,19 +1,10 @@
 "use client";
 import { useEditor } from "@/features/editor/hooks/use-editor";
-import {
-  ActiveTool,
-  selectionDependentTools,
-} from "@/features/editor/types";
+import { ActiveTool, selectionDependentTools } from "@/features/editor/types";
 import { fabric } from "fabric";
 import debounce from "lodash.debounce";
 import Image from "next/image";
-import React, {
-  use,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { use, useCallback, useEffect, useRef, useState } from "react";
 import { Navbar } from "./components/navbar";
 import { Sidebar } from "./components/sidebar";
 import { Toolbar } from "./components/toolbar";
@@ -27,11 +18,7 @@ import { toast } from "sonner";
 import { ProductImage } from "@/types/product";
 import { TextSidebar } from "./components/text-sidebar";
 import { useUser } from "@clerk/clerk-react";
-import {
-  useRouter,
-  usePathname,
-  useSearchParams,
-} from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { FillColorSidebar } from "./components/fill-color-sidebar";
 
 interface EditorProps {
@@ -46,14 +33,11 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   const [canvasStates, setCanvasStates] = useState<{
     [key: number]: string;
   }>({});
-  const [selectedImage, setSelectedImage] = useState<any>(
-    images[0] || {}
-  );
+  const [selectedImage, setSelectedImage] = useState<any>(images[0] || {});
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | null>(null);
-  const [designName, setDesignName] =
-    useState<string>("Shirt Design");
+  const [designName, setDesignName] = useState<string>("Shirt Design");
 
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
@@ -106,10 +90,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       };
 
       // Check if state is actually different before updating
-      if (
-        JSON.stringify(newCanvasStates) !==
-        JSON.stringify(canvasStates)
-      ) {
+      if (JSON.stringify(newCanvasStates) !== JSON.stringify(canvasStates)) {
         setCanvasStates(newCanvasStates);
       }
 
@@ -208,17 +189,15 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       };
 
       // Process all canvas states
-      Object.entries(allStates).forEach(
-        ([imageIndex, canvasJson]) => {
-          const image = images[parseInt(imageIndex)];
-          if (image && image.id) {
-            elementDesign[imageIndex] = {
-              images_id: image.id,
-              element_Json: canvasJson,
-            };
-          }
+      Object.entries(allStates).forEach(([imageIndex, canvasJson]) => {
+        const image = images[parseInt(imageIndex)];
+        if (image && image.id) {
+          elementDesign[imageIndex] = {
+            images_id: image.id,
+            element_Json: canvasJson,
+          };
         }
-      );
+      });
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
@@ -263,16 +242,12 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   const loadCanvasState = useCallback(
     (imageIndex: number) => {
       if (!editor?.canvas) {
-        console.error(
-          "Cannot load canvas state: editor or canvas is null"
-        );
+        console.error("Cannot load canvas state: editor or canvas is null");
         return;
       }
 
       try {
-        console.log(
-          `Loading canvas state for image index: ${imageIndex}`
-        );
+        console.log(`Loading canvas state for image index: ${imageIndex}`);
 
         // Clear the canvas first to avoid artifacts
         editor.canvas.clear();
@@ -285,9 +260,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
           editor.canvas.loadFromJSON(canvasData, () => {
             editor.canvas.renderAll();
-            console.log(
-              `Canvas state loaded for index ${imageIndex}`
-            );
+            console.log(`Canvas state loaded for index ${imageIndex}`);
             isUpdatingCanvas.current = false;
           });
         } else {
@@ -357,11 +330,10 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       // Update selected image
       setSelectedImage(image);
       setSelectedImageIndex(index);
-
       if (editor?.canvas) {
         editor.canvas.setDimensions({
-          width: image.editable_area?.width,
-          height: image.editable_area?.height,
+          width: image.width_editable_zone,
+          height: image.height_editable_zone,
         });
 
         // Load saved state for new image after a brief delay
@@ -383,9 +355,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       didAttemptLocalStorageLoad.current = true;
 
       try {
-        const storedData = localStorage.getItem(
-          "designDripEditorState"
-        );
+        const storedData = localStorage.getItem("designDripEditorState");
         console.log("Stored data found:", !!storedData);
 
         if (storedData) {
@@ -414,8 +384,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
               console.log("Timeout completed, loading canvas state");
               try {
                 // Get the state for the selected image
-                const stateData =
-                  parsedData.canvasStates[selectedImageIndex];
+                const stateData = parsedData.canvasStates[selectedImageIndex];
                 if (!stateData) {
                   console.log(
                     "No state data for selected image index:",
@@ -424,10 +393,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                   return;
                 }
 
-                console.log(
-                  "Found state data for index:",
-                  selectedImageIndex
-                );
+                console.log("Found state data for index:", selectedImageIndex);
 
                 // Parse the state data
                 const parsedState = JSON.parse(stateData);
@@ -452,10 +418,8 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                     parsedState.metadata.canvasDimensions
                   );
                   editor.canvas.setDimensions({
-                    width:
-                      parsedState.metadata.canvasDimensions.width,
-                    height:
-                      parsedState.metadata.canvasDimensions.height,
+                    width: parsedState.metadata.canvasDimensions.width,
+                    height: parsedState.metadata.canvasDimensions.height,
                   });
                 }
 
@@ -494,10 +458,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                   );
                 });
               } catch (error) {
-                console.error(
-                  "Error loading canvas state in timeout:",
-                  error
-                );
+                console.error("Error loading canvas state in timeout:", error);
               }
             }, 800); // Longer timeout for more reliability
           }
@@ -635,7 +596,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
           <main className="bg-muted overflow-auto flex justify-between items-center w-full flex-1 p-4 ">
             <div className="w-[80%] h-full flex justify-center items-center">
               <div
-                className="w-[800px] h-full relative"
+                className="w-[800px] h-[797px] relative"
                 style={{
                   backgroundImage: `url(${selectedImage.url || ""})`,
                   backgroundRepeat: "no-repeat",
@@ -648,8 +609,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                     position: "absolute",
                     border: "1px dotted gray",
                     top: `${selectedImage.y_editable_zone}px`,
-                    left: `${selectedImage.x_editable_zone}px`,
-                    transform: "translate(-50%, -50%)",
+                    left: `${selectedImage.x_editable_zone + 20}px`,
                     width: selectedImage.width_editable_zone,
                     height: selectedImage.height_editable_zone,
                   }}

@@ -1,67 +1,63 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
-import { UploadDropzone } from "@/lib/uploadthing";
-import { toast } from "sonner";
 import {
   ArrowLeft,
-  Save,
-  ImageIcon,
-  Trash2,
-  MousePointer,
-  RotateCw,
-  Image as ImageIconOutline,
   Check,
+  ImageIcon,
+  Layers,
+  MousePointer,
   Move,
-  Square,
-  ChevronsUpDown,
-  CornerRightDown,
+  RefreshCw,
+  Save,
+  Trash2,
   ZoomIn,
   ZoomOut,
-  Hand,
-  RefreshCw,
-  Info,
-  Package,
-  Tag,
 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
+import { UploadDropzone } from "@uploadthing/react";
 
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Slider } from "@/components/ui/slider";
 import {
-  uploadProductImages,
   deleteProductImage,
+  uploadProductImages,
 } from "@/app/admin/products/images/_actions";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+// Sử dụng Icon nào đó cho hình ảnh (có thể từ một thư viện khác nếu cần)
+import { Image as ImageIconOutline } from "lucide-react";
 
 // Cố định kích thước ảnh
 const IMAGE_WIDTH = 800;
-const IMAGE_HEIGHT = 1120;
+const IMAGE_HEIGHT = 797;
 
 // Mặc định cho vùng chỉnh sửa
 const DEFAULT_EDITABLE_AREA = {
@@ -163,7 +159,6 @@ export function ProductImageEditor({
   const [editableArea, setEditableArea] = useState<EditableArea>(
     DEFAULT_EDITABLE_AREA
   );
-
   // State cho việc đánh dấu ảnh là primary
   const [isPrimary, setIsPrimary] = useState(true);
 
@@ -172,6 +167,21 @@ export function ProductImageEditor({
 
   // Tooltip guides
   const [showZoomTooltip, setShowZoomTooltip] = useState(false);
+  // State cho alert dialog khi rời trang
+  const [showExitAlert, setShowExitAlert] = useState(false);
+  const [navigateTo, setNavigateTo] = useState("");
+
+  // State for tracking UploadThing file keys
+  const [pendingUploads, setPendingUploads] = useState<string[]>([]);
+  const [savedUploads, setSavedUploads] = useState<string[]>([]);
+
+  // Kiểm tra xem tất cả ảnh đã được tải lên chưa
+  const allImagesUploaded = Boolean(
+    images.front?.url &&
+      images.back?.url &&
+      images.left?.url &&
+      images.right?.url
+  );
 
   // Initialize images from color data
   useEffect(() => {
@@ -189,6 +199,95 @@ export function ProductImageEditor({
       setImages(initialImages);
     }
   }, [color]);
+
+  // Handle browser events (page reload, tab close, browser back/forward)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!allImagesUploaded) {
+        // Standard for most browsers
+        const message =
+          "You haven't uploaded all 4 images for this product. If you leave this page now, your upload progress and edits will be lost.";
+
+        e.preventDefault();
+        e.returnValue = message; // Chrome requires returnValue to be set
+        return message; // For older browsers
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [allImagesUploaded]);
+
+  // Add router event listener to intercept navigation
+  useEffect(() => {
+    // For Next.js app router, we need to intercept click events on links
+    const handleLinkClick = (e: MouseEvent) => {
+      // Only check if we have incomplete uploads
+      if (!allImagesUploaded) {
+        // Find if the click was on an anchor tag or its children
+        let target = e.target as HTMLElement;
+        while (target && target !== document.body) {
+          if (target.tagName === "A" && target.getAttribute("href")) {
+            // Prevent default navigation
+            e.preventDefault();
+
+            // Get the href attribute
+            const href = target.getAttribute("href");
+            if (href && !href.startsWith("#") && href !== navigateTo) {
+              setNavigateTo(href);
+              setShowExitAlert(true);
+              return;
+            }
+          }
+          target = target.parentElement as HTMLElement;
+        }
+      }
+    };
+
+    // Add global click event listener
+    document.addEventListener("click", handleLinkClick);
+
+    return () => {
+      document.removeEventListener("click", handleLinkClick);
+    };
+  }, [allImagesUploaded, navigateTo]);
+
+  // Xử lý việc điều hướng với cảnh báo nếu cần
+  const handleNavigation = (path: string) => {
+    if (!allImagesUploaded) {
+      setNavigateTo(path);
+      setShowExitAlert(true);
+    } else {
+      router.push(path);
+    }
+  };
+
+  // Xử lý sự kiện browser back button bằng history API
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      // Nếu người dùng bấm nút back khi chưa upload đủ ảnh
+      if (!allImagesUploaded) {
+        // Ngăn chặn việc quay lại bằng cách đẩy trạng thái hiện tại vào lịch sử
+        window.history.pushState(null, "", window.location.pathname);
+
+        // Hiển thị dialog cảnh báo
+        setNavigateTo("back");
+        setShowExitAlert(true);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    // Đảm bảo trạng thái được đưa vào history để có thể theo dõi sự kiện popstate
+    window.history.pushState(null, "", window.location.pathname);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, [allImagesUploaded]);
 
   // Tính toán tỷ lệ scale khi component mounted hoặc kích thước thay đổi
   useEffect(() => {
@@ -244,6 +343,13 @@ export function ProductImageEditor({
     imageUrl: string
   ) => {
     const isPrimaryView = viewSide === "front";
+
+    // Extract file key from URL and track in pendingUploads
+    const fileKey = extractFileKeyFromUrl(imageUrl);
+    if (fileKey) {
+      console.log(`Adding file ${fileKey} to pending uploads`);
+      setPendingUploads((prev) => [...prev, fileKey]);
+    }
 
     setImages((prev) => ({
       ...prev,
@@ -628,14 +734,12 @@ export function ProductImageEditor({
     }
 
     if (!hasPrimary) {
-      toast.error(
-        "Phải có ít nhất một góc nhìn được đánh dấu là ảnh chính (primary)"
-      );
+      toast.error("At least one view must be marked as primary image");
       return;
     }
 
     toast.info(
-      "Ảnh sẽ được lưu với kích thước 800×1120 và vùng thiết kế được scale từ giao diện về đúng tọa độ thật.",
+      "Images will be saved with 800×797 dimensions and the design area will be scaled from the interface to the correct coordinates.",
       { duration: 3000 }
     );
 
@@ -662,9 +766,12 @@ export function ProductImageEditor({
       formData.append("productId", productId);
       formData.append("colorId", color.id);
       formData.append("images", JSON.stringify(imagesData));
-
       const result = await uploadProductImages(formData);
       if (result.success) {
+        // Move all pending uploads to saved uploads once successfully saved to DB
+        setSavedUploads((prev) => [...prev, ...pendingUploads]);
+        setPendingUploads([]);
+
         toast.success("All images saved successfully");
         router.refresh();
         router.push(`/admin/products/${productId}/variants`);
@@ -678,12 +785,28 @@ export function ProductImageEditor({
       setIsLoading(false);
     }
   };
-
   // Xoá ảnh hiện tại
   const handleDeleteImage = async () => {
     const imageToDelete = images[currentView];
     if (!imageToDelete?.id) {
-      // If the image hasn't been saved, just remove it from state
+      // If the image hasn't been saved in the database yet
+      if (imageToDelete?.url) {
+        // Extract fileKey from URL
+        const fileKey = extractFileKeyFromUrl(imageToDelete.url);
+
+        if (fileKey) {
+          // Delete from UploadThing if it's a pending upload
+          if (pendingUploads.includes(fileKey)) {
+            await deleteUploadThingFile(fileKey);
+
+            // Remove from pending uploads
+            setPendingUploads((prev) => prev.filter((key) => key !== fileKey));
+            console.log(`File ${fileKey} removed from pending uploads`);
+          }
+        }
+      }
+
+      // Remove from state
       setImages((prev) => {
         const newImages = { ...prev };
         delete newImages[currentView];
@@ -694,7 +817,6 @@ export function ProductImageEditor({
     }
 
     setIsLoading(true);
-
     try {
       const formData = new FormData();
       formData.append("imageId", imageToDelete.id);
@@ -702,6 +824,15 @@ export function ProductImageEditor({
       const result = await deleteProductImage(formData);
 
       if (result.success) {
+        // If this was a saved image, also delete the file from UploadThing
+        if (imageToDelete.url) {
+          const fileKey = extractFileKeyFromUrl(imageToDelete.url);
+          if (fileKey && savedUploads.includes(fileKey)) {
+            await deleteUploadThingFile(fileKey);
+            setSavedUploads((prev) => prev.filter((key) => key !== fileKey));
+          }
+        }
+
         setImages((prev) => {
           const newImages = { ...prev };
           delete newImages[currentView];
@@ -718,7 +849,6 @@ export function ProductImageEditor({
       setIsLoading(false);
     }
   };
-
   // Tính toán cursor style cho vùng ảnh
   const getImageCursorStyle = () => {
     if (!images[currentView]?.url) return "default";
@@ -728,16 +858,81 @@ export function ProductImageEditor({
     return "default";
   };
 
+  // Extract file key from UploadThing URL
+  const extractFileKeyFromUrl = (url: string): string | null => {
+    // UploadThing URLs typically have format: https://uploadthing.com/f/[FILE_KEY]
+    const matches = url.match(/\/f\/([^?#]+)/);
+    return matches ? matches[1] : null;
+  };
+
+  // Function to delete a file from UploadThing
+  const deleteUploadThingFile = async (fileKey: string) => {
+    try {
+      console.log(`Attempting to delete UploadThing file: ${fileKey}`);
+
+      const response = await fetch("/api/uploadthing/delete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileKey }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        console.log(`Successfully deleted UploadThing file: ${fileKey}`);
+        return true;
+      } else {
+        console.error(
+          `Failed to delete UploadThing file: ${fileKey}`,
+          result.error
+        );
+        return false;
+      }
+    } catch (error) {
+      console.error("Error deleting UploadThing file:", error);
+      return false;
+    }
+  };
+
+  // Cleanup effect to delete all pending uploads when leaving the page
+  useEffect(() => {
+    return () => {
+      // Only clean up if we haven't saved the images
+      if (pendingUploads.length > 0) {
+        console.log(
+          `Cleaning up ${pendingUploads.length} pending uploads on unmount`
+        );
+
+        // Delete all pending uploads that aren't in savedUploads
+        pendingUploads.forEach((fileKey) => {
+          if (!savedUploads.includes(fileKey)) {
+            // Use a self-executing async function since we can't use await directly in useEffect
+            (async () => {
+              await deleteUploadThingFile(fileKey);
+            })();
+          }
+        });
+      }
+    };
+  }, [pendingUploads, savedUploads]);
+
   return (
     <div className="space-y-6">
       {/* Admin Navigation Bar */}
       <div className="flex items-center justify-between  p-5 rounded-lg ">
+        {" "}
         <div className="flex items-center gap-2">
-          <Button variant="outline" asChild className="mr-2">
-            <Link href={`/admin/products/${productId}/variants`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Variants
-            </Link>
+          <Button
+            variant="outline"
+            className="mr-2"
+            onClick={() =>
+              handleNavigation(`/admin/products/${productId}/variants`)
+            }
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Variants
           </Button>
         </div>
       </div>
@@ -933,12 +1128,12 @@ export function ProductImageEditor({
                               <div className="absolute inset-0 flex items-center justify-center">
                                 <div className="text-xs bg-blue-600/80 text-white px-1.5 py-0.5 rounded pointer-events-none">
                                   <Move className="h-3 w-3 inline mr-1" />
-                                  Kéo để di chuyển
+                                  Drag to move
                                 </div>
                               </div>
                             </TooltipTrigger>
                             <TooltipContent>
-                              Kéo để di chuyển vùng thiết kế
+                              Drag to move the design area
                             </TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
@@ -955,9 +1150,7 @@ export function ProductImageEditor({
                                 }
                               />
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Kéo để thay đổi kích thước
-                            </TooltipContent>
+                            <TooltipContent>Drag to resize</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -972,9 +1165,7 @@ export function ProductImageEditor({
                                 }
                               />
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Kéo để thay đổi kích thước
-                            </TooltipContent>
+                            <TooltipContent>Drag to resize</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -989,9 +1180,7 @@ export function ProductImageEditor({
                                 }
                               />
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Kéo để thay đổi kích thước
-                            </TooltipContent>
+                            <TooltipContent>Drag to resize</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
 
@@ -1006,9 +1195,7 @@ export function ProductImageEditor({
                                 }
                               />
                             </TooltipTrigger>
-                            <TooltipContent>
-                              Kéo để thay đổi kích thước
-                            </TooltipContent>
+                            <TooltipContent>Drag to resize</TooltipContent>
                           </Tooltip>
                         </TooltipProvider>
                       </div>
@@ -1018,7 +1205,7 @@ export function ProductImageEditor({
                       <ImageIconOutline className="h-16 w-16 text-muted-foreground opacity-30" />
                       <div className="text-center mt-4">
                         <p className="text-muted-foreground">
-                          Chưa có ảnh cho góc nhìn này
+                          No photos for this view
                         </p>
                       </div>
                     </div>
@@ -1263,6 +1450,36 @@ export function ProductImageEditor({
           }
         }
       `}</style>
+
+      {/* Alert Dialog khi thoát trang */}
+      <AlertDialog open={showExitAlert} onOpenChange={setShowExitAlert}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this page?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You haven't uploaded all 4 images for this product yet. If you
+              leave now, your upload progress and edits will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>{" "}
+            <AlertDialogAction
+              onClick={() => {
+                if (navigateTo === "back") {
+                  // Handle browser back button case
+                  window.history.back();
+                } else {
+                  // Handle normal navigation
+                  router.push(navigateTo);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Leave page
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

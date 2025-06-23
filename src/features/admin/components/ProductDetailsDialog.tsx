@@ -159,9 +159,13 @@ export function ProductDetailsDialog({
                         Description:
                       </span>
                     </div>
-                    <div className="text-sm">
-                      {product.description || "No description provided"}
-                    </div>
+                    <div
+                      className="text-sm"
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          product.description || "No description provided",
+                      }}
+                    />
                   </div>
                 </CardContent>
               </Card>
