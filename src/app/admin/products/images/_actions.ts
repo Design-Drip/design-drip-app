@@ -48,9 +48,8 @@ export async function uploadProductImages(formData: FormData) {
     const formattedImages = imagesData.map((img: any) => ({
       view_side: img.view_side,
       url: img.url,
-      is_primary: img.is_primary === true,
-      width: 800, // Kích thước cố định
-      height: 1120, // Kích thước cố định
+      is_primary: img.is_primary === true,      width: 800, // Kích thước cố định
+      height: 797, // Kích thước cố định
       
       // Đọc các giá trị editable_zone với Number() để ép kiểu
       // Nếu không có giá trị hoặc không thể parse, sử dụng giá trị mặc định

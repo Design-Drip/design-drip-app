@@ -2,8 +2,18 @@ import * as React from "react";
 import { Package, CheckCircle2, XCircle } from "lucide-react";
 import { redirect } from "next/navigation";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 
 import { TableProducts } from "@/features/admin/components/TableProducts";
@@ -30,7 +40,11 @@ export interface Product {
 export default async function ProductsManagementPage({
   searchParams,
 }: {
-  searchParams: { search?: string; status?: string; category?: string };
+  searchParams: {
+    search?: string;
+    status?: string;
+    category?: string;
+  };
 }) {
   // Verify admin access
   const isAdmin = await checkRole("admin");
@@ -55,7 +69,9 @@ export default async function ProductsManagementPage({
       !searchTerm ||
       product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (product.description &&
-        product.description.toLowerCase().includes(searchTerm.toLowerCase()));
+        product.description
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()));
 
     const matchesStatus =
       statusFilter === "all" ||
@@ -65,15 +81,20 @@ export default async function ProductsManagementPage({
     const matchesCategory =
       categoryFilter === "all" ||
       product.categories.some(
-        (category) => category.toLowerCase() === categoryFilter.toLowerCase()
+        (category) =>
+          category.toLowerCase() === categoryFilter.toLowerCase()
       );
 
     return matchesSearch && matchesStatus && matchesCategory;
   });
 
   // Count by status
-  const activeCount = products.filter((product) => product.isActive).length;
-  const inactiveCount = products.filter((product) => !product.isActive).length;
+  const activeCount = products.filter(
+    (product) => product.isActive
+  ).length;
+  const inactiveCount = products.filter(
+    (product) => !product.isActive
+  ).length;
 
   // Get unique categories for filtering
   const uniqueCategories = Array.from(
@@ -110,25 +131,35 @@ export default async function ProductsManagementPage({
                 <Package className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{products.length}</div>
+                <div className="text-2xl font-bold">
+                  {products.length}
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Active
+                </CardTitle>
                 <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{activeCount}</div>
+                <div className="text-2xl font-bold">
+                  {activeCount}
+                </div>
               </CardContent>
             </Card>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Inactive</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  Inactive
+                </CardTitle>
                 <XCircle className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{inactiveCount}</div>
+                <div className="text-2xl font-bold">
+                  {inactiveCount}
+                </div>
               </CardContent>
             </Card>
           </div>
