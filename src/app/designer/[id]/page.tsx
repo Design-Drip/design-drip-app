@@ -1,38 +1,78 @@
+"use client";
+import { getProductColors } from "@/app/admin/products/images/_actions";
 import { Editor } from "@/components/editor/Editor";
+import { Button } from "@/components/ui/button";
+import { getProductDetailQuery } from "@/features/products/services/queries";
 import { products } from "@/lib/data/products";
+import { auth } from "@clerk/nextjs/server";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 
-function EditDesignPage({ params }: { params: { id: string } }) {
+function EditDesignPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { colorId: string };
+}) {
   const { id } = params;
-  const data = products.find((product) => product.id === id);
-  if (!data) return
-  // Fetch the project data using the id from the URL
-  // const { data, isLoading, isError } = useProject(id);
-  // if (isLoading || !data) {
-  //   return (
-  //     <div className="h-full flex flex-col items-center justify-center">
-  //       <Loader className="size-6 animate-spin text-muted-foreground" />
-  //     </div>
-  //   );
-  // }
+  const { colorId } = searchParams;
+  const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
+  const router = useRouter();
 
-  // if (isError) {
-  //   return (
-  //     <div className="h-full flex flex-col gap-y-5 items-center justify-center">
-  //       <TriangleAlert className="size-6 text-muted-foreground" />
-  //       <p className="text-muted-foreground text-sm">
-  //         Failed to fetch project
-  //       </p>
-  //       <Button asChild variant="secondary">
-  //         <Link href="/">
-  //           Back to Home
-  //         </Link>
-  //       </Button>
-  //     </div>
-  //   );
-  // }
-  return (
-    <Editor initialData={data} />
-  )
+  const colors = data?.colors || [];
+
+  const productColor = colorId
+    ? colors.find((color) => color.id === colorId)
+    : undefined;
+
+  const productColorId = productColor?.id || "";
+
+  const images = productColor?.images || [];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-10 w-10 animate-spin text-red-600 mb-4" />
+          <p>Loading product design...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <p className="text-red-600 mb-4">Failed to load product design.</p>
+          <Button onClick={() => router.back()}>Go Back</Button>
+        </div>
+      </div>
+    );
+  }
+  if (!productColor) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <p className="text-red-600 mb-4">Failed to load product color.</p>
+        </div>
+      </div>
+    );
+  }
+  if (images.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <p className="text-red-600 mb-4">
+            No images available for this product.
+          </p>
+        </div>
+      </div>
+    );
+  }
+  return <Editor images={images} productColorId={productColorId} />;
 }
 
-export default EditDesignPage
+export default EditDesignPage;

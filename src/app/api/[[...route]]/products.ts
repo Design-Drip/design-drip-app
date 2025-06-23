@@ -62,18 +62,47 @@ const app = new Hono()
             return val;
           },
           z
-            .array(z.string())
+            .array(
+              z
+                .string()
+                .trim()
+                .refine((val) => {
+                  if (!mongoose.isObjectIdOrHexString(val)) {
+                    throw new HTTPException(400, {
+                      message: "Invalid product ID",
+                    });
+                  }
+                  return true;
+                })
+            )
             .optional()
-            .refine(async (val) => {
-              if (!val || val.length === 0) return true;
-              const categoryIds = await Category.find({
-                _id: { $in: val },
-              });
-              return categoryIds.length === val.length;
-            })
         ),
         isActive: z.boolean().optional(),
         search: z.string().trim().optional(),
+        productIds: z.preprocess(
+          (val) => {
+            if (typeof val === "string") {
+              return [val as string];
+            }
+
+            return val;
+          },
+          z
+            .array(
+              z
+                .string()
+                .trim()
+                .refine((val) => {
+                  if (!mongoose.isObjectIdOrHexString(val)) {
+                    throw new HTTPException(400, {
+                      message: "Invalid product ID",
+                    });
+                  }
+                  return true;
+                })
+            )
+            .optional()
+        ),
       })
     ),
     async (c) => {
@@ -88,6 +117,7 @@ const app = new Hono()
         categories,
         isActive,
         search,
+        productIds,
       } = c.req.valid("query");
 
       let query: ProductsQueryOptions = {};
@@ -162,9 +192,47 @@ const app = new Hono()
         query.name = { $regex: search, $options: "i" };
       }
 
-      // If we have color filter results, add them to the query
-      if (colorProductIds) {
-        query._id = { $in: colorProductIds };
+      // Handle filtering by both colors and specific product IDs
+      let productIdFilter: mongoose.Types.ObjectId[] | undefined;
+
+      // If we have color filter results, prepare them
+      if (colorProductIds && colorProductIds.length > 0) {
+        productIdFilter = colorProductIds;
+      }
+
+      // If we have product IDs filter, apply it
+      if (productIds && productIds.length > 0) {
+        const productObjectIds = productIds.map(
+          (id) => new mongoose.Types.ObjectId(id)
+        );
+
+        // If we already have color filters, find intersection
+        if (productIdFilter) {
+          // Find intersection of two ID arrays - products that match both conditions
+          productIdFilter = productIdFilter.filter((colorId) =>
+            productObjectIds.some(
+              (prodId) => prodId.toString() === colorId.toString()
+            )
+          );
+
+          // If intersection is empty, return empty results early
+          if (productIdFilter.length === 0) {
+            return c.json({
+              items: [],
+              totalItems: 0,
+              page,
+              pageSize: limit,
+            } as ListResponse);
+          }
+        } else {
+          // If no color filter, just use product IDs
+          productIdFilter = productObjectIds;
+        }
+      }
+
+      // Apply combined ID filter if any exists
+      if (productIdFilter) {
+        query._id = { $in: productIdFilter };
       }
 
       const skip = (page - 1) * limit;

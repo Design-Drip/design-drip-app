@@ -134,7 +134,7 @@ const imageSubSchema = new mongoose.Schema<ImageSubdoc>(
     },
     height: {
       type: Number,
-      default: 1120, // Kích thước cố định
+      default: 797, // Kích thước cố định
       required: true,
     },
     width_editable_zone: {

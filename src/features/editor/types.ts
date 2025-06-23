@@ -1,4 +1,4 @@
-import { fabric } from 'fabric';
+import { fabric } from "fabric";
 import { ITextboxOptions } from "fabric/fabric-impl";
 import * as material from "material-colors";
 
@@ -10,7 +10,7 @@ export const JSON_KEYS = [
   "linkData",
   "editable",
   "extensionType",
-  "extension"
+  "extension",
 ];
 
 export const filters = [
@@ -178,7 +178,7 @@ export interface EditorHookProps {
     height: number;
     width: number;
   }) => void;
-};
+}
 
 export type BuildEditorProps = {
   undo: () => void;
@@ -204,28 +204,25 @@ export type BuildEditorProps = {
 };
 
 export interface Editor {
-  savePng: () => void;
-  saveJpg: () => void;
-  saveSvg: () => void;
-  saveJson: () => void;
   loadJson: (json: string) => void;
-  onUndo: () => void;
-  onRedo: () => void;
   canUndo: () => boolean;
   canRedo: () => boolean;
   autoZoom: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
-  getWorkspace: () => fabric.Object | undefined;
-  changeBackground: (value: string) => void;
   changeSize: (value: { width: number; height: number }) => void;
+  changeBackground: (value: string) => void;
   enableDrawingMode: () => void;
   disableDrawingMode: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
   onCopy: () => void;
   onPaste: () => void;
   changeImageFilter: (value: string) => void;
   addImage: (value: string) => void;
   delete: () => void;
+  addText: (value: string, options?: ITextboxOptions) => void;
+  getActiveOpacity: () => number;
   changeFontSize: (value: number) => void;
   getActiveFontSize: () => number;
   changeTextAlign: (value: string) => void;
@@ -238,16 +235,14 @@ export interface Editor {
   getActiveFontStyle: () => string;
   changeFontWeight: (value: number) => void;
   getActiveFontWeight: () => number;
-  getActiveFontFamily: () => string;
   changeFontFamily: (value: string) => void;
-  addText: (value: string, options?: ITextboxOptions) => void;
-  getActiveOpacity: () => number;
+  getActiveFontFamily: () => string;
   changeOpacity: (value: number) => void;
   bringForward: () => void;
   sendBackwards: () => void;
-  changeStrokeWidth: (value: number) => void;
   changeFillColor: (value: string) => void;
   changeStrokeColor: (value: string) => void;
+  changeStrokeWidth: (value: number) => void;
   changeStrokeDashArray: (value: number[]) => void;
   addCircle: () => void;
   addSoftRectangle: () => void;
@@ -255,10 +250,10 @@ export interface Editor {
   addTriangle: () => void;
   addInverseTriangle: () => void;
   addDiamond: () => void;
-  canvas: fabric.Canvas;
   getActiveFillColor: () => string;
   getActiveStrokeColor: () => string;
   getActiveStrokeWidth: () => number;
   getActiveStrokeDashArray: () => number[];
+  canvas: fabric.Canvas;
   selectedObjects: fabric.Object[];
-};
+}
