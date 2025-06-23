@@ -17,7 +17,9 @@ const connectMongoDB = async () => {
     if (mongoose.connection.readyState === 0) {
       const uri = process.env.MONGODB_URI;
       if (!uri) {
-        throw new Error("MONGODB_URI is not defined in environment variables");
+        throw new Error(
+          "MONGODB_URI is not defined in environment variables"
+        );
       }
 
       console.log("Connecting to MongoDB...");
@@ -56,7 +58,9 @@ export async function getProducts(): Promise<Product[]> {
 
         // Map categories to strings if they exist
         const categories =
-          shirt.categories?.map((cat: any) => cat.name || "Unknown") || [];
+          shirt.categories?.map(
+            (cat: any) => cat.name || "Unknown"
+          ) || [];
 
         return {
           id: shirt._id.toString(),
@@ -210,12 +214,17 @@ export async function createProduct(formData: FormData) {
     // Extract product data from form
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
-    const default_price = parseFloat(formData.get("default_price") as string);
+    const default_price = parseFloat(
+      formData.get("default_price") as string
+    );
     const isActive = formData.get("isActive") === "true";
     const categoriesRaw = formData.get("categories") as string;
 
     if (!name || isNaN(default_price)) {
-      return { success: false, message: "Name and valid price are required" };
+      return {
+        success: false,
+        message: "Name and valid price are required",
+      };
     }
 
     // Convert comma-separated category IDs to array of ObjectIds
@@ -235,7 +244,9 @@ export async function createProduct(formData: FormData) {
       isActive,
     });
 
-    console.log(`Product created successfully with ID: ${newShirt._id}`);
+    console.log(
+      `Product created successfully with ID: ${newShirt._id}`
+    );
 
     // Revalidate the products page to show updated data
     revalidatePath("/admin/products");
@@ -265,7 +276,9 @@ export async function updateProduct(formData: FormData) {
     const productId = formData.get("id") as string;
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
-    const default_price = parseFloat(formData.get("default_price") as string);
+    const default_price = parseFloat(
+      formData.get("default_price") as string
+    );
     const isActive = formData.get("isActive") === "true";
     const categoriesRaw = formData.get("categories") as string;
 
