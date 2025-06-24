@@ -22,6 +22,10 @@ const addToCartSchema = z.object({
   quantityBySize: quantityBySizeSchema,
 });
 
+const editCartItemSchema = z.object({
+  quantityBySize: quantityBySizeSchema,
+});
+
 const app = new Hono()
   .use(verifyAuth)
   .get("/", async (c) => {
@@ -163,6 +167,101 @@ const app = new Hono()
       throw new HTTPException(500, { message: "Failed to add item to cart" });
     }
   })
+  .put(
+    "/:id",
+    zValidator(
+      "param",
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .refine((val) => {
+            if (!mongoose.isObjectIdOrHexString(val)) {
+              throw new HTTPException(400, {
+                message: "Invalid cart item ID",
+              });
+            }
+            return true;
+          }),
+      })
+    ),
+    zValidator("json", editCartItemSchema),
+    async (c) => {
+      const user = c.get("user")!;
+      const itemId = c.req.param("id");
+      const { quantityBySize } = c.req.valid("json");
+
+      try {
+        const cart = await Cart.findOne({ userId: user.id });
+
+        if (!cart) {
+          throw new HTTPException(404, { message: "Cart not found" });
+        }
+
+        const itemIndex = cart.items.findIndex(
+          (item) => item._id!.toString() === itemId
+        );
+
+        if (itemIndex === -1) {
+          throw new HTTPException(404, { message: "Item not found in cart" });
+        }
+
+        // Validate all sizes exist for this product before updating
+        const design = await Design.findById(
+          cart.items[itemIndex].designId
+        ).lean();
+        if (!design) {
+          throw new HTTPException(404, { message: "Design not found" });
+        }
+
+        const shirtColor = await ShirtColor.findById(
+          design.shirt_color_id
+        ).lean();
+        if (!shirtColor) {
+          throw new HTTPException(404, { message: "Product color not found" });
+        }
+
+        // Fetch available sizes for this shirt color
+        const availableSizes = await ShirtSizeVariant.find({
+          shirtColor: shirtColor._id,
+        }).lean();
+
+        // Validate all sizes in the request are valid for this product
+        for (const sizeItem of quantityBySize) {
+          const sizeExists = availableSizes.some(
+            (s) => s.size === sizeItem.size
+          );
+          if (!sizeExists) {
+            throw new HTTPException(400, {
+              message: `Size ${sizeItem.size} is not available for this product`,
+            });
+          }
+        }
+
+        cart.items[itemIndex].quantityBySize = quantityBySize;
+
+        await cart.save();
+
+        return c.json({
+          success: true,
+          message: "Cart item updated successfully",
+          updatedItem: {
+            id: cart.items[itemIndex]._id!.toString(),
+            designId: cart.items[itemIndex].designId.toString(),
+            quantityBySize: cart.items[itemIndex].quantityBySize,
+          },
+        });
+      } catch (error) {
+        console.error("Error updating cart item:", error);
+        if (error instanceof HTTPException) {
+          throw error;
+        }
+        throw new HTTPException(500, {
+          message: "Failed to update cart item",
+        });
+      }
+    }
+  )
   .delete(
     "/:id",
     zValidator(
