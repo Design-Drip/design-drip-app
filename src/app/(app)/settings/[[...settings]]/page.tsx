@@ -1,8 +1,9 @@
 "use client";
 
 import { UserProfile } from "@clerk/nextjs";
-import { WalletCards } from "lucide-react";
+import { WalletCards, Shirt } from "lucide-react";
 import PaymentMethods from "@/features/payments/components/PaymentMethods";
+import SavedDesigns from "@/components/saved-designs/SavedDesigns";
 
 const UserProfilePage = () => (
   <UserProfile
@@ -21,6 +22,13 @@ const UserProfilePage = () => (
       labelIcon={<WalletCards size={16} />}
     >
       <PaymentMethods />
+    </UserProfile.Page>
+    <UserProfile.Page
+      label="Saved Designs"
+      url="saved-designs"
+      labelIcon={<Shirt size={16} />}
+    >
+      <SavedDesigns />
     </UserProfile.Page>
   </UserProfile>
 );

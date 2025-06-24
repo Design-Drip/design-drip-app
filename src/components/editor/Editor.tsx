@@ -20,6 +20,13 @@ import { TextSidebar } from "./components/text-sidebar";
 import { useUser } from "@clerk/clerk-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { FillColorSidebar } from "./components/fill-color-sidebar";
+// Add near your imports
+import { generateReactHelpers } from "@uploadthing/react";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
+import html2canvas from "html2canvas";
+
+// Add inside your component
+const { useUploadThing } = generateReactHelpers<OurFileRouter>();
 
 interface EditorProps {
   images: ProductImage[];
@@ -52,6 +59,78 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   //mutation
   const createDesignMutation = useCreateDesign();
 
+  // Add this to use the new route
+  const { startUpload, isUploading } = useUploadThing("designCanvas");
+  // Add this function to convert canvas to file and upload
+  const uploadCanvasImage = async (
+    canvas: any,
+    viewName: string,
+    imageIndex?: number
+  ): Promise<string> => {
+    try {
+      // If we have an imageIndex, capture the entire design
+      if (imageIndex !== undefined && containerRef.current) {
+        // Get the parent div that contains both background and canvas
+        const designContainer = containerRef.current.parentElement;
+
+        if (!designContainer) {
+          throw new Error("Design container not found");
+        }
+
+        // Use html2canvas to capture the entire design
+        const capturedCanvas = await html2canvas(designContainer, {
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: null,
+          scale: 2, // Higher quality
+        });
+
+        // Convert to blob
+        const dataURL = capturedCanvas.toDataURL("image/png");
+        const res = await fetch(dataURL);
+        const blob = await res.blob();
+
+        // Create a File from the Blob
+        const file = new File([blob], `design-${viewName}.png`, {
+          type: "image/png",
+        });
+
+        // Upload the file using Uploadthing
+        const uploadResult = await startUpload([file]);
+
+        if (uploadResult && uploadResult[0]) {
+          return uploadResult[0].url;
+        }
+
+        throw new Error("Upload failed");
+      } else {
+        // Original code for when we don't need the background
+        const dataURL = canvas.toDataURL({
+          format: "png",
+          quality: 0.8,
+          multiplier: 2,
+        });
+
+        const res = await fetch(dataURL);
+        const blob = await res.blob();
+
+        const file = new File([blob], `design-${viewName}.png`, {
+          type: "image/png",
+        });
+
+        const uploadResult = await startUpload([file]);
+
+        if (uploadResult && uploadResult[0]) {
+          return uploadResult[0].url;
+        }
+
+        throw new Error("Upload failed");
+      }
+    } catch (error) {
+      console.error(`Error uploading canvas for ${viewName}:`, error);
+      throw error;
+    }
+  };
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
       setActiveTool("select");
@@ -167,6 +246,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     try {
       // Get the current canvas state directly
       const elementDesign: { [key: string]: any } = {};
+      const designImages: { [key: string]: string } = {};
 
       // First, update the current canvas state
       const currentCanvasJson = editor.canvas.toJSON();
@@ -189,15 +269,58 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       };
 
       // Process all canvas states
-      Object.entries(allStates).forEach(([imageIndex, canvasJson]) => {
-        const image = images[parseInt(imageIndex)];
+      for (const [imageIndex, canvasJson] of Object.entries(allStates)) {
+        const index = parseInt(imageIndex);
+        const image = images[index];
+
         if (image && image.id) {
           elementDesign[imageIndex] = {
             images_id: image.id,
             element_Json: canvasJson,
           };
+
+          // Generate image for each canvas state
+          if (index === selectedImageIndex) {
+            // For the current canvas, use the active editor
+            const imageUrl = await uploadCanvasImage(
+              editor.canvas,
+              `view-${index}`,
+              index
+            );
+
+            designImages[imageIndex] = imageUrl;
+          } else {
+            // For other canvases, we need to temporarily load them
+            try {
+              const tempCanvas = new fabric.Canvas(null);
+              tempCanvas.setDimensions({
+                width: images[index].width_editable_zone,
+                height: images[index].height_editable_zone,
+              });
+
+              const stateData = JSON.parse(canvasJson);
+              await new Promise<void>((resolve) => {
+                tempCanvas.loadFromJSON(
+                  stateData.canvas || stateData,
+                  async () => {
+                    const imageUrl = await uploadCanvasImage(
+                      tempCanvas,
+                      `view-${index}`
+                    );
+                    designImages[imageIndex] = imageUrl;
+                    resolve();
+                  }
+                );
+              });
+            } catch (error) {
+              console.error(
+                `Error generating image for canvas ${index}:`,
+                error
+              );
+            }
+          }
         }
-      });
+      }
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
@@ -205,6 +328,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
           shirt_color_id: productColorId,
           element_design: elementDesign,
           name: designName || "Shirt Design", // Add design name to the mutation
+          design_images: designImages,
         });
 
         // Update canvasStates without triggering effects
@@ -538,6 +662,9 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
   return (
     <div className="h-full flex flex-col">
+      {isUploading && (
+        <div className="uploading-indicator">Uploading design images...</div>
+      )}
       <Navbar
         editor={editor}
         activeTool={activeTool}
