@@ -22,7 +22,7 @@ const routes = app
   .route("/design", design)
   .route("/payments/payment-methods", paymentMethods)
   .route("/products", products)
-  .route("/wish-list", wishlist);
+  .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate);
 
 export const GET = handle(app);

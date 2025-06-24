@@ -1,30 +1,22 @@
 import mongoose, { Model } from "mongoose";
 
 interface DesignTemplateDoc extends mongoose.Document {
-    title: string;
-    description?: string;
-    imageUrl: string; // URL của hình ảnh template
+    name: string;
+    imageUrl: string;
     category: string;
-    is_active: boolean;
-    created_by: mongoose.Types.ObjectId;
-    downloads: number;
+    isActive: boolean;
     featured: boolean;
     rating: number;
-    total_ratings: number;
+    totalRatings: number;
 }
 
 const designTemplateSchema = new mongoose.Schema<DesignTemplateDoc>(
     {
-        title: {
+        name: {
             type: String,
             required: true,
             trim: true,
             maxlength: 255,
-        },
-        description: {
-            type: String,
-            trim: true,
-            maxlength: 1000,
         },
         imageUrl: {
             type: String,
@@ -48,19 +40,9 @@ const designTemplateSchema = new mongoose.Schema<DesignTemplateDoc>(
             ],
             default: "logo",
         },
-        is_active: {
+        isActive: {
             type: Boolean,
             default: true,
-        },
-        created_by: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "User",
-            required: true,
-        },
-        downloads: {
-            type: Number,
-            default: 0,
-            min: 0,
         },
         featured: {
             type: Boolean,
@@ -72,7 +54,7 @@ const designTemplateSchema = new mongoose.Schema<DesignTemplateDoc>(
             max: 5,
             default: 0,
         },
-        total_ratings: {
+        totalRatings: {
             type: Number,
             default: 0,
             min: 0,
@@ -93,10 +75,7 @@ const designTemplateSchema = new mongoose.Schema<DesignTemplateDoc>(
 
 // Indexes for better query performance
 designTemplateSchema.index({ category: 1, is_active: 1 });
-designTemplateSchema.index({ tags: 1, is_active: 1 });
 designTemplateSchema.index({ featured: 1, is_active: 1 });
-designTemplateSchema.index({ created_by: 1 });
-designTemplateSchema.index({ downloads: -1 }); // For popular templates
 designTemplateSchema.index({ createdAt: -1 }); // For newest first
 designTemplateSchema.index({ rating: -1 }); // For highest rated
 

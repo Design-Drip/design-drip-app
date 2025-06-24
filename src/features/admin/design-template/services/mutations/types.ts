@@ -1,8 +1,14 @@
 export interface IDesignTemplatesPayload {
-    title: string,
-    description: string,
+    name: string,
     imageUrl: string,
     category: "logo" | "banner" | "poster" | "business-card" | "flyer" | "social-media" | "brochure" | "presentation" | "invitation" | "certificate",
-    isActive: boolean,
-    createdBy: string,
+}
+
+export interface IUpdateDesignTemplate extends IDesignTemplatesPayload {
+    designTemplateId: string;
+}
+
+export interface IUpdateActiveStatusDesignTemplate {
+    designTemplateId: string;
+    isActive: boolean
 }
