@@ -106,23 +106,25 @@ export default function DesignTemplateForm({
                 <div className="space-y-4">
                   {watchedImageUrl ? (
                     <div className="space-y-2">
-                      <div className="relative inline-block">
-                        <Image
-                          src={watchedImageUrl}
-                          alt="Template preview"
-                          width={200}
-                          height={150}
-                          className="rounded-lg border object-cover"
-                        />
-                        <Button
-                          type="button"
-                          variant="destructive"
-                          size="sm"
-                          className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0"
-                          onClick={removeImage}
-                        >
-                          <X className="h-3 w-3" />
-                        </Button>
+                      <div dir='rtl' className='flex justify-end'>
+                        <div className="relative inline-block">
+                          <Image
+                            src={watchedImageUrl}
+                            alt="Template preview"
+                            width={200}
+                            height={150}
+                            className="rounded-lg border object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute start-0 top-0 h-6 w-6 rounded-full p-0"
+                            onClick={removeImage}
+                          >
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         Click the X to remove and upload a new image
