@@ -69,8 +69,12 @@ const app = new Hono()
             shirtColor: shirtColor._id,
           }).lean();
 
-          // Get from design preview images
-          // const previewImages = [];
+          const previewImages = design.design_images
+            ? Object.entries(design.design_images).map(([key, value]) => ({
+                id: key,
+                url: value,
+              }))
+            : [];
 
           return {
             id: item._id!.toString(),
@@ -100,7 +104,7 @@ const app = new Hono()
                 totalPrice: pricePerSize * size.quantity,
               };
             }),
-            previewImages: [],
+            previewImages,
           };
         })
       );
@@ -120,6 +124,14 @@ const app = new Hono()
       console.error("Error fetching cart:", error);
       throw new HTTPException(500, { message: "Failed to fetch cart" });
     }
+  })
+  .get("/item-count", async (c) => {
+    const user = c.get("user")!;
+    const cart = await Cart.findOne({
+      userId: user.id,
+    });
+
+    return c.json(cart ? cart.items.length : 0);
   })
   .post("/", zValidator("json", addToCartSchema), async (c) => {
     const user = c.get("user")!;
