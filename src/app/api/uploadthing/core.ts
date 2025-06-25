@@ -24,6 +24,23 @@ export const ourFileRouter = {
       // Return the file URL
       return { url: file.url };
     }),
+  designCanvas: f({
+    image: {
+      maxFileSize: "8MB", // Increased size for canvas images
+      maxFileCount: 4, // Allow multiple views (front, back, etc.)
+    },
+  })
+    .middleware(() => {
+      // You can use the same simplified auth for now
+      // In production, you'd want to verify the user
+      return { userId: "demo-user" };
+    })
+    .onUploadComplete(({ file }) => {
+      console.log("Design canvas upload complete:", file.name);
+
+      // Return the file URL
+      return { url: file.url };
+    }),
 } satisfies FileRouter;
 
 export type OurFileRouter = typeof ourFileRouter;

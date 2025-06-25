@@ -20,13 +20,27 @@ import { TextSidebar } from "./components/text-sidebar";
 import { useUser } from "@clerk/clerk-react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { FillColorSidebar } from "./components/fill-color-sidebar";
+// Add near your imports
+import { generateReactHelpers } from "@uploadthing/react";
+import type { OurFileRouter } from "@/app/api/uploadthing/core";
+import html2canvas from "html2canvas";
+import { useUpdateDesign } from "@/features/design/use-update-design";
+import { useQueryClient } from "@tanstack/react-query";
+
+// Add inside your component
+const { useUploadThing } = generateReactHelpers<OurFileRouter>();
 
 interface EditorProps {
   images: ProductImage[];
   productColorId: string;
+  designDetail?: any; // Optional design detail for editing
 }
 
-export const Editor = ({ images, productColorId }: EditorProps) => {
+export const Editor = ({
+  images,
+  productColorId,
+  designDetail,
+}: EditorProps) => {
   //State management
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -42,6 +56,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
   const didAttemptLocalStorageLoad = useRef(false);
+  const queryClient = useQueryClient();
 
   // Authentication
   const { isSignedIn, user, isLoaded } = useUser();
@@ -51,7 +66,130 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
   //mutation
   const createDesignMutation = useCreateDesign();
+  const updateDesignMutation = useUpdateDesign();
 
+  // Add this to use the new route
+  const { startUpload, isUploading } = useUploadThing("designCanvas");
+  // Add this function to convert canvas to file and upload
+  const uploadCanvasImage = async (
+    canvas: any,
+    viewName: string,
+    imageUrl?: string
+  ): Promise<string> => {
+    try {
+      // If we have a background image URL, create a composite image with background
+      if (imageUrl) {
+        // Create an off-screen canvas for compositing
+        const compositeCanvas = document.createElement("canvas");
+        const ctx = compositeCanvas.getContext("2d");
+
+        if (!ctx) {
+          throw new Error("Failed to get 2D context");
+        }
+
+        // Set canvas size to match the product image dimensions
+        compositeCanvas.width = 800;
+        compositeCanvas.height = 797;
+
+        // Load the background image
+        const bgImage = new window.Image();
+        bgImage.crossOrigin = "anonymous";
+
+        // Wait for background image to load
+        await new Promise<void>((resolve, reject) => {
+          bgImage.onload = () => resolve();
+          bgImage.onerror = () =>
+            reject(new Error("Failed to load background image"));
+          bgImage.src = imageUrl;
+        });
+
+        // Draw background image
+        ctx.drawImage(
+          bgImage,
+          0,
+          0,
+          compositeCanvas.width,
+          compositeCanvas.height
+        );
+
+        // Find the image in the images array that matches this URL
+        const imageData = images.find((img) => img.url === imageUrl);
+        const xPosition = imageData ? imageData.x_editable_zone + 20 : 20;
+        const yPosition = imageData ? imageData.y_editable_zone : 20;
+
+        // Convert canvas to data URL
+        const canvasDataURL = canvas.toDataURL({
+          format: "png",
+          quality: 0.9,
+          multiplier: 1,
+        });
+
+        // Load canvas content as an image
+        const canvasImage = new window.Image();
+        canvasImage.crossOrigin = "anonymous";
+
+        // Wait for canvas image to load
+        await new Promise<void>((resolve, reject) => {
+          canvasImage.onload = () => resolve();
+          canvasImage.onerror = () =>
+            reject(new Error("Failed to load canvas image"));
+          canvasImage.src = canvasDataURL;
+        });
+
+        // Draw canvas content at the correct position
+        const width = imageData ? imageData.width_editable_zone : canvas.width;
+        const height = imageData
+          ? imageData.height_editable_zone
+          : canvas.height;
+
+        ctx.drawImage(canvasImage, xPosition, yPosition, width, height);
+
+        // Convert the composite canvas to a blob
+        const compositeDataURL = compositeCanvas.toDataURL("image/png");
+        const res = await fetch(compositeDataURL);
+        const blob = await res.blob();
+
+        // Create a file from the blob
+        const file = new File([blob], `design-${viewName}.png`, {
+          type: "image/png",
+        });
+
+        // Upload the file using Uploadthing
+        const uploadResult = await startUpload([file]);
+
+        if (uploadResult && uploadResult[0]) {
+          return uploadResult[0].url;
+        }
+
+        throw new Error("Upload failed");
+      } else {
+        // Fallback for cases where we don't have a background URL
+        const dataURL = canvas.toDataURL({
+          format: "png",
+          quality: 0.8,
+          multiplier: 2,
+        });
+
+        const res = await fetch(dataURL);
+        const blob = await res.blob();
+
+        const file = new File([blob], `design-${viewName}.png`, {
+          type: "image/png",
+        });
+
+        const uploadResult = await startUpload([file]);
+
+        if (uploadResult && uploadResult[0]) {
+          return uploadResult[0].url;
+        }
+
+        throw new Error("Upload failed");
+      }
+    } catch (error) {
+      console.error(`Error uploading canvas for ${viewName}:`, error);
+      throw error;
+    }
+  };
   const onClearSelection = useCallback(() => {
     if (selectionDependentTools.includes(activeTool)) {
       setActiveTool("select");
@@ -167,6 +305,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     try {
       // Get the current canvas state directly
       const elementDesign: { [key: string]: any } = {};
+      const designImages: { [key: string]: string } = {};
 
       // First, update the current canvas state
       const currentCanvasJson = editor.canvas.toJSON();
@@ -189,28 +328,86 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
       };
 
       // Process all canvas states
-      Object.entries(allStates).forEach(([imageIndex, canvasJson]) => {
-        const image = images[parseInt(imageIndex)];
+      for (const [imageIndex, canvasJson] of Object.entries(allStates)) {
+        const index = parseInt(imageIndex);
+        const image = images[index];
+
         if (image && image.id) {
           elementDesign[imageIndex] = {
             images_id: image.id,
             element_Json: canvasJson,
           };
+
+          // Generate image for each canvas state
+          if (index === selectedImageIndex) {
+            // For the current canvas, use the active editor
+            const imageUrl = await uploadCanvasImage(
+              editor.canvas,
+              `view-${index}`,
+              image.url
+            );
+
+            designImages[imageIndex] = imageUrl;
+          } else {
+            // For other canvases, we need to temporarily load them
+            try {
+              const tempCanvas = new fabric.Canvas(null);
+              tempCanvas.setDimensions({
+                width: images[index].width_editable_zone,
+                height: images[index].height_editable_zone,
+              });
+
+              const stateData = JSON.parse(canvasJson);
+              await new Promise<void>((resolve) => {
+                tempCanvas.loadFromJSON(
+                  stateData.canvas || stateData,
+                  async () => {
+                    const imageUrl = await uploadCanvasImage(
+                      tempCanvas,
+                      `view-${index}`,
+                      image.url
+                    );
+                    designImages[imageIndex] = imageUrl;
+                    tempCanvas.dispose();
+                    resolve();
+                  }
+                );
+              });
+            } catch (error) {
+              console.error(
+                `Error generating image for canvas ${index}:`,
+                error
+              );
+            }
+          }
         }
-      });
+      }
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
-        await createDesignMutation.mutateAsync({
+        const designData = {
           shirt_color_id: productColorId,
           element_design: elementDesign,
-          name: designName || "Shirt Design", // Add design name to the mutation
-        });
+          name: designName || "Shirt Design",
+          design_images: designImages,
+        };
+        if (designDetail && designDetail._id) {
+          // We're updating an existing design
+          await updateDesignMutation.mutateAsync({
+            ...designData,
+            id: designDetail._id, // Pass the ID for updating
+          });
+          queryClient.invalidateQueries({ queryKey: ["designs"] });
+          toast.success("Design updated successfully!");
+        } else {
+          // We're creating a new design
+          await createDesignMutation.mutateAsync(designData);
+          toast.success("Design saved successfully!");
+        }
 
         // Update canvasStates without triggering effects
         setCanvasStates(allStates);
         setHasUnsavedChanges(false);
-        toast.success("Design saved successfully!");
 
         // Clear localStorage after successful save
         localStorage.removeItem("designDripEditorState");
@@ -229,6 +426,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     selectedImage,
     canvasStates,
     createDesignMutation,
+    updateDesignMutation,
     isSignedIn,
     isLoaded,
     router,
@@ -236,6 +434,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     searchParams,
     saveCurrentCanvasState,
     designName,
+    designDetail,
   ]);
 
   // Load canvas state for selected image
@@ -536,6 +735,121 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     }
   }, [activeTool, editor]);
 
+  useEffect(() => {
+    if (
+      editor?.canvas &&
+      !didAttemptLocalStorageLoad.current &&
+      !didLoadDesignDetail.current
+    ) {
+      console.log("Attempting to load from localStorage...");
+      didAttemptLocalStorageLoad.current = true;
+
+      try {
+        const storedData = localStorage.getItem("designDripEditorState");
+        console.log("Stored data found:", !!storedData);
+
+        if (storedData) {
+          // Rest of your localStorage loading code...
+        }
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+      }
+    }
+  }, [editor, productColorId, selectedImageIndex]);
+  // Add a new ref to track if we've loaded from designDetail
+  const didLoadDesignDetail = useRef(false);
+
+  useEffect(() => {
+    if (designDetail && editor?.canvas && !didLoadDesignDetail.current) {
+      didLoadDesignDetail.current = true;
+      // We need to set this to prevent localStorage loading from overriding our design
+      didAttemptLocalStorageLoad.current = true;
+
+      try {
+        // Extract and process the element_design data
+        const savedCanvasStates: { [key: number]: string } = {};
+
+        // Set the design name
+        setDesignName(designDetail.name || "Shirt Design");
+
+        // Process each element design (different views)
+        Object.entries(designDetail.element_design).forEach(
+          ([viewIndex, design]: [string, any]) => {
+            const index = parseInt(viewIndex);
+
+            // Store the JSON data in our canvas states
+            if (design && design.element_Json) {
+              savedCanvasStates[index] = design.element_Json;
+            }
+          }
+        );
+
+        // Update canvas states
+        setCanvasStates(savedCanvasStates);
+
+        // Load the canvas state for the current view
+        if (savedCanvasStates[selectedImageIndex]) {
+          // Wait a moment for the canvas to be fully initialized
+          setTimeout(() => {
+            try {
+              // Get the state for the selected image
+              const stateData = savedCanvasStates[selectedImageIndex];
+              const parsedState = JSON.parse(stateData);
+
+              // Extract the canvas data - handle both formats
+              const canvasData = parsedState.canvas || parsedState;
+
+              // Set canvas dimensions if needed
+              if (parsedState.metadata?.canvasDimensions) {
+                editor.canvas.setDimensions({
+                  width: parsedState.metadata.canvasDimensions.width,
+                  height: parsedState.metadata.canvasDimensions.height,
+                });
+              }
+
+              // Clear the canvas first
+              editor.canvas.clear();
+
+              // Load the canvas JSON
+              editor.canvas.loadFromJSON(canvasData, () => {
+                // Ensure all objects are visible and within bounds
+                const objects = editor.canvas.getObjects();
+                objects.forEach((obj) => {
+                  // Make sure object is visible
+                  obj.visible = true;
+
+                  // If object is a textbox with negative position, fix it
+                  if (
+                    obj.type === "textbox" &&
+                    ((obj.left ?? 0) < 0 || (obj.top ?? 0) < 0)
+                  ) {
+                    console.log(
+                      "Fixing position of text object that was outside canvas"
+                    );
+                    obj.set({
+                      left: Math.max(10, obj.left ?? 0),
+                      top: Math.max(10, obj.top ?? 0),
+                    });
+                  }
+                });
+
+                editor.canvas.renderAll();
+                console.log(
+                  "Design loaded successfully with",
+                  objects.length,
+                  "objects"
+                );
+              });
+            } catch (error) {
+              console.error("Error loading design state:", error);
+            }
+          }, 500);
+        }
+      } catch (error) {
+        console.error("Error processing design detail:", error);
+      }
+    }
+  }, [designDetail, editor, selectedImageIndex]);
   return (
     <div className="h-full flex flex-col">
       <Navbar
