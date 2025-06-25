@@ -35,6 +35,10 @@ export const useAddToCartMutation = () => {
       queryClient.invalidateQueries({
         queryKey: [CartKeys.GetCartQuery],
       });
+
+      queryClient.invalidateQueries({
+        queryKey: [CartKeys.GetCartItemCountQuery],
+      });
     },
   });
 };
@@ -87,6 +91,10 @@ export const useRemoveFromCartMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [CartKeys.GetCartQuery],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: [CartKeys.GetCartItemCountQuery],
       });
     },
   });

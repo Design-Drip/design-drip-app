@@ -125,6 +125,14 @@ const app = new Hono()
       throw new HTTPException(500, { message: "Failed to fetch cart" });
     }
   })
+  .get("/item-count", async (c) => {
+    const user = c.get("user")!;
+    const cart = await Cart.findOne({
+      userId: user.id,
+    });
+
+    return c.json(cart ? cart.items.length : 0);
+  })
   .post("/", zValidator("json", addToCartSchema), async (c) => {
     const user = c.get("user")!;
     const { designId, quantityBySize } = c.req.valid("json");

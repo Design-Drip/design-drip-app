@@ -15,3 +15,17 @@ export const getCartQuery = () =>
       return response.json();
     },
   });
+
+export const getCartItemCountQuery = () =>
+  queryOptions({
+    queryKey: [CartKeys.GetCartItemCountQuery],
+    queryFn: async () => {
+      const response = await client.api.cart["item-count"].$get();
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch cart item count");
+      }
+
+      return response.json();
+    },
+  });

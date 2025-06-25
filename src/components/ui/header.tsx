@@ -44,7 +44,6 @@ const shirtFilters = [
 
 export default async function Header() {
   const user = await currentUser();
-  const itemCount = await getTotalItemsInCart(user);
 
   return (
     <header className="border-b border-border sticky top-0 z-40 w-full bg-background/95 backdrop-blur">
@@ -126,7 +125,7 @@ export default async function Header() {
             </div>
           ) : (
             <div className="flex items-center gap-4 md:gap-10">
-              <CartWidget itemCount={itemCount} />
+              <CartWidget />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
