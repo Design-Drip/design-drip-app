@@ -24,6 +24,8 @@ import { FillColorSidebar } from "./components/fill-color-sidebar";
 import { generateReactHelpers } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import html2canvas from "html2canvas";
+import { useUpdateDesign } from "@/features/design/use-update-design";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Add inside your component
 const { useUploadThing } = generateReactHelpers<OurFileRouter>();
@@ -31,9 +33,14 @@ const { useUploadThing } = generateReactHelpers<OurFileRouter>();
 interface EditorProps {
   images: ProductImage[];
   productColorId: string;
+  designDetail?: any; // Optional design detail for editing
 }
 
-export const Editor = ({ images, productColorId }: EditorProps) => {
+export const Editor = ({
+  images,
+  productColorId,
+  designDetail,
+}: EditorProps) => {
   //State management
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -49,6 +56,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
   const didAttemptLocalStorageLoad = useRef(false);
+  const queryClient = useQueryClient();
 
   // Authentication
   const { isSignedIn, user, isLoaded } = useUser();
@@ -58,6 +66,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
   //mutation
   const createDesignMutation = useCreateDesign();
+  const updateDesignMutation = useUpdateDesign();
 
   // Add this to use the new route
   const { startUpload, isUploading } = useUploadThing("designCanvas");
@@ -359,6 +368,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                       image.url
                     );
                     designImages[imageIndex] = imageUrl;
+                    tempCanvas.dispose();
                     resolve();
                   }
                 );
@@ -375,17 +385,29 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
-        await createDesignMutation.mutateAsync({
+        const designData = {
           shirt_color_id: productColorId,
           element_design: elementDesign,
-          name: designName || "Shirt Design", // Add design name to the mutation
+          name: designName || "Shirt Design",
           design_images: designImages,
-        });
+        };
+        if (designDetail && designDetail._id) {
+          // We're updating an existing design
+          await updateDesignMutation.mutateAsync({
+            ...designData,
+            id: designDetail._id, // Pass the ID for updating
+          });
+          queryClient.invalidateQueries({ queryKey: ["designs"] });
+          toast.success("Design updated successfully!");
+        } else {
+          // We're creating a new design
+          await createDesignMutation.mutateAsync(designData);
+          toast.success("Design saved successfully!");
+        }
 
         // Update canvasStates without triggering effects
         setCanvasStates(allStates);
         setHasUnsavedChanges(false);
-        toast.success("Design saved successfully!");
 
         // Clear localStorage after successful save
         localStorage.removeItem("designDripEditorState");
@@ -404,6 +426,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     selectedImage,
     canvasStates,
     createDesignMutation,
+    updateDesignMutation,
     isSignedIn,
     isLoaded,
     router,
@@ -411,6 +434,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     searchParams,
     saveCurrentCanvasState,
     designName,
+    designDetail,
   ]);
 
   // Load canvas state for selected image
@@ -711,11 +735,123 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
     }
   }, [activeTool, editor]);
 
+  useEffect(() => {
+    if (
+      editor?.canvas &&
+      !didAttemptLocalStorageLoad.current &&
+      !didLoadDesignDetail.current
+    ) {
+      console.log("Attempting to load from localStorage...");
+      didAttemptLocalStorageLoad.current = true;
+
+      try {
+        const storedData = localStorage.getItem("designDripEditorState");
+        console.log("Stored data found:", !!storedData);
+
+        if (storedData) {
+          // Rest of your localStorage loading code...
+        }
+      } catch (error) {
+        console.error("Error loading from localStorage:", error);
+      }
+    }
+  }, [editor, productColorId, selectedImageIndex]);
+  // Add a new ref to track if we've loaded from designDetail
+  const didLoadDesignDetail = useRef(false);
+
+  useEffect(() => {
+    if (designDetail && editor?.canvas && !didLoadDesignDetail.current) {
+      didLoadDesignDetail.current = true;
+      // We need to set this to prevent localStorage loading from overriding our design
+      didAttemptLocalStorageLoad.current = true;
+
+      try {
+        // Extract and process the element_design data
+        const savedCanvasStates: { [key: number]: string } = {};
+
+        // Set the design name
+        setDesignName(designDetail.name || "Shirt Design");
+
+        // Process each element design (different views)
+        Object.entries(designDetail.element_design).forEach(
+          ([viewIndex, design]: [string, any]) => {
+            const index = parseInt(viewIndex);
+
+            // Store the JSON data in our canvas states
+            if (design && design.element_Json) {
+              savedCanvasStates[index] = design.element_Json;
+            }
+          }
+        );
+
+        // Update canvas states
+        setCanvasStates(savedCanvasStates);
+
+        // Load the canvas state for the current view
+        if (savedCanvasStates[selectedImageIndex]) {
+          // Wait a moment for the canvas to be fully initialized
+          setTimeout(() => {
+            try {
+              // Get the state for the selected image
+              const stateData = savedCanvasStates[selectedImageIndex];
+              const parsedState = JSON.parse(stateData);
+
+              // Extract the canvas data - handle both formats
+              const canvasData = parsedState.canvas || parsedState;
+
+              // Set canvas dimensions if needed
+              if (parsedState.metadata?.canvasDimensions) {
+                editor.canvas.setDimensions({
+                  width: parsedState.metadata.canvasDimensions.width,
+                  height: parsedState.metadata.canvasDimensions.height,
+                });
+              }
+
+              // Clear the canvas first
+              editor.canvas.clear();
+
+              // Load the canvas JSON
+              editor.canvas.loadFromJSON(canvasData, () => {
+                // Ensure all objects are visible and within bounds
+                const objects = editor.canvas.getObjects();
+                objects.forEach((obj) => {
+                  // Make sure object is visible
+                  obj.visible = true;
+
+                  // If object is a textbox with negative position, fix it
+                  if (
+                    obj.type === "textbox" &&
+                    ((obj.left ?? 0) < 0 || (obj.top ?? 0) < 0)
+                  ) {
+                    console.log(
+                      "Fixing position of text object that was outside canvas"
+                    );
+                    obj.set({
+                      left: Math.max(10, obj.left ?? 0),
+                      top: Math.max(10, obj.top ?? 0),
+                    });
+                  }
+                });
+
+                editor.canvas.renderAll();
+                console.log(
+                  "Design loaded successfully with",
+                  objects.length,
+                  "objects"
+                );
+              });
+            } catch (error) {
+              console.error("Error loading design state:", error);
+            }
+          }, 500);
+        }
+      } catch (error) {
+        console.error("Error processing design detail:", error);
+      }
+    }
+  }, [designDetail, editor, selectedImageIndex]);
   return (
     <div className="h-full flex flex-col">
-      {isUploading && (
-        <div className="uploading-indicator">Uploading design images...</div>
-      )}
       <Navbar
         editor={editor}
         activeTool={activeTool}

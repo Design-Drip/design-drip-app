@@ -17,14 +17,18 @@ function SavedDesigns() {
           url: url as string,
         }))
       : [];
-
+    const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Color";
+    const colorId = item.shirt_color_id?.id || "Unknown Product";
     return {
       id: item.id,
+      colorId: colorId,
+      productId: productId,
       previewImages: [previewImages],
       productName: item.shirt_color_id?.shirt_id?.name || "Unknown Product",
       designName: item.name,
     };
   });
+  console.log("Formatted Data:", formatData);
   const deleteDesignMutation = useDeleteDesign();
   const handleDelete = (designId: string) => {
     deleteDesignMutation.mutate(designId, {

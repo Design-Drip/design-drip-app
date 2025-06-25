@@ -18,6 +18,8 @@ export const TableSavedDesign = ({
 }: {
   data: Array<{
     id: string;
+    colorId: string;
+    productId: string;
     productName: string;
     designName: string;
     previewImages: Array<{
@@ -84,7 +86,11 @@ export const TableSavedDesign = ({
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   <Button variant="outline" size="sm" asChild>
-                    <Link href={`/editor/${item.id}`}>Edit</Link>
+                    <Link
+                      href={`/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`}
+                    >
+                      Edit
+                    </Link>
                   </Button>
                   <Button variant="default" size="sm">
                     Order
