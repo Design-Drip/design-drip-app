@@ -65,32 +65,82 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
   const uploadCanvasImage = async (
     canvas: any,
     viewName: string,
-    imageIndex?: number
+    imageUrl?: string
   ): Promise<string> => {
     try {
-      // If we have an imageIndex, capture the entire design
-      if (imageIndex !== undefined && containerRef.current) {
-        // Get the parent div that contains both background and canvas
-        const designContainer = containerRef.current.parentElement;
+      // If we have a background image URL, create a composite image with background
+      if (imageUrl) {
+        // Create an off-screen canvas for compositing
+        const compositeCanvas = document.createElement("canvas");
+        const ctx = compositeCanvas.getContext("2d");
 
-        if (!designContainer) {
-          throw new Error("Design container not found");
+        if (!ctx) {
+          throw new Error("Failed to get 2D context");
         }
 
-        // Use html2canvas to capture the entire design
-        const capturedCanvas = await html2canvas(designContainer, {
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: null,
-          scale: 2, // Higher quality
+        // Set canvas size to match the product image dimensions
+        compositeCanvas.width = 800;
+        compositeCanvas.height = 797;
+
+        // Load the background image
+        const bgImage = new window.Image();
+        bgImage.crossOrigin = "anonymous";
+
+        // Wait for background image to load
+        await new Promise<void>((resolve, reject) => {
+          bgImage.onload = () => resolve();
+          bgImage.onerror = () =>
+            reject(new Error("Failed to load background image"));
+          bgImage.src = imageUrl;
         });
 
-        // Convert to blob
-        const dataURL = capturedCanvas.toDataURL("image/png");
-        const res = await fetch(dataURL);
+        // Draw background image
+        ctx.drawImage(
+          bgImage,
+          0,
+          0,
+          compositeCanvas.width,
+          compositeCanvas.height
+        );
+
+        // Find the image in the images array that matches this URL
+        const imageData = images.find((img) => img.url === imageUrl);
+        const xPosition = imageData ? imageData.x_editable_zone + 20 : 20;
+        const yPosition = imageData ? imageData.y_editable_zone : 20;
+
+        // Convert canvas to data URL
+        const canvasDataURL = canvas.toDataURL({
+          format: "png",
+          quality: 0.9,
+          multiplier: 1,
+        });
+
+        // Load canvas content as an image
+        const canvasImage = new window.Image();
+        canvasImage.crossOrigin = "anonymous";
+
+        // Wait for canvas image to load
+        await new Promise<void>((resolve, reject) => {
+          canvasImage.onload = () => resolve();
+          canvasImage.onerror = () =>
+            reject(new Error("Failed to load canvas image"));
+          canvasImage.src = canvasDataURL;
+        });
+
+        // Draw canvas content at the correct position
+        const width = imageData ? imageData.width_editable_zone : canvas.width;
+        const height = imageData
+          ? imageData.height_editable_zone
+          : canvas.height;
+
+        ctx.drawImage(canvasImage, xPosition, yPosition, width, height);
+
+        // Convert the composite canvas to a blob
+        const compositeDataURL = compositeCanvas.toDataURL("image/png");
+        const res = await fetch(compositeDataURL);
         const blob = await res.blob();
 
-        // Create a File from the Blob
+        // Create a file from the blob
         const file = new File([blob], `design-${viewName}.png`, {
           type: "image/png",
         });
@@ -104,7 +154,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
 
         throw new Error("Upload failed");
       } else {
-        // Original code for when we don't need the background
+        // Fallback for cases where we don't have a background URL
         const dataURL = canvas.toDataURL({
           format: "png",
           quality: 0.8,
@@ -285,7 +335,7 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
             const imageUrl = await uploadCanvasImage(
               editor.canvas,
               `view-${index}`,
-              index
+              image.url
             );
 
             designImages[imageIndex] = imageUrl;
@@ -305,7 +355,8 @@ export const Editor = ({ images, productColorId }: EditorProps) => {
                   async () => {
                     const imageUrl = await uploadCanvasImage(
                       tempCanvas,
-                      `view-${index}`
+                      `view-${index}`,
+                      image.url
                     );
                     designImages[imageIndex] = imageUrl;
                     resolve();
