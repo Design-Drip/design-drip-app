@@ -8,6 +8,8 @@ import design from "./design";
 import paymentMethods from "./payments/paymentMethods";
 import products from "./products";
 import wishlist from "./wishlist";
+import designTemplate from "./designTemplates";
+import cart from "./cart";
 
 await dbConnect();
 
@@ -21,7 +23,9 @@ const routes = app
   .route("/design", design)
   .route("/payments/payment-methods", paymentMethods)
   .route("/products", products)
-  .route("/wish-list", wishlist);
+  .route("/wish-list", wishlist)
+  .route("/design-templates", designTemplate)
+  .route("/cart", cart);
 
 export const GET = handle(app);
 export const POST = handle(app);
