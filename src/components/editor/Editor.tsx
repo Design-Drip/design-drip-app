@@ -23,7 +23,6 @@ import { FillColorSidebar } from "./components/fill-color-sidebar";
 // Add near your imports
 import { generateReactHelpers } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
-import html2canvas from "html2canvas";
 import { useUpdateDesign } from "@/features/design/use-update-design";
 import { useQueryClient } from "@tanstack/react-query";
 
