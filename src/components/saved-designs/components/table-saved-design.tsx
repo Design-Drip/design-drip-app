@@ -142,6 +142,7 @@ export const TableSavedDesign = ({
           onOpenChange={setOrderModalOpen}
           designId={selectedDesign.id}
           designName={selectedDesign.designName}
+          mode="add"
         />
       )}
     </>
