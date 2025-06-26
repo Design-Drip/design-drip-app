@@ -2,6 +2,7 @@
 import { getProductColors } from "@/app/admin/products/images/_actions";
 import { Editor } from "@/components/editor/Editor";
 import { Button } from "@/components/ui/button";
+import { useGetDetailDesign } from "@/features/design/use-get-detail-design";
 import { getProductDetailQuery } from "@/features/products/services/queries";
 import { products } from "@/lib/data/products";
 import { auth } from "@clerk/nextjs/server";
@@ -14,10 +15,14 @@ function EditDesignPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { colorId: string };
+  searchParams: { colorId: string; designId?: string };
 }) {
   const { id } = params;
-  const { colorId } = searchParams;
+  const { colorId, designId } = searchParams;
+  const isEditDesign = designId !== undefined && designId !== "";
+  const { data: designDetailData, isLoading: isLoadingDesignDetail } =
+    useGetDetailDesign(isEditDesign ? designId : "");
+  const designDetail = designDetailData?.data[0] || {};
   const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
   const router = useRouter();
 
@@ -31,7 +36,7 @@ function EditDesignPage({
 
   const images = productColor?.images || [];
 
-  if (isLoading) {
+  if (isLoading || isLoadingDesignDetail) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center">
@@ -72,7 +77,13 @@ function EditDesignPage({
       </div>
     );
   }
-  return <Editor images={images} productColorId={productColorId} />;
+  return (
+    <Editor
+      images={images}
+      productColorId={productColorId}
+      designDetail={designDetail}
+    />
+  );
 }
 
 export default EditDesignPage;

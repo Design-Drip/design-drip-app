@@ -1,12 +1,14 @@
+"use client";
+
 import { ShoppingCart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import { getCartItemCountQuery } from "@/features/cart/services/queries";
 
-interface CartWidgetProps {
-  itemCount: number;
-}
+export default function CartWidget() {
+  const { data: itemCount = 0 } = useQuery(getCartItemCountQuery());
 
-export default function CartWidget({ itemCount }: CartWidgetProps) {
   return (
     <Link href="/cart">
       <Button
