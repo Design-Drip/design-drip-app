@@ -2,9 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   ISetDefaultPaymentMethodPayload,
   IAttachPaymentMethodPayload,
+  IProcessCheckoutPayload,
 } from "./types";
 import { client } from "@/lib/hono";
-import { getPaymentMethodsQuery } from "../queries";
+import { getPaymentMethodsQuery, getCheckoutInfoQuery } from "../queries";
 
 export const useSetDefaultPaymentMethodMutation = () => {
   const queryClient = useQueryClient();
@@ -64,6 +65,29 @@ export const useDeletePaymentMethodMutation = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: getPaymentMethodsQuery().queryKey,
+      });
+    },
+  });
+};
+
+export const useProcessCheckoutMutation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: IProcessCheckoutPayload) => {
+      const response = await client.api.payments.checkout.$post({
+        json: payload,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to process checkout");
+      }
+
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: getCheckoutInfoQuery().queryKey,
       });
     },
   });

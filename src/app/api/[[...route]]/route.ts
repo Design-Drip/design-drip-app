@@ -10,6 +10,8 @@ import products from "./products";
 import wishlist from "./wishlist";
 import designTemplate from "./designTemplates";
 import cart from "./cart";
+import checkout from "./payments/checkout";
+import orders from "./orders";
 
 await dbConnect();
 
@@ -22,10 +24,12 @@ const routes = app
   .route("/ai", ai)
   .route("/design", design)
   .route("/payments/payment-methods", paymentMethods)
+  .route("/payments/checkout", checkout)
   .route("/products", products)
   .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate)
-  .route("/cart", cart);
+  .route("/cart", cart)
+  .route("/orders", orders);
 
 export const GET = handle(app);
 export const POST = handle(app);

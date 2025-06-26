@@ -15,3 +15,22 @@ export const getPaymentMethodsQuery = () =>
       return response.json();
     },
   });
+
+export const getCheckoutInfoQuery = (itemIds?: string) =>
+  queryOptions({
+    queryKey: [PaymentsKeys.GetCheckoutInfoQuery, itemIds],
+    queryFn: async () => {
+      let url = client.api.payments.checkout.info;
+      if (itemIds) {
+        url = url.$url({ query: { itemIds } });
+      }
+
+      const response = await fetch(url.toString());
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch checkout information");
+      }
+
+      return response.json();
+    },
+  });
