@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CartWidget from "../cart/CartWidget";
-import { getTotalItemsInCart } from "@/features/cart/actions";
 
 const productCategories = [
   {

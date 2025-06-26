@@ -136,17 +136,19 @@ export default function Cart() {
     }
   };
 
-  const calculateItemTotal = (item) => {
-    return item.data.reduce(
-      (sum, sizeData) => sum + sizeData.pricePerSize * sizeData.quantity,
-      0
-    );
-  };
-
   const subtotal = cartData?.items
     ? cartData.items
         .filter((item) => selectedItems.includes(item.id))
-        .reduce((sum, item) => sum + calculateItemTotal(item), 0)
+        .reduce(
+          (sum, item) =>
+            sum +
+            item.data.reduce(
+              (sum, sizeData) =>
+                sum + sizeData.pricePerSize * sizeData.quantity,
+              0
+            ),
+          0
+        )
     : 0;
 
   // Calculate shipping based on subtotal
@@ -313,7 +315,11 @@ export default function Cart() {
                     : "/api/placeholder/300/300";
 
                 // Calculate total price for this item
-                const itemTotal = calculateItemTotal(item);
+                const itemTotal = item.data.reduce(
+                  (sum, sizeData) =>
+                    sum + sizeData.pricePerSize * sizeData.quantity,
+                  0
+                );
 
                 return (
                   <CartItem
