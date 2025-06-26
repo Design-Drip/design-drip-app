@@ -51,6 +51,9 @@ function SavedDesigns() {
           queryClient.invalidateQueries({
             queryKey: [CartKeys.GetCartQuery],
           });
+          queryClient.invalidateQueries({
+            queryKey: [CartKeys.GetCartItemCountQuery],
+          });
           toast.success("Design deleted successfully");
         },
         onError: (error) => {
