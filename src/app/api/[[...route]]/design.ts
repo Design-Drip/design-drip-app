@@ -1,5 +1,6 @@
 import verifyAuth from "@/lib/middlewares/verifyAuth";
 import { Design } from "@/models/design";
+import { Cart } from "@/models/cart";
 import user from "@/models/user";
 import { auth } from "@clerk/nextjs/server";
 import { zValidator } from "@hono/zod-validator";
@@ -298,15 +299,42 @@ const app = new Hono()
         }
 
         const id = c.req.valid("param").id;
-        const design = await Design.findOneAndDelete({
+        const designObjectId = new mongoose.Types.ObjectId(id);
+
+        const design = await Design.findOne({
           user_id: user.id,
-          _id: new mongoose.Types.ObjectId(id),
+          _id: designObjectId,
         });
 
         if (!design) {
           throw new HTTPException(404, { message: "Design not found" });
         }
+        const carts = await Cart.find({
+          "items.designId": designObjectId,
+        });
 
+        for (const cart of carts) {
+          const initialItemCount = cart.items.length;
+
+          cart.items = cart.items.filter((item) => {
+            const itemDesignId = item.designId.toString();
+            const targetDesignId = designObjectId.toString();
+            return itemDesignId !== targetDesignId;
+          });
+
+          const removedItems = initialItemCount - cart.items.length;
+
+          // Only save if items were actually removed
+          if (removedItems > 0) {
+            await cart.save();
+            console.log(`Removed ${removedItems} items from cart ${cart._id}`);
+          }
+        }
+
+        await Design.findOneAndDelete({
+          user_id: user.id,
+          _id: designObjectId,
+        });
         return c.json({
           success: true,
           message: "Design deleted successfully",
