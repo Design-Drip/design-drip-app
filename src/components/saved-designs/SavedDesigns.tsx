@@ -19,16 +19,14 @@ function SavedDesigns() {
           url: url as string,
         }))
       : [];
-    const productId =
-      item.shirt_color_id?.shirt_id?.id || "Unknown Color";
+    const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Color";
     const colorId = item.shirt_color_id?.id || "Unknown Product";
     return {
       id: item.id,
       colorId: colorId,
       productId: productId,
       previewImages: [previewImages],
-      productName:
-        item.shirt_color_id?.shirt_id?.name || "Unknown Product",
+      productName: item.shirt_color_id?.shirt_id?.name || "Unknown Product",
       designName: item.name,
     };
   });
@@ -66,6 +64,12 @@ function SavedDesigns() {
       onSuccess: () => {
         queryClient.invalidateQueries({
           queryKey: ["design"],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [CartKeys.GetCartQuery],
+        });
+        queryClient.invalidateQueries({
+          queryKey: [CartKeys.GetCartItemCountQuery],
         });
         toast.success("Design deleted successfully");
       },
