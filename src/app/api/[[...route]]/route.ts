@@ -5,13 +5,14 @@ import dbConnect from "@/lib/db";
 
 import ai from "./ai";
 import design from "./design";
-import paymentMethods from "./payments/paymentMethods";
 import products from "./products";
 import wishlist from "./wishlist";
 import designTemplate from "./designTemplates";
 import cart from "./cart";
-import checkout from "./payments/checkout";
 import orders from "./orders";
+import paymentMethods from "./payments/paymentMethods";
+import checkout from "./payments/checkout";
+import webhooks from "./payments/webhooks";
 
 await dbConnect();
 
@@ -25,6 +26,7 @@ const routes = app
   .route("/design", design)
   .route("/payments/payment-methods", paymentMethods)
   .route("/payments/checkout", checkout)
+  .route("/payments/webhooks", webhooks)
   .route("/products", products)
   .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate)

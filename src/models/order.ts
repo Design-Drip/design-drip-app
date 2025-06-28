@@ -80,6 +80,28 @@ const orderSchema = new mongoose.Schema(
     paymentMethodDetails: {
       type: Object,
     },
+    paymentFailureReason: {
+      type: String,
+    },
+    refundedAt: {
+      type: Date,
+    },
+    refundAmount: {
+      type: Number,
+    },
+    partiallyRefunded: {
+      type: Boolean,
+      default: false,
+    },
+    shipping: {
+      trackingNumber: String,
+      carrier: String,
+      estimatedDeliveryDate: Date,
+      shippedAt: Date,
+    },
+    notes: {
+      type: String,
+    },
   },
   {
     timestamps: true,
@@ -123,6 +145,17 @@ interface OrderDoc extends mongoose.Document {
   };
   paymentMethod: string;
   paymentMethodDetails?: any;
+  paymentFailureReason?: string;
+  refundedAt?: Date;
+  refundAmount?: number;
+  partiallyRefunded?: boolean;
+  shipping?: {
+    trackingNumber?: string;
+    carrier?: string;
+    estimatedDeliveryDate?: Date;
+    shippedAt?: Date;
+  };
+  notes?: string;
   createdAt: Date;
   updatedAt: Date;
 }
