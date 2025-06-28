@@ -22,8 +22,8 @@ const CheckoutPage = () => {
   const router = useRouter();
   const [paymentTab, setPaymentTab] = useState<string>("saved");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
-    string | null
-  >(null);
+    string | undefined
+  >(undefined);
   const [saveNewCard, setSaveNewCard] = useState(true);
   const [cardComplete, setCardComplete] = useState(false);
   const [cardError, setCardError] = useState<string | null>(null);
@@ -58,7 +58,7 @@ const CheckoutPage = () => {
     isError,
   } = useQuery({
     ...getCheckoutInfoQuery(selectedItemIds.join(",")),
-    enabled: selectedItemIds.length > 0, // Only run query if we have selected items
+    enabled: selectedItemIds.length > 0,
   });
 
   const { mutate: processCheckout, isPending: isProcessing } =

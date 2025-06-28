@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
 import { stripe } from "@/lib/stripe";
-import { Cart } from "@/models/cart";
+import { Cart, CartDoc } from "@/models/cart";
 import { Design } from "@/models/design";
 import { Shirt, ShirtColor, ShirtSizeVariant } from "@/models/product";
 import { HTTPException } from "hono/http-exception";
@@ -10,6 +10,78 @@ import { clerkClient } from "@clerk/nextjs/server";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
 import mongoose from "mongoose";
 import { Order } from "@/models/order";
+import Stripe from "stripe";
+
+const getOrderItems = async (cart: CartDoc, itemIds: string[]) => {
+  if (!cart || !cart.items || cart.items.length === 0) {
+    return [];
+  }
+
+  let filteredItems = cart?.items;
+  if (itemIds.length > 0) {
+    filteredItems = cart?.items.filter((item) =>
+      itemIds.includes(item._id!.toString())
+    );
+  }
+
+  const orderItems = await Promise.all(
+    filteredItems.map(async (item) => {
+      const design = await Design.findById(item.designId).lean();
+      if (!design) return null;
+
+      const shirtColor = await ShirtColor.findById(
+        design.shirt_color_id
+      ).lean();
+      if (!shirtColor) return null;
+
+      const shirt = await Shirt.findById(shirtColor.shirt_id).lean();
+      if (!shirt) return null;
+
+      const shirtSizeVariants = await ShirtSizeVariant.find({
+        shirtColor: shirtColor._id,
+      }).lean();
+
+      const sizes = item.quantityBySize.map((sizeQty) => {
+        const variant = shirtSizeVariants.find((v) => v.size === sizeQty.size);
+        const pricePerUnit = variant
+          ? shirt.base_price + variant.additional_price
+          : shirt.base_price;
+
+        return {
+          size: sizeQty.size,
+          quantity: sizeQty.quantity,
+          pricePerUnit,
+        };
+      });
+
+      const totalPrice = sizes.reduce(
+        (sum, sizeData) => sum + sizeData.pricePerUnit * sizeData.quantity,
+        0
+      );
+
+      let imageUrl = null;
+      if (
+        design.design_images &&
+        Object.values(design.design_images).length > 0
+      ) {
+        imageUrl = Object.values(design.design_images)[0];
+      }
+
+      return {
+        designId: design._id,
+        name: design.name,
+        color: shirtColor.color,
+        sizes,
+        totalPrice,
+        imageUrl,
+      };
+    })
+  );
+
+  const validOrderItems = orderItems.filter((item) => item !== null);
+
+  return validOrderItems;
+};
 
 const app = new Hono()
   .use(verifyAuth)
@@ -163,85 +235,20 @@ const app = new Hono()
         return_url,
       } = c.req.valid("json");
 
+      const cart = await Cart.findOne({ userId: user.id }).lean();
+      if (!cart || cart.items.length === 0) {
+        throw new HTTPException(400, { message: "Cart is empty" });
+      }
+
       try {
         if (paymentIntent) {
           const intent = await stripe.paymentIntents.retrieve(paymentIntent);
 
           if (intent.status === "succeeded") {
-            // Get the cart items data that were purchased
-            const cart = await Cart.findOne({ userId: user.id }).lean();
             const itemIds = intent.metadata.itemIds
               ? intent.metadata.itemIds.split(",")
               : [];
-            let filteredItems = cart.items;
-
-            if (itemIds.length > 0) {
-              filteredItems = cart.items.filter((item) =>
-                itemIds.includes(item._id!.toString())
-              );
-            }
-
-            // Transform cart items into order items
-            const orderItems = await Promise.all(
-              filteredItems.map(async (item) => {
-                const design = await Design.findById(item.designId).lean();
-                if (!design) return null;
-
-                const shirtColor = await ShirtColor.findById(
-                  design.shirt_color_id
-                ).lean();
-                if (!shirtColor) return null;
-
-                const shirt = await Shirt.findById(shirtColor.shirt_id).lean();
-                if (!shirt) return null;
-
-                const shirtSizeVariants = await ShirtSizeVariant.find({
-                  shirtColor: shirtColor._id,
-                }).lean();
-
-                const sizes = item.quantityBySize.map((sizeQty) => {
-                  const variant = shirtSizeVariants.find(
-                    (v) => v.size === sizeQty.size
-                  );
-                  const pricePerUnit = variant
-                    ? shirt.base_price + variant.additional_price
-                    : shirt.base_price;
-
-                  return {
-                    size: sizeQty.size,
-                    quantity: sizeQty.quantity,
-                    pricePerUnit,
-                  };
-                });
-
-                const totalPrice = sizes.reduce(
-                  (sum, sizeData) =>
-                    sum + sizeData.pricePerUnit * sizeData.quantity,
-                  0
-                );
-
-                // Get the first design image as preview
-                let imageUrl = null;
-                if (
-                  design.design_images &&
-                  Object.values(design.design_images).length > 0
-                ) {
-                  imageUrl = Object.values(design.design_images)[0];
-                }
-
-                return {
-                  designId: design._id,
-                  name: design.name,
-                  color: shirtColor.color,
-                  sizes,
-                  totalPrice,
-                  imageUrl,
-                };
-              })
-            );
-
-            // Filter out any null items
-            const validOrderItems = orderItems.filter((item) => item !== null);
+            const validOrderItems = await getOrderItems(cart, itemIds);
 
             // Get payment method details
             let paymentMethodDetails = null;
@@ -255,12 +262,12 @@ const app = new Hono()
             const order = new Order({
               userId: user.id,
               stripePaymentIntentId: intent.id,
-              status: "processing",
               items: validOrderItems,
               totalAmount: intent.amount,
               paymentMethod: "card",
               paymentMethodDetails,
             });
+
             await order.save();
 
             // Clear the purchased items from cart
@@ -298,57 +305,11 @@ const app = new Hono()
           }
         }
 
-        // Get cart and calculate amount for selected items only
-        const cart = await Cart.findOne({ userId: user.id }).lean();
-        if (!cart || cart.items.length === 0) {
-          throw new HTTPException(400, { message: "Cart is empty" });
-        }
-
-        // Filter cart items if itemIds are provided, otherwise use all items
-        const filteredItems =
-          itemIds && itemIds.length > 0
-            ? cart.items.filter((item) =>
-                itemIds.includes(item._id!.toString())
-              )
-            : cart.items;
-
-        if (filteredItems.length === 0) {
+        if (!itemIds || itemIds.length === 0) {
           throw new HTTPException(400, {
-            message: "No valid items selected for checkout",
+            message: "No items selected for checkout",
           });
         }
-
-        // Calculate total amount for selected items
-        let totalAmount = 0;
-        for (const item of filteredItems) {
-          const design = await Design.findById(item.designId).lean();
-          if (!design) continue;
-
-          const shirtColor = await ShirtColor.findById(
-            design.shirt_color_id
-          ).lean();
-          if (!shirtColor) continue;
-
-          const shirt = await Shirt.findById(shirtColor.shirt_id).lean();
-          if (!shirt) continue;
-
-          const shirtSizeVariants = await ShirtSizeVariant.find({
-            shirtColor: shirtColor._id,
-          }).lean();
-
-          item.quantityBySize.forEach((sizeQty) => {
-            const variant = shirtSizeVariants.find(
-              (v) => v.size === sizeQty.size
-            );
-            if (variant) {
-              const price = shirt.base_price + variant.additional_price;
-              totalAmount += price * sizeQty.quantity;
-            }
-          });
-        }
-
-        // VND doesn't use decimal places
-        const amountInCents = Math.round(totalAmount);
 
         // Get or create customer
         const client = await clerkClient();
@@ -374,9 +335,14 @@ const app = new Hono()
           });
         }
 
+        const validOrderItems = await getOrderItems(cart, itemIds);
+
         // Create payment intent
-        const paymentIntentParams: any = {
-          amount: amountInCents,
+        const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
+          amount: validOrderItems.reduce(
+            (sum, item) => sum + item.totalPrice,
+            0
+          ),
           currency: "vnd",
           customer: stripeId,
           metadata: {
@@ -389,7 +355,7 @@ const app = new Hono()
         // If using saved payment method
         if (paymentMethodId) {
           paymentIntentParams.payment_method = paymentMethodId;
-          paymentIntentParams.off_session = false; // User is present
+          paymentIntentParams.off_session = false;
           paymentIntentParams.confirm = true;
           paymentIntentParams.return_url =
             return_url || `${c.req.header("origin")}/orders`;
@@ -413,12 +379,24 @@ const app = new Hono()
           paymentIntentParams
         );
 
+        // Create new Order
+        const processingOrder = new Order({
+          userId: user.id,
+          stripePaymentIntentId: createdPaymentIntent.id,
+          items: validOrderItems,
+          totalAmount: createdPaymentIntent.amount,
+          paymentMethod: "card",
+        });
+
+        await processingOrder.save();
+
         return c.json({
           success: true,
           clientSecret: createdPaymentIntent.client_secret,
           paymentIntentId: createdPaymentIntent.id,
           requiresAction: createdPaymentIntent.status === "requires_action",
           status: createdPaymentIntent.status,
+          orderId: processingOrder.id,
         });
       } catch (error) {
         console.error("Error processing checkout:", error);

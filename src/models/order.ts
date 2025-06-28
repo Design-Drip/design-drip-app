@@ -1,5 +1,21 @@
 import mongoose, { Model } from "mongoose";
 
+const orderItemSizeSchema = new mongoose.Schema({
+  size: {
+    type: String,
+    required: true,
+  },
+  quantity: {
+    type: Number,
+    required: true,
+    min: 1,
+  },
+  pricePerUnit: {
+    type: Number,
+    required: true,
+  },
+});
+
 const orderItemSchema = new mongoose.Schema({
   designId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -14,23 +30,7 @@ const orderItemSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  sizes: [
-    {
-      size: {
-        type: String,
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        min: 1,
-      },
-      pricePerUnit: {
-        type: Number,
-        required: true,
-      },
-    },
-  ],
+  sizes: [orderItemSizeSchema],
   totalPrice: {
     type: Number,
     required: true,

@@ -70,9 +70,6 @@ export default function OrderDetailPage() {
     );
   }
 
-  // Format short order ID for display
-  const shortOrderId = order.id.substring(0, 8);
-
   return (
     <div className="container mx-auto max-w-4xl py-10 px-4">
       <Button variant="ghost" asChild className="mb-6">
@@ -88,7 +85,7 @@ export default function OrderDetailPage() {
           <CardHeader className="pb-2">
             <div className="flex flex-col md:flex-row justify-between gap-4">
               <div>
-                <CardTitle className="text-xl">Order #{shortOrderId}</CardTitle>
+                <CardTitle className="text-xl">Order #{orderId}</CardTitle>
                 <CardDescription>
                   Placed on {formatOrderDateTime(order.createdAt)}
                 </CardDescription>

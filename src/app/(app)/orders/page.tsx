@@ -34,7 +34,6 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { Separator } from "@/components/ui/separator";
 import OrderStatusBadge from "@/components/orders/OrderStatusBadge";
 import { formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
