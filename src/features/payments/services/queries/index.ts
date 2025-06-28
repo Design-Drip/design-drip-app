@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { PaymentsKeys } from "./keys";
 
@@ -19,18 +19,17 @@ export const getPaymentMethodsQuery = () =>
 export const getCheckoutInfoQuery = (itemIds?: string) =>
   queryOptions({
     queryKey: [PaymentsKeys.GetCheckoutInfoQuery, itemIds],
-    queryFn: async () => {
-      let url = client.api.payments.checkout.info;
-      if (itemIds) {
-        url = url.$url({ query: { itemIds } });
-      }
+    queryFn: itemIds
+      ? async () => {
+          const response = await client.api.payments.checkout.info.$get({
+            query: { itemIds },
+          });
 
-      const response = await fetch(url.toString());
+          if (!response.ok) {
+            throw new Error("Failed to fetch checkout information");
+          }
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch checkout information");
-      }
-
-      return response.json();
-    },
+          return response.json();
+        }
+      : skipToken,
   });

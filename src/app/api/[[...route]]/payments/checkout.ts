@@ -290,15 +290,20 @@ const app = new Hono()
 
             return c.json({
               success: true,
+              clientSecret: intent.client_secret,
+              paymentIntentId: intent.id,
+              requiresAction: false,
               orderId: order.id,
-              status: "completed",
+              status: intent.status as Stripe.PaymentIntent.Status,
             });
           } else {
             return c.json(
               {
                 success: false,
+                clientSecret: intent.client_secret,
+                paymentIntentId: intent.id,
+                requiresAction: false,
                 status: intent.status,
-                message: "Payment has not been completed",
               },
               400
             );
@@ -400,10 +405,9 @@ const app = new Hono()
         });
       } catch (error) {
         console.error("Error processing checkout:", error);
-        return c.json(
-          { error: (error as Error).message || "Failed to process checkout" },
-          500
-        );
+        throw new HTTPException(500, {
+          message: (error as Error).message || "Failed to process checkout",
+        });
       }
     }
   );

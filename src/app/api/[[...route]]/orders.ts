@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { HTTPException } from "hono/http-exception";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
 import { Order } from "@/models/order";
@@ -36,7 +37,15 @@ const app = new Hono()
       const totalPages = Math.ceil(totalOrders / limit);
 
       return c.json({
-        orders,
+        orders: orders.map((order) => ({
+          id: order._id?.toString() as string,
+          userId: order.userId,
+          items: order.items,
+          totalAmount: order.totalAmount,
+          status: order.status,
+          createdAt: order.createdAt,
+          updatedAt: order.updatedAt,
+        })),
         pagination: {
           page,
           limit,
@@ -56,7 +65,17 @@ const app = new Hono()
     zValidator(
       "param",
       z.object({
-        id: z.string().min(1, "Order ID is required"),
+        id: z
+          .string()
+          .trim()
+          .refine((val) => {
+            if (!mongoose.isObjectIdOrHexString(val)) {
+              throw new HTTPException(400, {
+                message: "Invalid order ID",
+              });
+            }
+            return true;
+          }),
       })
     ),
     async (c) => {
@@ -69,11 +88,16 @@ const app = new Hono()
           userId: user.id,
         }).lean();
 
-        if (!order) {
-          throw new HTTPException(404, { message: "Order not found" });
-        }
-
-        return c.json(order);
+        return c.json({
+          id: order?._id?.toString() as string,
+          userId: order?.userId,
+          items: order?.items,
+          totalAmount: order?.totalAmount,
+          status: order?.status,
+          createdAt: order?.createdAt,
+          updatedAt: order?.updatedAt,
+          paymentMethod: order?.paymentMethod,
+        });
       } catch (error) {
         console.error(`Error fetching order ${orderId}:`, error);
         if (error instanceof HTTPException) {

@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { OrdersKeys } from "./keys";
 
@@ -27,19 +27,21 @@ export const getOrdersQuery = (page = 1, limit = 10, status?: string) => {
   });
 };
 
-export const getOrderDetailQuery = (orderId: string) =>
+export const getOrderDetailQuery = (orderId?: string) =>
   queryOptions({
     queryKey: [OrdersKeys.GetOrderDetailQuery, orderId],
-    queryFn: async () => {
-      const response = await client.api.orders[":id"].$get({
-        param: { id: orderId },
-      });
+    queryFn: orderId
+      ? async () => {
+          const response = await client.api.orders[":id"].$get({
+            param: { id: orderId },
+          });
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch order details");
-      }
+          if (!response.ok) {
+            throw new Error("Failed to fetch order details");
+          }
 
-      return response.json();
-    },
+          return response.json();
+        }
+      : skipToken,
     enabled: !!orderId,
   });

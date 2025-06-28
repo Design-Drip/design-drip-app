@@ -20,7 +20,7 @@ import StripeWrapper from "@/components/StripeWrapper";
 
 const CheckoutPage = () => {
   const router = useRouter();
-  const [paymentTab, setPaymentTab] = useState<string>("saved");
+  const [paymentTab, setPaymentTab] = useState("saved");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<
     string | undefined
   >(undefined);

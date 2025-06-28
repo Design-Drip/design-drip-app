@@ -44,7 +44,7 @@ const limit = 5;
 export default function OrdersPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const statusParam = searchParams.get("status") || "";
+  const statusParam = searchParams.get("status") || "all";
   const pageParam = parseInt(searchParams.get("page") || "1");
 
   const [status, setStatus] = useState<string>(statusParam);
@@ -115,7 +115,7 @@ export default function OrdersPage() {
               <SelectValue placeholder="Filter by status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Orders</SelectItem>
+              <SelectItem value="all">All Orders</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="processing">Processing</SelectItem>
               <SelectItem value="shipped">Shipped</SelectItem>
@@ -150,7 +150,7 @@ export default function OrdersPage() {
                   <div className="flex flex-col md:flex-row justify-between gap-2">
                     <div>
                       <CardTitle className="text-base">
-                        Order #{order.id.substring(0, 8)}
+                        Order #{order.id}
                       </CardTitle>
                       <CardDescription>
                         Placed on {formatOrderDate(order.createdAt)}

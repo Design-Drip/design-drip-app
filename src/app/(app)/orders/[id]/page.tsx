@@ -28,7 +28,7 @@ import { formatPrice } from "@/lib/price";
 import { getOrderDetailQuery } from "@/features/orders/services/queries";
 
 export default function OrderDetailPage() {
-  const params = useParams<{ id: string }>();
+  const params = useParams<{ id?: string }>();
   const router = useRouter();
   const orderId = params.id;
 
@@ -36,9 +36,7 @@ export default function OrderDetailPage() {
     data: order,
     isLoading,
     isError,
-  } = useQuery({
-    ...getOrderDetailQuery(orderId),
-  });
+  } = useQuery(getOrderDetailQuery(orderId));
 
   if (isLoading) {
     return (
@@ -51,7 +49,11 @@ export default function OrderDetailPage() {
   if (isError || !order) {
     return (
       <div className="container mx-auto max-w-4xl py-10 px-4">
-        <Button variant="ghost" onClick={() => router.back()} className="mb-6">
+        <Button
+          variant="ghost"
+          onClick={() => router.replace("/orders")}
+          className="mb-6"
+        >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Orders
         </Button>
@@ -85,12 +87,12 @@ export default function OrderDetailPage() {
           <CardHeader className="pb-2">
             <div className="flex flex-col md:flex-row justify-between gap-4">
               <div>
-                <CardTitle className="text-xl">Order #{orderId}</CardTitle>
+                <CardTitle className="text-xl">Order #{order.id}</CardTitle>
                 <CardDescription>
-                  Placed on {formatOrderDateTime(order.createdAt)}
+                  Placed on {formatOrderDateTime(order.createdAt!)}
                 </CardDescription>
               </div>
-              <OrderStatusBadge status={order.status} />
+              <OrderStatusBadge status={order.status!} />
             </div>
           </CardHeader>
 
@@ -103,22 +105,12 @@ export default function OrderDetailPage() {
                   <h3 className="font-medium">Payment Method</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {order.paymentMethodDetails ? (
-                    <>
-                      {order.paymentMethodDetails.brand?.toUpperCase()} ••••{" "}
-                      {order.paymentMethodDetails.last4}
-                      <br />
-                      Expires {order.paymentMethodDetails.exp_month}/
-                      {order.paymentMethodDetails.exp_year}
-                    </>
-                  ) : (
-                    order.paymentMethod
-                  )}
+                  {order.paymentMethod}
                 </p>
               </div>
 
               {/* Shipping Address */}
-              <div>
+              {/* <div>
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <h3 className="font-medium">Shipping Address</h3>
@@ -147,7 +139,7 @@ export default function OrderDetailPage() {
                     "No shipping details available"
                   )}
                 </p>
-              </div>
+              </div> */}
 
               {/* Delivery timeline */}
               <div className="col-span-1 md:col-span-2">
@@ -160,9 +152,9 @@ export default function OrderDetailPage() {
                     <div className="w-full bg-gray-200 rounded-full h-2.5">
                       <div
                         className={`h-2.5 rounded-full ${getProgressBarColor(
-                          order.status
+                          order.status!
                         )}`}
-                        style={{ width: getProgressWidth(order.status) }}
+                        style={{ width: getProgressWidth(order.status!) }}
                       ></div>
                     </div>
                   </div>
@@ -186,7 +178,7 @@ export default function OrderDetailPage() {
 
           <CardContent>
             <div className="space-y-4">
-              {order.items.map((item, index) => (
+              {order.items!.map((item, index) => (
                 <div key={index}>
                   <div className="flex items-start gap-4">
                     <div className="h-20 w-20 bg-muted rounded-md flex-shrink-0 overflow-hidden">
@@ -226,7 +218,7 @@ export default function OrderDetailPage() {
                     </div>
                   </div>
 
-                  {index < order.items.length - 1 && (
+                  {index < order.items!.length - 1 && (
                     <Separator className="my-4" />
                   )}
                 </div>
@@ -238,7 +230,7 @@ export default function OrderDetailPage() {
             <div className="w-full md:w-1/3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>{formatPrice(order.totalAmount)}</span>
+                <span>{formatPrice(order.totalAmount!)}</span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
@@ -247,34 +239,16 @@ export default function OrderDetailPage() {
               <Separator className="my-2" />
               <div className="flex justify-between font-medium">
                 <span>Total</span>
-                <span>{formatPrice(order.totalAmount)}</span>
+                <span>{formatPrice(order.totalAmount!)}</span>
               </div>
             </div>
           </CardFooter>
-        </Card>
-
-        {/* Need Help */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle>Need Help?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              If you have any questions or concerns about your order, please
-              contact our customer support team.
-            </p>
-            <div className="mt-4 flex gap-4">
-              <Button variant="outline">Contact Support</Button>
-              <Button variant="outline">Track Package</Button>
-            </div>
-          </CardContent>
         </Card>
       </div>
     </div>
   );
 }
 
-// Helper functions for the progress bar
 function getProgressWidth(status: string): string {
   switch (status) {
     case "pending":
