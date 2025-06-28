@@ -24,10 +24,12 @@ import {
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/price";
+import { useRouter } from "next/navigation";
 
 const ITEMS_PER_PAGE = 4;
 
 export default function Cart() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const {
@@ -134,6 +136,17 @@ export default function Cart() {
         });
       }
     }
+  };
+
+  const handleCheckout = () => {
+    if (!hasSelectedItems) {
+      toast.error("Please select items to checkout");
+      return;
+    }
+
+    // Store selected item IDs in session storage to use them in checkout
+    sessionStorage.setItem("checkoutItems", JSON.stringify(selectedItems));
+    router.push("/checkout");
   };
 
   const subtotal = cartData?.items
@@ -426,6 +439,11 @@ export default function Cart() {
 
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Selected Items</span>
+                  <span className="font-medium">{selectedItems.length}</span>
+                </div>
+
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">{formatPrice(subtotal)}</span>
                 </div>
@@ -449,7 +467,7 @@ export default function Cart() {
                 </div>
               </div>
 
-              {shipping > 0 && (
+              {shipping > 0 && subtotal > 0 && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-700">
                     Add {formatPrice(200000 - subtotal)} more for free shipping!
@@ -460,6 +478,7 @@ export default function Cart() {
               <Button
                 className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3"
                 disabled={!hasSelectedItems}
+                onClick={handleCheckout}
               >
                 Proceed to Checkout
               </Button>
