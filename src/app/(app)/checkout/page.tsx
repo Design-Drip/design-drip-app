@@ -315,14 +315,14 @@ const CheckoutPage = () => {
                 value={paymentTab}
                 onValueChange={setPaymentTab}
               >
-                {checkoutInfo.hasPaymentMethods && (
+                {/* {checkoutInfo.hasPaymentMethods && (
                   <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="saved">
                       Saved Payment Methods
                     </TabsTrigger>
                     <TabsTrigger value="new">Use New Card</TabsTrigger>
                   </TabsList>
-                )}
+                )} */}
 
                 <TabsContent value="saved">
                   {checkoutInfo.hasPaymentMethods ? (
@@ -342,7 +342,7 @@ const CheckoutPage = () => {
                   )}
                 </TabsContent>
 
-                <TabsContent value="new">
+                {/* <TabsContent value="new">
                   <div className="space-y-6">
                     <NewCardForm onCardChange={handleCardChange} />
 
@@ -357,7 +357,7 @@ const CheckoutPage = () => {
                       </Label>
                     </div>
                   </div>
-                </TabsContent>
+                </TabsContent> */}
               </Tabs>
             </CardContent>
           </Card>
