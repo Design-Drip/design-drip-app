@@ -11,11 +11,23 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { OrderModal } from "@/components/order/OrderModal";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { DialogClose } from "@radix-ui/react-dialog";
 
 export const TableSavedDesign = ({
   data,
   onDelete,
+  onConfirmDelete,
   deleteLoading,
+  confirmModalOpen,
 }: {
   data: Array<{
     id: string;
@@ -29,7 +41,9 @@ export const TableSavedDesign = ({
     }>[];
   }>;
   onDelete: (id: string) => void;
+  onConfirmDelete: (id: string) => void;
   deleteLoading?: boolean;
+  confirmModalOpen: boolean;
 }) => {
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<{
@@ -108,18 +122,58 @@ export const TableSavedDesign = ({
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleOrderClick(item.id, item.designName)}
+                      onClick={() =>
+                        handleOrderClick(item.id, item.designName)
+                      }
                     >
                       Order
                     </Button>
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={() => onDelete(item.id)}
-                      disabled={deleteLoading}
-                    >
-                      {deleteLoading ? "Deleting..." : "Delete"}
-                    </Button>
+                    <Dialog>
+                      <DialogTrigger>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => onDelete(item.id)}
+                          disabled={deleteLoading}
+                        >
+                          {deleteLoading ? "Deleting..." : "Delete"}
+                        </Button>
+                      </DialogTrigger>
+                      {confirmModalOpen && (
+                        <DialogContent>
+                          <DialogHeader>
+                            <DialogTitle>
+                              Are you absolutely sure?
+                            </DialogTitle>
+                            <DialogDescription>
+                              This action cannot be undone. This will
+                              permanently delete your design and
+                              remove your design from your cart.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter className="sm:justify-end">
+                            <DialogClose asChild>
+                              <Button
+                                type="button"
+                                variant="secondary"
+                              >
+                                Close
+                              </Button>
+                            </DialogClose>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => onConfirmDelete(item.id)}
+                              disabled={deleteLoading}
+                            >
+                              {deleteLoading
+                                ? "Loading..."
+                                : "Confirm"}
+                            </Button>
+                          </DialogFooter>
+                        </DialogContent>
+                      )}
+                    </Dialog>
                   </div>
                 </TableCell>
               </TableRow>
@@ -128,8 +182,12 @@ export const TableSavedDesign = ({
 
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                No saved designs found. Start creating your first design!
+              <TableCell
+                colSpan={4}
+                className="text-center py-8 text-gray-500"
+              >
+                No saved designs found. Start creating your first
+                design!
               </TableCell>
             </TableRow>
           )}
