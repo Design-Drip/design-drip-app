@@ -51,7 +51,9 @@ export const Editor = ({
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | null>(null);
-  const [designName, setDesignName] = useState<string>("Shirt Design");
+  const [designName, setDesignName] = useState<string>(
+    designDetail?.name || "Shirt Design"
+  );
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
     designDetail?.template_id || null
   );
@@ -161,7 +163,7 @@ export const Editor = ({
         const uploadResult = await startUpload([file]);
 
         if (uploadResult && uploadResult[0]) {
-          return uploadResult[0].url;
+          return uploadResult[0].ufsUrl;
         }
 
         throw new Error("Upload failed");
@@ -183,7 +185,7 @@ export const Editor = ({
         const uploadResult = await startUpload([file]);
 
         if (uploadResult && uploadResult[0]) {
-          return uploadResult[0].url;
+          return uploadResult[0].ufsUrl;
         }
 
         throw new Error("Upload failed");
@@ -389,30 +391,45 @@ export const Editor = ({
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
         console.log("Saving design with template ID:", selectedTemplateId);
+        console.log(
+          "Design detail full object:",
+          JSON.stringify(designDetail, null, 2)
+        );
+        console.log("Design detail ID:", designDetail?.id);
+        console.log("Design detail _id:", designDetail?._id);
+
+        // Determine if this is a new version of an existing design
+        const isEditingExistingDesign = !!(
+          designDetail?.id || designDetail?._id
+        );
+        const parentDesignId = designDetail?.id || designDetail?._id;
+
+        // Keep the original design name for new versions
+        let newDesignName = designName || "Shirt Design";
+        // Don't modify the name even if it's a new version
 
         const designData = {
           shirt_color_id: productColorId,
           element_design: elementDesign,
-          name: designName || "Shirt Design",
+          name: newDesignName,
           design_images: designImages,
-          template_id: selectedTemplateId,
-          template_applied_at: selectedTemplateId
-            ? new Date().toISOString()
-            : null,
+          ...(selectedTemplateId && {
+            template_id: selectedTemplateId,
+            template_applied_at: new Date().toISOString(),
+          }),
+          ...(isEditingExistingDesign && { parent_design_id: parentDesignId }), // Add parent_design_id if editing existing design
         };
-        if (designDetail && designDetail._id) {
-          // We're updating an existing design
-          await updateDesignMutation.mutateAsync({
-            ...designData,
-            id: designDetail._id, // Pass the ID for updating
-          });
-          queryClient.invalidateQueries({ queryKey: ["designs"] });
-          toast.success("Design updated successfully!");
-        } else {
-          // We're creating a new design
-          await createDesignMutation.mutateAsync(designData);
-          toast.success("Design saved successfully!");
-        }
+
+        console.log("Final design data:", JSON.stringify(designData, null, 2));
+
+        // ALWAYS create a new design (Save as New behavior)
+        // This allows users to keep multiple versions of their designs
+        await createDesignMutation.mutateAsync(designData);
+
+        const successMessage = isEditingExistingDesign
+          ? `Design saved as new version of "${designDetail.name}" (${designDetail.version})!`
+          : "Design saved successfully!";
+        toast.success(successMessage);
 
         // Update canvasStates without triggering effects
         setCanvasStates(allStates);
@@ -676,17 +693,7 @@ export const Editor = ({
       }
     }
   }, [editor, productColorId, selectedImageIndex]);
-  console.log("canvasStates", canvasStates);
-  // Add this inside your component
-  useEffect(() => {
-    console.log("Current canvasStates:", canvasStates);
-    console.log("Selected image index:", selectedImageIndex);
-    console.log(
-      "Has canvas state for selected image?",
-      !!canvasStates[selectedImageIndex]
-    );
-    console.log("Editor canvas ready?", !!editor?.canvas);
-  }, [canvasStates, selectedImageIndex, editor]);
+
   // Track canvas changes to set unsaved changes flag
   useEffect(() => {
     if (!editor?.canvas) return;

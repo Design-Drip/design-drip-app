@@ -13,14 +13,41 @@ function SavedDesigns() {
   const designsData = data?.data || [];
   const queryClient = useQueryClient();
   const formatData = designsData.map((item: any) => {
+    console.log("Design item:", item); // Debug log
+    console.log("Design createdAt fields:", {
+      created_at: item.created_at,
+      createdAt: item.createdAt,
+      updatedAt: item.updatedAt,
+      _id: item._id,
+      version: item.version,
+    }); // Debug log for timestamp fields
+
     const previewImages = item.design_images
       ? Object.entries(item.design_images).map(([key, url]) => ({
           view: key,
           url: url as string,
         }))
       : [];
-    const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Color";
-    const colorId = item.shirt_color_id?.id || "Unknown Product";
+    const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Product";
+    const colorId = item.shirt_color_id?.id || "Unknown Color";
+
+    console.log(`Design ${item.name} - IDs:`, {
+      designId: item.id,
+      productId: productId,
+      colorId: colorId,
+      fullColorObj: item.shirt_color_id,
+    }); // Debug log for IDs
+
+    // Check if this design has a parent (is a version)
+    const isVersion = !!item.parent_design_id;
+    console.log(
+      `Design ${item.name} - isVersion: ${isVersion}, parent_design_id: ${item.parent_design_id}, version: ${item.version}`
+    ); // Debug log
+
+    const parentDesign: any = isVersion
+      ? designsData.find((d: any) => d.id === item.parent_design_id)
+      : null;
+
     return {
       id: item.id,
       colorId: colorId,
@@ -28,6 +55,14 @@ function SavedDesigns() {
       previewImages: [previewImages],
       productName: item.shirt_color_id?.shirt_id?.name || "Unknown Product",
       designName: item.name,
+      isVersion,
+      version: item.version || "original", // Add version field
+      parentDesignName: parentDesign?.name || null,
+      createdAt:
+        item.createdAt ||
+        item.created_at ||
+        item.updatedAt ||
+        new Date().toISOString(),
     };
   });
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);

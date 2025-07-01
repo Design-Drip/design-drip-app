@@ -25,7 +25,7 @@ interface DesignTemplate {
   id: string;
   name: string;
   imageUrl: string;
-  category: string;
+  category: boolean;
 }
 
 export const DesignTemplateSidebar = ({
@@ -47,7 +47,7 @@ export const DesignTemplateSidebar = ({
       setError(null);
 
       // Prepare query params
-      const params: Record<string, string | number> = {
+      const params: Record<string, string | number | boolean> = {
         page: 1,
         limit: 20,
         isActive: true,

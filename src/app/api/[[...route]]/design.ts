@@ -27,8 +27,7 @@ const createDesignSchema = z.object({
   element_design: z.record(z.string(), elementDesignSchema),
   name: z.string().default("Shirt Design"),
   design_images: z.record(z.string(), z.string()).optional(),
-  template_id: z.union([z.string(), z.null()]).optional(),
-  template_applied_at: z.union([z.string(), z.null()]).optional(), // ISO date string
+  parent_design_id: z.string().optional(), // For versioning - ID of the design being edited
 });
 
 const app = new Hono()
@@ -39,10 +38,10 @@ const app = new Hono()
       if (!user) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
-      const { shirt_color_id, element_design, name, design_images, template_id, template_applied_at } =
+      const { shirt_color_id, element_design, name, design_images, parent_design_id } =
         c.req.valid("json");
-      
-      console.log("[API POST] Request payload template info:", { template_id, template_applied_at });
+
+      console.log("[API POST] Request payload:", { parent_design_id });
 
       // Convert string IDs to ObjectIds for the database
       const elementDesignObj: {
@@ -59,87 +58,60 @@ const app = new Hono()
         };
       });
 
-      // Check if design already exists for this shirt variant
-      const existingDesign = await Design.findOne({
+      // ALWAYS create a new design (Save as New versioning behavior)
+      // This ensures we keep all versions and never overwrite existing designs
+      const designData: any = {
         user_id: user.id,
         shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
+        element_design: elementDesignObj,
         name: name,
-      });
+        design_images: design_images || {},
+      };
 
-      let design;
+      // Handle versioning logic
+      if (parent_design_id && mongoose.Types.ObjectId.isValid(parent_design_id)) {
+        // This is a new version of an existing design
+        designData.parent_design_id = new mongoose.Types.ObjectId(parent_design_id);
+        
+        // Find the parent design to get the original design ID
+        const parentDesign = await Design.findById(parent_design_id);
+        if (!parentDesign) {
+          throw new HTTPException(404, { message: "Parent design not found" });
+        }
 
-      if (existingDesign) {
-        existingDesign.element_design = elementDesignObj;
-        existingDesign.name = name;
-        if (design_images) {
-          existingDesign.design_images = design_images;
-        }
+        // Find the root design (original) to count versions
+        const rootDesignId = parentDesign.parent_design_id || parent_design_id;
         
-        // Add template information if provided
-        if (template_id !== undefined) {
-          console.log("[API] Setting template_id to:", template_id);
-          existingDesign.template_id = template_id;
-          existingDesign.template_applied_at = template_applied_at ? new Date(template_applied_at) : new Date();
-        }
-        
-        design = await existingDesign.save();
-      } else {
-        // Check if there's a design with the same shirt color but different name
-        const sameShirtColorDesign = await Design.findOne({
-          user_id: user.id,
-          shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
+        // Count existing versions from this root design
+        const existingVersions = await Design.countDocuments({
+          $or: [
+            { _id: rootDesignId },
+            { parent_design_id: rootDesignId }
+          ],
+          user_id: user.id
         });
 
-        if (sameShirtColorDesign && sameShirtColorDesign.name !== name) {
-          // Create a new design if the name is different
-          design = new Design({
-            user_id: user.id,
-            shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
-            element_design: elementDesignObj,
-            name: name,
-            design_images: design_images || {},
-            template_id: template_id || null,
-            template_applied_at: template_id ? (template_applied_at ? new Date(template_applied_at) : new Date()) : null,
-          });
-          await design.save();
-        } else if (!sameShirtColorDesign) {
-          // No design exists for this shirt color, create a new one
-          design = new Design({
-            user_id: user.id,
-            shirt_color_id: new mongoose.Types.ObjectId(shirt_color_id),
-            element_design: elementDesignObj,
-            name: name,
-            design_images: design_images || {},
-            template_id: template_id || null,
-            template_applied_at: template_id ? (template_applied_at ? new Date(template_applied_at) : new Date()) : null,
-          });
-          await design.save();
-        } else {
-          // This case shouldn't be reached due to the earlier existingDesign check
-          // But just to be safe, update the existing design
-          sameShirtColorDesign.element_design = elementDesignObj;
-          sameShirtColorDesign.name = name;
-          if (design_images) {
-            sameShirtColorDesign.design_images = design_images;
-          }
-          
-          // Add template information if provided
-          if (template_id !== undefined) {
-            console.log("[API] Setting template_id to:", template_id);
-            sameShirtColorDesign.template_id = template_id;
-            sameShirtColorDesign.template_applied_at = template_applied_at ? new Date(template_applied_at) : new Date();
-          }
-          
-          design = await sameShirtColorDesign.save();
-        }
+        // Set version number (v1, v2, v3, etc.)
+        designData.version = `v${existingVersions}`;
+        
+        console.log("[API POST] Creating new version:", designData.version, "of design:", parent_design_id);
+      } else {
+        // This is a new original design
+        designData.version = "original";
+        console.log("[API POST] Creating original design");
       }
+
+      const design = new Design(designData);
+      await design.save();
+
+      console.log("[API POST] Design created successfully with ID:", design.id);
 
       return c.json(
         {
           success: true,
           data: design,
         },
-        existingDesign ? 200 : 201
+        201 // Always 201 since we're always creating new
       );
     } catch (error) {
       console.error("Error creating/updating design:", error);
@@ -169,7 +141,8 @@ const app = new Hono()
             select: "_id name",
           },
         })
-        .populate("element_design.images_id");
+        .populate("element_design.images_id")
+        .sort({ createdAt: -1 }); // Sort by newest first
 
       return c.json({
         success: true,
@@ -203,10 +176,29 @@ const app = new Hono()
     async (c) => {
       try {
         const id = c.req.valid("param").id;
-        const design = await Design.findById(id);
+        console.log("[API GET /:id] Fetching design with ID:", id);
+        const design = await Design.findById(id)
+          .populate({
+            path: "shirt_color_id",
+            populate: {
+              path: "shirt_id",
+              model: "Shirt",
+              select: "_id name",
+            },
+          })
+          .populate("element_design.images_id");
+        
         if (!design) {
+          console.log("[API GET /:id] Design not found for ID:", id);
           throw new HTTPException(404, { message: "Design not found" });
         }
+        
+        console.log("[API GET /:id] Found design:", { 
+          id: design.id, 
+          name: design.name,
+          version: design.version 
+        });
+        
         return c.json({
           success: true,
           data: design,
@@ -245,10 +237,10 @@ const app = new Hono()
           throw new HTTPException(401, { message: "Unauthorized" });
         }
         const id = c.req.valid("param").id;
-        const { shirt_color_id, element_design, name, design_images, template_id, template_applied_at } =
+        const { shirt_color_id, element_design, name, design_images, parent_design_id } =
           c.req.valid("json");
-          
-        console.log("[API PUT] Request payload template info:", { template_id, template_applied_at });
+
+        console.log("[API PUT] Request payload template info:", { parent_design_id });
         // Check if the design exists and belongs to the user
         const existingDesign = await Design.findOne({
           _id: id,
@@ -284,13 +276,6 @@ const app = new Hono()
           existingDesign.design_images = design_images;
         }
         
-        // Update template information if provided
-        if (template_id !== undefined) {
-          console.log("[API PUT] Setting template_id to:", template_id);
-          existingDesign.template_id = template_id;
-          existingDesign.template_applied_at = template_applied_at ? new Date(template_applied_at) : new Date();
-        }
-
         // Save the updated design
         const updatedDesign = await existingDesign.save();
 

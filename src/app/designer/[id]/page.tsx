@@ -19,10 +19,24 @@ function EditDesignPage({
 }) {
   const { id } = params;
   const { colorId, designId } = searchParams;
+
+  console.log("Designer page params:", {
+    productId: id,
+    colorId,
+    designId,
+    isEditDesign: designId !== undefined && designId !== "",
+  });
+
   const isEditDesign = designId !== undefined && designId !== "";
   const { data: designDetailData, isLoading: isLoadingDesignDetail } =
     useGetDetailDesign(isEditDesign ? designId : "");
-  const designDetail = designDetailData?.data[0] || {};
+  const designDetail = designDetailData?.data || {};
+
+  console.log("Design detail loaded:", {
+    designDetailData,
+    designDetail,
+    isLoadingDesignDetail,
+  });
   const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
   const router = useRouter();
 

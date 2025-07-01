@@ -21,6 +21,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { DialogClose } from "@radix-ui/react-dialog";
+import { ChevronUp, ChevronDown } from "lucide-react";
 
 export const TableSavedDesign = ({
   data,
@@ -39,6 +40,10 @@ export const TableSavedDesign = ({
       view: string;
       url: string;
     }>[];
+    isVersion?: boolean;
+    version?: string;
+    parentDesignName?: string;
+    createdAt?: string;
   }>;
   onDelete: (id: string) => void;
   onConfirmDelete: (id: string) => void;
@@ -50,6 +55,48 @@ export const TableSavedDesign = ({
     id: string;
     designName: string;
   } | null>(null);
+
+  // Sort state
+  const [sortField, setSortField] = useState<
+    "productName" | "designName" | null
+  >(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+
+  const handleSort = (field: "productName" | "designName") => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("asc");
+    }
+  };
+
+  // Sort data
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortField) return 0;
+
+    const aValue = sortField === "productName" ? a.productName : a.designName;
+    const bValue = sortField === "productName" ? b.productName : b.designName;
+
+    const comparison = aValue.localeCompare(bValue);
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
+
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
+  };
 
   const handleOrderClick = (id: string, designName: string) => {
     setSelectedDesign({ id, designName });
@@ -65,10 +112,37 @@ export const TableSavedDesign = ({
               Preview
             </TableHead>
             <TableHead className="font-bold text-black text-base">
-              Product Name
+              <Button
+                variant="ghost"
+                className="p-0 h-auto font-bold text-black text-base hover:bg-transparent"
+                onClick={() => handleSort("productName")}
+              >
+                Product Name
+                {sortField === "productName" &&
+                  (sortDirection === "asc" ? (
+                    <ChevronUp className="ml-1 h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  ))}
+              </Button>
             </TableHead>
             <TableHead className="font-bold text-black text-base">
-              Design Name
+              <Button
+                variant="ghost"
+                className="p-0 h-auto font-bold text-black text-base hover:bg-transparent"
+                onClick={() => handleSort("designName")}
+              >
+                Design Name
+                {sortField === "designName" &&
+                  (sortDirection === "asc" ? (
+                    <ChevronUp className="ml-1 h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="ml-1 h-4 w-4" />
+                  ))}
+              </Button>
+            </TableHead>
+            <TableHead className="font-bold text-black text-base">
+              Version Info
             </TableHead>
             <TableHead className="text-right font-bold text-black text-base">
               Actions
@@ -76,7 +150,7 @@ export const TableSavedDesign = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {data.map((item) => {
+          {sortedData.map((item) => {
             // Get all images (flattened)
             const allImages = item.previewImages.flat();
 
@@ -110,11 +184,45 @@ export const TableSavedDesign = ({
                 </TableCell>
                 <TableCell>{item.productName}</TableCell>
                 <TableCell>{item.designName}</TableCell>
+                <TableCell>
+                  <div className="text-sm">
+                    <div
+                      className={`font-medium ${
+                        item.version === "original"
+                          ? "text-green-600"
+                          : "text-blue-600"
+                      }`}
+                    >
+                      {item.version === "original"
+                        ? "Original"
+                        : item.version?.toUpperCase()}
+                    </div>
+                    {item.isVersion && item.parentDesignName && (
+                      <div className="text-gray-500 text-xs">
+                        Based on: {item.parentDesignName}
+                      </div>
+                    )}
+                    {item.createdAt && (
+                      <div className="text-gray-400 text-xs">
+                        At: {formatDate(item.createdAt)}
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" asChild>
                       <Link
                         href={`/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`}
+                        onClick={() => {
+                          console.log('Edit button clicked for design:', {
+                            designId: item.id,
+                            designName: item.designName,
+                            productId: item.productId,
+                            colorId: item.colorId,
+                            fullURL: `/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`
+                          });
+                        }}
                       >
                         Edit
                       </Link>
@@ -122,9 +230,7 @@ export const TableSavedDesign = ({
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() =>
-                        handleOrderClick(item.id, item.designName)
-                      }
+                      onClick={() => handleOrderClick(item.id, item.designName)}
                     >
                       Order
                     </Button>
@@ -142,21 +248,16 @@ export const TableSavedDesign = ({
                       {confirmModalOpen && (
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>
-                              Are you absolutely sure?
-                            </DialogTitle>
+                            <DialogTitle>Are you absolutely sure?</DialogTitle>
                             <DialogDescription>
                               This action cannot be undone. This will
-                              permanently delete your design and
-                              remove your design from your cart.
+                              permanently delete your design and remove your
+                              design from your cart.
                             </DialogDescription>
                           </DialogHeader>
                           <DialogFooter className="sm:justify-end">
                             <DialogClose asChild>
-                              <Button
-                                type="button"
-                                variant="secondary"
-                              >
+                              <Button type="button" variant="secondary">
                                 Close
                               </Button>
                             </DialogClose>
@@ -166,9 +267,7 @@ export const TableSavedDesign = ({
                               onClick={() => onConfirmDelete(item.id)}
                               disabled={deleteLoading}
                             >
-                              {deleteLoading
-                                ? "Loading..."
-                                : "Confirm"}
+                              {deleteLoading ? "Loading..." : "Confirm"}
                             </Button>
                           </DialogFooter>
                         </DialogContent>
@@ -180,14 +279,10 @@ export const TableSavedDesign = ({
             );
           })}
 
-          {data.length === 0 && (
+          {sortedData.length === 0 && (
             <TableRow>
-              <TableCell
-                colSpan={4}
-                className="text-center py-8 text-gray-500"
-              >
-                No saved designs found. Start creating your first
-                design!
+              <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                No saved designs found. Start creating your first design!
               </TableCell>
             </TableRow>
           )}

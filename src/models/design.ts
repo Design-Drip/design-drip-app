@@ -4,14 +4,15 @@ interface ElementDesign {
   images_id: mongoose.Types.ObjectId;
   element_Json: string;
 }
+
 interface DesignDoc extends mongoose.Document {
   user_id: string;
   shirt_color_id: mongoose.Types.ObjectId;
   element_design: { [key: string]: ElementDesign }; // Store multiple image designs
   name: string; // Add design name to the interface
   design_images: Record<string, string>; // Store design images as a map
-  template_id?: string; // ID of the design template if used
-  template_applied_at?: Date; // When the template was applied
+  parent_design_id?: mongoose.Types.ObjectId; // Reference to parent design for versioning
+  version: string; // Version identifier: "original", "v1", "v2", etc.
 }
 const designSchema = new mongoose.Schema(
   {
@@ -32,18 +33,20 @@ const designSchema = new mongoose.Schema(
       trim: true,
       default: "Shirt Design", // Default name
     },
+    parent_design_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "Design",
+      required: false, // Optional - null for original designs
+    },
+    version: {
+      type: String,
+      required: true,
+      default: "original", // Default version for new designs
+    },
     design_images: {
       type: Map,
       of: String,
       default: {},
-    },
-    template_id: {
-      type: String,
-      trim: true,
-      index: true, // Add index for faster queries by template
-    },
-    template_applied_at: {
-      type: Date,
     },
     element_design: {
       type: Map,
@@ -61,6 +64,7 @@ const designSchema = new mongoose.Schema(
     },
   },
   {
+    timestamps: true, // Add createdAt and updatedAt fields
     toJSON: {
       transform(_, ret) {
         ret.id = ret._id;
