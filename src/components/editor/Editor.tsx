@@ -1,10 +1,19 @@
 "use client";
 import { useEditor } from "@/features/editor/hooks/use-editor";
-import { ActiveTool, selectionDependentTools } from "@/features/editor/types";
+import {
+  ActiveTool,
+  selectionDependentTools,
+} from "@/features/editor/types";
 import { fabric } from "fabric";
 import debounce from "lodash.debounce";
 import Image from "next/image";
-import React, { use, useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Navbar } from "./components/navbar";
 import { Sidebar } from "./components/sidebar";
 import { Toolbar } from "./components/toolbar";
@@ -18,13 +27,22 @@ import { toast } from "sonner";
 import { ProductImage } from "@/types/product";
 import { TextSidebar } from "./components/text-sidebar";
 import { useUser } from "@clerk/clerk-react";
-import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import {
+  useRouter,
+  usePathname,
+  useSearchParams,
+} from "next/navigation";
 import { FillColorSidebar } from "./components/fill-color-sidebar";
 // Add near your imports
 import { generateReactHelpers } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { useUpdateDesign } from "@/features/design/use-update-design";
 import { useQueryClient } from "@tanstack/react-query";
+import { FilterSidebar } from "./components/filter-sidebar";
+import { StrokeColorSidebar } from "./components/stroke-color-sidebar";
+import { StrokeWidthSidebar } from "./components/stroke-width-sidebar";
+import { RemoveBgSidebar } from "./components/remove-bg-sidebar";
+import { OpacitySidebar } from "./components/opacity-sidebar";
 
 // Add inside your component
 const { useUploadThing } = generateReactHelpers<OurFileRouter>();
@@ -46,11 +64,14 @@ export const Editor = ({
   const [canvasStates, setCanvasStates] = useState<{
     [key: number]: string;
   }>({});
-  const [selectedImage, setSelectedImage] = useState<any>(images[0] || {});
+  const [selectedImage, setSelectedImage] = useState<any>(
+    images[0] || {}
+  );
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | null>(null);
-  const [designName, setDesignName] = useState<string>("Shirt Design");
+  const [designName, setDesignName] =
+    useState<string>("Shirt Design");
 
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
@@ -66,7 +87,7 @@ export const Editor = ({
   //mutation
   const createDesignMutation = useCreateDesign();
   const updateDesignMutation = useUpdateDesign();
-
+  
   // Add this to use the new route
   const { startUpload, isUploading } = useUploadThing("designCanvas");
   // Add this function to convert canvas to file and upload
@@ -113,7 +134,9 @@ export const Editor = ({
 
         // Find the image in the images array that matches this URL
         const imageData = images.find((img) => img.url === imageUrl);
-        const xPosition = imageData ? imageData.x_editable_zone + 20 : 20;
+        const xPosition = imageData
+          ? imageData.x_editable_zone + 20
+          : 20;
         const yPosition = imageData ? imageData.y_editable_zone : 20;
 
         // Convert canvas to data URL
@@ -136,15 +159,24 @@ export const Editor = ({
         });
 
         // Draw canvas content at the correct position
-        const width = imageData ? imageData.width_editable_zone : canvas.width;
+        const width = imageData
+          ? imageData.width_editable_zone
+          : canvas.width;
         const height = imageData
           ? imageData.height_editable_zone
           : canvas.height;
 
-        ctx.drawImage(canvasImage, xPosition, yPosition, width, height);
+        ctx.drawImage(
+          canvasImage,
+          xPosition,
+          yPosition,
+          width,
+          height
+        );
 
         // Convert the composite canvas to a blob
-        const compositeDataURL = compositeCanvas.toDataURL("image/png");
+        const compositeDataURL =
+          compositeCanvas.toDataURL("image/png");
         const res = await fetch(compositeDataURL);
         const blob = await res.blob();
 
@@ -227,7 +259,10 @@ export const Editor = ({
       };
 
       // Check if state is actually different before updating
-      if (JSON.stringify(newCanvasStates) !== JSON.stringify(canvasStates)) {
+      if (
+        JSON.stringify(newCanvasStates) !==
+        JSON.stringify(canvasStates)
+      ) {
         setCanvasStates(newCanvasStates);
       }
 
@@ -327,7 +362,9 @@ export const Editor = ({
       };
 
       // Process all canvas states
-      for (const [imageIndex, canvasJson] of Object.entries(allStates)) {
+      for (const [imageIndex, canvasJson] of Object.entries(
+        allStates
+      )) {
         const index = parseInt(imageIndex);
         const image = images[index];
 
@@ -440,12 +477,16 @@ export const Editor = ({
   const loadCanvasState = useCallback(
     (imageIndex: number) => {
       if (!editor?.canvas) {
-        console.error("Cannot load canvas state: editor or canvas is null");
+        console.error(
+          "Cannot load canvas state: editor or canvas is null"
+        );
         return;
       }
 
       try {
-        console.log(`Loading canvas state for image index: ${imageIndex}`);
+        console.log(
+          `Loading canvas state for image index: ${imageIndex}`
+        );
 
         // Clear the canvas first to avoid artifacts
         editor.canvas.clear();
@@ -458,7 +499,9 @@ export const Editor = ({
 
           editor.canvas.loadFromJSON(canvasData, () => {
             editor.canvas.renderAll();
-            console.log(`Canvas state loaded for index ${imageIndex}`);
+            console.log(
+              `Canvas state loaded for index ${imageIndex}`
+            );
             isUpdatingCanvas.current = false;
           });
         } else {
@@ -553,7 +596,9 @@ export const Editor = ({
       didAttemptLocalStorageLoad.current = true;
 
       try {
-        const storedData = localStorage.getItem("designDripEditorState");
+        const storedData = localStorage.getItem(
+          "designDripEditorState"
+        );
         console.log("Stored data found:", !!storedData);
 
         if (storedData) {
@@ -582,7 +627,8 @@ export const Editor = ({
               console.log("Timeout completed, loading canvas state");
               try {
                 // Get the state for the selected image
-                const stateData = parsedData.canvasStates[selectedImageIndex];
+                const stateData =
+                  parsedData.canvasStates[selectedImageIndex];
                 if (!stateData) {
                   console.log(
                     "No state data for selected image index:",
@@ -591,7 +637,10 @@ export const Editor = ({
                   return;
                 }
 
-                console.log("Found state data for index:", selectedImageIndex);
+                console.log(
+                  "Found state data for index:",
+                  selectedImageIndex
+                );
 
                 // Parse the state data
                 const parsedState = JSON.parse(stateData);
@@ -616,8 +665,10 @@ export const Editor = ({
                     parsedState.metadata.canvasDimensions
                   );
                   editor.canvas.setDimensions({
-                    width: parsedState.metadata.canvasDimensions.width,
-                    height: parsedState.metadata.canvasDimensions.height,
+                    width:
+                      parsedState.metadata.canvasDimensions.width,
+                    height:
+                      parsedState.metadata.canvasDimensions.height,
                   });
                 }
 
@@ -656,7 +707,10 @@ export const Editor = ({
                   );
                 });
               } catch (error) {
-                console.error("Error loading canvas state in timeout:", error);
+                console.error(
+                  "Error loading canvas state in timeout:",
+                  error
+                );
               }
             }, 800); // Longer timeout for more reliability
           }
@@ -744,7 +798,9 @@ export const Editor = ({
       didAttemptLocalStorageLoad.current = true;
 
       try {
-        const storedData = localStorage.getItem("designDripEditorState");
+        const storedData = localStorage.getItem(
+          "designDripEditorState"
+        );
         console.log("Stored data found:", !!storedData);
 
         if (storedData) {
@@ -759,7 +815,11 @@ export const Editor = ({
   const didLoadDesignDetail = useRef(false);
 
   useEffect(() => {
-    if (designDetail && editor?.canvas && !didLoadDesignDetail.current) {
+    if (
+      designDetail &&
+      editor?.canvas &&
+      !didLoadDesignDetail.current
+    ) {
       didLoadDesignDetail.current = true;
       // We need to set this to prevent localStorage loading from overriding our design
       didAttemptLocalStorageLoad.current = true;
@@ -802,7 +862,8 @@ export const Editor = ({
               if (parsedState.metadata?.canvasDimensions) {
                 editor.canvas.setDimensions({
                   width: parsedState.metadata.canvasDimensions.width,
-                  height: parsedState.metadata.canvasDimensions.height,
+                  height:
+                    parsedState.metadata.canvasDimensions.height,
                 });
               }
 
@@ -872,6 +933,21 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
+        <StrokeColorSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <StrokeWidthSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <OpacitySidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <TextSidebar
           editor={editor}
           activeTool={activeTool}
@@ -887,13 +963,21 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-
+        <FilterSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <AiSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-
+        <RemoveBgSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <SettingsSidebar
           editor={editor}
           activeTool={activeTool}

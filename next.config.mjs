@@ -10,6 +10,14 @@ const nextConfig = {
         protocol: "https",
         hostname: "ext.same-assets.com",
       },
+      {
+        protocol: "https",
+        hostname: "replicate.delivery", 
+      },
+      {
+        protocol: "https",
+        hostname: "gti33638oe.ufs.sh",
+      }
     ],
   },
 };
