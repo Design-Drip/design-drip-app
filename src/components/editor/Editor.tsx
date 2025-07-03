@@ -409,6 +409,7 @@ export const Editor = ({
           // We're updating an existing design
           await updateDesignMutation.mutateAsync({
             ...designData,
+            template_applied_at: designData.template_applied_at || undefined,
             id: designDetail._id, // Pass the ID for updating
           });
           queryClient.invalidateQueries({ queryKey: ["designs"] });
