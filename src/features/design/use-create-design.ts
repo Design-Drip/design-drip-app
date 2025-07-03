@@ -10,8 +10,11 @@ type RequestType = InferRequestType<
 export const useCreateDesign = () => {
   const mutation = useMutation<ResponseType, Error, RequestType>({
     mutationFn: async (json) => {
+      console.log("CREATE DESIGN REQUEST:", JSON.stringify(json, null, 2));
       const response = await client.api.design.$post({ json });
-      return await response.json();
+      const data = await response.json();
+      console.log("CREATE DESIGN RESPONSE:", data);
+      return data;
     },
   });
 
