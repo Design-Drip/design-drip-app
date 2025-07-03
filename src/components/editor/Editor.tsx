@@ -26,6 +26,11 @@ import { generateReactHelpers } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { useUpdateDesign } from "@/features/design/use-update-design";
 import { useQueryClient } from "@tanstack/react-query";
+import { FilterSidebar } from "./components/filter-sidebar";
+import { StrokeColorSidebar } from "./components/stroke-color-sidebar";
+import { StrokeWidthSidebar } from "./components/stroke-width-sidebar";
+import { RemoveBgSidebar } from "./components/remove-bg-sidebar";
+import { OpacitySidebar } from "./components/opacity-sidebar";
 
 // Add inside your component
 const { useUploadThing } = generateReactHelpers<OurFileRouter>();
@@ -404,6 +409,7 @@ export const Editor = ({
           // We're updating an existing design
           await updateDesignMutation.mutateAsync({
             ...designData,
+            template_applied_at: designData.template_applied_at || undefined,
             id: designDetail._id, // Pass the ID for updating
           });
           queryClient.invalidateQueries({ queryKey: ["designs"] });
@@ -882,6 +888,21 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
+        <StrokeColorSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <StrokeWidthSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <OpacitySidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <TextSidebar
           editor={editor}
           activeTool={activeTool}
@@ -897,7 +918,11 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-
+        <FilterSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <AiSidebar
           editor={editor}
           activeTool={activeTool}
@@ -916,7 +941,11 @@ export const Editor = ({
             setHasUnsavedChanges(true);
           }}
         />
-
+        <RemoveBgSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <SettingsSidebar
           editor={editor}
           activeTool={activeTool}
