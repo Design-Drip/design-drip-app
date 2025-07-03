@@ -16,12 +16,9 @@ import { SidebarItem } from "./sidebar-item";
 interface SidebarProps {
   activeTool: ActiveTool;
   onChangeActiveTool: (tool: ActiveTool) => void;
-};
+}
 
-export const Sidebar = ({
-  activeTool,
-  onChangeActiveTool,
-}: SidebarProps) => {
+export const Sidebar = ({ activeTool, onChangeActiveTool }: SidebarProps) => {
   return (
     <aside className="bg-white flex flex-col w-[100px] h-full border-r overflow-y-auto">
       <ul className="flex flex-col">
@@ -43,6 +40,12 @@ export const Sidebar = ({
           label="AI"
           isActive={activeTool === "ai"}
           onClick={() => onChangeActiveTool("ai")}
+        />
+        <SidebarItem
+          icon={LayoutTemplate}
+          label="Templates"
+          isActive={activeTool === "design-templates"}
+          onClick={() => onChangeActiveTool("design-templates")}
         />
         <SidebarItem
           icon={Settings}

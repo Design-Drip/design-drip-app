@@ -30,9 +30,17 @@ import { CardBrand } from "@stripe/stripe-js";
 
 type PaymentMethodCardProps = {
   paymentMethod: Stripe.PaymentMethod & { isDefault?: boolean };
+  selectMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
 };
 
-const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
+const PaymentMethodCard = ({
+  paymentMethod,
+  selectMode = false,
+  isSelected = false,
+  onSelect,
+}: PaymentMethodCardProps) => {
   const { card, isDefault } = paymentMethod;
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -79,8 +87,11 @@ const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
       <Card
         className={cn(
           "relative overflow-hidden",
-          isDefault && "border-primary"
+          isDefault && "border-primary",
+          selectMode && isSelected && "border-primary ring-1 ring-primary",
+          selectMode && "cursor-pointer"
         )}
+        onClick={selectMode && onSelect ? onSelect : undefined}
       >
         {isDefault && (
           <div className="absolute bottom-5 left-5">
@@ -92,6 +103,9 @@ const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
             <CardTitle className="text-base flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
               {getCardBrandName(card.brand as CardBrand)}
+              {selectMode && isSelected && (
+                <Badge className="ml-2">Selected</Badge>
+              )}
             </CardTitle>
             <div className="text-xs text-muted-foreground">
               Expires {card.exp_month}/{card.exp_year.toString().slice(-2)}
@@ -102,42 +116,43 @@ const PaymentMethodCard = ({ paymentMethod }: PaymentMethodCardProps) => {
           <div className="flex items-center">
             <span className="text-muted-foreground mr-1">••••</span>
             <span className="text-muted-foreground mr-1">••••</span>
-            <span className="text-muted-foreground mr-1">••••</span>
             <span>{card.last4}</span>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end gap-2 pt-2 pb-3">
-          {!isDefault && (
+        {!selectMode && (
+          <CardFooter className="flex justify-end gap-2 pt-2 pb-3">
+            {!isDefault && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSetDefault}
+                disabled={isSettingDefault || isDeleting}
+              >
+                {isSettingDefault ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Setting...
+                  </>
+                ) : (
+                  "Set as Default"
+                )}
+              </Button>
+            )}
             <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSetDefault}
-              disabled={isSettingDefault || isDeleting}
+              variant="ghost"
+              size="icon"
+              className="text-destructive h-8 w-8"
+              onClick={() => setIsDeleteDialogOpen(true)}
+              disabled={isDeleting || isSettingDefault}
             >
-              {isSettingDefault ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Setting...
-                </>
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                "Set as Default"
+                <Trash2 className="h-4 w-4" />
               )}
             </Button>
-          )}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-destructive h-8 w-8"
-            onClick={() => setIsDeleteDialogOpen(true)}
-            disabled={isDeleting || isSettingDefault}
-          >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4" />
-            )}
-          </Button>
-        </CardFooter>
+          </CardFooter>
+        )}
       </Card>
 
       <AlertDialog

@@ -10,3 +10,11 @@ export interface IAttachPaymentMethodPayload {
 export interface IDeletePaymentMethodPayload {
   paymentMethodId: string;
 }
+
+export interface IProcessCheckoutPayload {
+  paymentMethodId?: string;
+  savePaymentMethod?: boolean;
+  paymentIntent?: string;
+  itemIds?: string[];
+  return_url?: string;
+}

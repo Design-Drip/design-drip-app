@@ -14,6 +14,8 @@ type UpdateDesignPayload = {
   >;
   name: string;
   design_images?: Record<string, string>;
+  template_id?: string | null;
+  template_applied_at?: string;
 };
 
 export const useUpdateDesign = () => {
@@ -21,6 +23,12 @@ export const useUpdateDesign = () => {
     mutationFn: async (data: UpdateDesignPayload) => {
       const { id, ...updateData } = data;
 
+      console.log("UPDATE DESIGN REQUEST:", id);
+      console.log("TEMPLATE INFO:", {
+        template_id: updateData.template_id,
+        template_applied_at: updateData.template_applied_at
+      });
+      
       // Use the path parameter for the ID and json for the body
       const response = await client.api.design[":id"].$put({
         param: { id },
@@ -31,8 +39,11 @@ export const useUpdateDesign = () => {
       if (!response.ok) {
         throw new Error("Failed to update design details");
       }
-
-      return await response.json();
+      
+      const result = await response.json();
+      console.log("UPDATE DESIGN RESPONSE:", result);
+      
+      return result;
     },
   });
 };

@@ -27,6 +27,8 @@ const createDesignSchema = z.object({
   element_design: z.record(z.string(), elementDesignSchema),
   name: z.string().default("Shirt Design"),
   design_images: z.record(z.string(), z.string()).optional(),
+  template_id: z.union([z.string(), z.null()]).optional(),
+  template_applied_at: z.union([z.string(), z.null()]).optional(), // ISO date string
 });
 
 const app = new Hono()
@@ -37,8 +39,19 @@ const app = new Hono()
       if (!user) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
-      const { shirt_color_id, element_design, name, design_images } =
-        c.req.valid("json");
+      const {
+        shirt_color_id,
+        element_design,
+        name,
+        design_images,
+        template_id,
+        template_applied_at,
+      } = c.req.valid("json");
+
+      console.log("[API POST] Request payload template info:", {
+        template_id,
+        template_applied_at,
+      });
 
       // Convert string IDs to ObjectIds for the database
       const elementDesignObj: {
@@ -70,6 +83,16 @@ const app = new Hono()
         if (design_images) {
           existingDesign.design_images = design_images;
         }
+
+        // Add template information if provided
+        if (template_id !== undefined) {
+          console.log("[API] Setting template_id to:", template_id);
+          existingDesign.template_id = template_id || undefined;
+          existingDesign.template_applied_at = template_applied_at
+            ? new Date(template_applied_at)
+            : new Date();
+        }
+
         design = await existingDesign.save();
       } else {
         // Check if there's a design with the same shirt color but different name
@@ -86,6 +109,12 @@ const app = new Hono()
             element_design: elementDesignObj,
             name: name,
             design_images: design_images || {},
+            template_id: template_id || null,
+            template_applied_at: template_id
+              ? template_applied_at
+                ? new Date(template_applied_at)
+                : new Date()
+              : null,
           });
           await design.save();
         } else if (!sameShirtColorDesign) {
@@ -96,6 +125,12 @@ const app = new Hono()
             element_design: elementDesignObj,
             name: name,
             design_images: design_images || {},
+            template_id: template_id || null,
+            template_applied_at: template_id
+              ? template_applied_at
+                ? new Date(template_applied_at)
+                : new Date()
+              : null,
           });
           await design.save();
         } else {
@@ -106,6 +141,16 @@ const app = new Hono()
           if (design_images) {
             sameShirtColorDesign.design_images = design_images;
           }
+
+          // Add template information if provided
+          if (template_id !== undefined) {
+            console.log("[API] Setting template_id to:", template_id);
+            sameShirtColorDesign.template_id = template_id || undefined;
+            sameShirtColorDesign.template_applied_at = template_applied_at
+              ? new Date(template_applied_at)
+              : new Date();
+          }
+
           design = await sameShirtColorDesign.save();
         }
       }
@@ -221,8 +266,19 @@ const app = new Hono()
           throw new HTTPException(401, { message: "Unauthorized" });
         }
         const id = c.req.valid("param").id;
-        const { shirt_color_id, element_design, name, design_images } =
-          c.req.valid("json");
+        const {
+          shirt_color_id,
+          element_design,
+          name,
+          design_images,
+          template_id,
+          template_applied_at,
+        } = c.req.valid("json");
+
+        console.log("[API PUT] Request payload template info:", {
+          template_id,
+          template_applied_at,
+        });
         // Check if the design exists and belongs to the user
         const existingDesign = await Design.findOne({
           _id: id,
@@ -256,6 +312,15 @@ const app = new Hono()
         // Only update design_images if provided
         if (design_images) {
           existingDesign.design_images = design_images;
+        }
+
+        // Update template information if provided
+        if (template_id !== undefined) {
+          console.log("[API PUT] Setting template_id to:", template_id);
+          existingDesign.template_id = template_id || undefined;
+          existingDesign.template_applied_at = template_applied_at
+            ? new Date(template_applied_at)
+            : new Date();
         }
 
         // Save the updated design

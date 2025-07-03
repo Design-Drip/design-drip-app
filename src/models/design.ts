@@ -10,6 +10,8 @@ interface DesignDoc extends mongoose.Document {
   element_design: { [key: string]: ElementDesign }; // Store multiple image designs
   name: string; // Add design name to the interface
   design_images: Record<string, string>; // Store design images as a map
+  template_id?: string; // ID of the design template if used
+  template_applied_at?: Date; // When the template was applied
 }
 const designSchema = new mongoose.Schema(
   {
@@ -34,6 +36,14 @@ const designSchema = new mongoose.Schema(
       type: Map,
       of: String,
       default: {},
+    },
+    template_id: {
+      type: String,
+      trim: true,
+      index: true, // Add index for faster queries by template
+    },
+    template_applied_at: {
+      type: Date,
     },
     element_design: {
       type: Map,
