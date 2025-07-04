@@ -45,6 +45,7 @@ const app = new Hono()
           status: order.status,
           createdAt: order.createdAt,
           updatedAt: order.updatedAt,
+          paymentMethod: order.paymentMethod,
         })),
         pagination: {
           page,
