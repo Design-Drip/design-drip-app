@@ -245,7 +245,7 @@ const app = new Hono()
             .skip(skip)
             .limit(limit)
             .lean()
-            .select(["name", "base_price"]),
+            .select(["name", "base_price", "description"]),
           Shirt.countDocuments(query),
         ]);
 
@@ -264,10 +264,10 @@ const app = new Hono()
               color_value: color.color_value,
               image: primaryImage
                 ? {
-                    id: primaryImage._id,
-                    url: primaryImage.url,
-                    view_side: primaryImage.view_side,
-                  }
+                  id: primaryImage._id,
+                  url: primaryImage.url,
+                  view_side: primaryImage.view_side,
+                }
                 : null,
             };
           });

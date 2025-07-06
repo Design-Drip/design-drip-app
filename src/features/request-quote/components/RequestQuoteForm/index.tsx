@@ -23,6 +23,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
+import SelectShirtDialog from '../SelectShirtDialog';
 
 // --- Zod schemas ---
 const customerSchema = z.object({
@@ -291,9 +292,9 @@ export default function RequestQuotePage() {
                                     name="product.productId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Product</FormLabel>
+                                            <FormLabel className='mr-2'>Select Product</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter product ID or name" {...field} />
+                                                <SelectShirtDialog />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
