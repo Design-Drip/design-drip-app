@@ -5,19 +5,26 @@ import mongoose from "mongoose";
 import { HTTPException } from "hono/http-exception";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
 import { Order } from "@/models/order";
+import { checkRole } from "@/lib/roles";
 
 const app = new Hono()
   .use(verifyAuth)
   .get("/", async (c) => {
     const user = c.get("user")!;
+    const isAdmin = await checkRole("admin");
     const page = Number(c.req.query("page") || "1");
     const limit = Number(c.req.query("limit") || "10");
     const status = c.req.query("status");
+    const search = c.req.query("search");
 
     try {
       const skip = (page - 1) * limit;
+      let query: Record<string, any> = {};
 
-      const query: any = { userId: user.id };
+      if (!isAdmin) {
+        query.userId = user.id;
+      }
+
       if (
         status &&
         ["pending", "processing", "shipped", "delivered", "canceled"].includes(
@@ -25,6 +32,27 @@ const app = new Hono()
         )
       ) {
         query.status = status;
+      }
+
+      // Add search functionality
+      if (search) {
+        const searchRegex = new RegExp(search, "i");
+
+        // If search looks like an ObjectId or partial ObjectId, search by _id
+        if (mongoose.isObjectIdOrHexString(search)) {
+          query._id = search;
+        } else if (search.length >= 3 && /^[a-fA-F0-9]+$/.test(search)) {
+          // Partial ObjectId search (at least 3 hex characters)
+          query._id = new RegExp(search, "i");
+        } else {
+          // Search in multiple fields
+          query.$or = [
+            { userId: searchRegex },
+            { "items.name": searchRegex },
+            { "items.color": searchRegex },
+            { paymentMethod: searchRegex },
+          ];
+        }
       }
 
       const orders = await Order.find(query)
