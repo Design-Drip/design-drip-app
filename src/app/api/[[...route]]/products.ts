@@ -254,6 +254,15 @@ const app = new Hono()
             shirt_id: product._id,
           }).select(["color", "color_value", "images"]);
 
+          let sizes = [];
+          if (colors) {
+            for (const color of colors) {
+              sizes = await ShirtSizeVariant.find({
+                shirtColor: color._id,
+              }).select(["shirtColor", "size"])
+            }
+          }
+
           const transformedColors = colors.map((color) => {
             const primaryImage =
               color.images?.find((img) => img.is_primary) || color.images?.[0];

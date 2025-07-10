@@ -7,11 +7,24 @@ import { getProductsQuery } from '@/features/products/services/queries'
 import { useProductsQueryStore } from '@/features/products/store/useProductsQueryStore'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
-import React from 'react'
+import React, { useState } from 'react'
 import ProductList from '../ProductList'
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination'
+import { useSelectedProductStore } from '../../store/useSelectedProductStore'
 
-const SelectShirtDialog = () => {
+interface SelectShirtDialogProps {
+    onProductSelect: (product: any) => void;
+    placeholder?: string;
+}
+
+const SelectShirtDialog = ({
+    onProductSelect,
+    placeholder
+}: SelectShirtDialogProps) => {
+    const [open, setOpen] = useState(false);
+
+    const { selectedProduct, setSelectedProduct } = useSelectedProductStore()
+
     //Get store state and actions
     const { sort, page, setSort, setPage } = useProductsQueryStore();
 
@@ -51,8 +64,17 @@ const SelectShirtDialog = () => {
         }
     }
 
+    const handleProductSelect = (product: any) => {
+        setSelectedProduct(product);
+        setOpen(false)
+
+        if (onProductSelect) {
+            onProductSelect(product._id);
+        }
+    }
+
     return (
-        <Dialog>
+        <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
                 <Button>
                     OPEN PRODUCT SELECTOR
@@ -94,7 +116,11 @@ const SelectShirtDialog = () => {
                         ) : (
                             <>
                                 <div className="flex-1 overflow-y-auto min-h-0">
-                                    <ProductList products={data?.items || []} />
+                                    <ProductList
+                                        products={data?.items || []}
+                                        onProductSelect={handleProductSelect}
+                                        selectedProductId={selectedProduct?._id}
+                                    />
                                 </div>
 
                                 <div className="flex-shrink-0 border-t pt-4">

@@ -24,6 +24,8 @@ import { cn } from '@/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import SelectShirtDialog from '../SelectShirtDialog';
+import SelectedProductInfo from '../SelectedProductInfo';
+import { useSelectedProductStore } from '../../store/useSelectedProductStore';
 
 // --- Zod schemas ---
 const customerSchema = z.object({
@@ -65,6 +67,9 @@ type FormData = z.infer<typeof fullSchema>;
 export default function RequestQuotePage() {
     const [step, setStep] = React.useState(1);
     const [type, setType] = React.useState<'product' | 'custom'>('product');
+
+    const { selectedProduct } = useSelectedProductStore();
+
     const form = useForm<FormData>({
         resolver: zodResolver(fullSchema),
         defaultValues: {
@@ -77,6 +82,11 @@ export default function RequestQuotePage() {
     const onSubmit = (data: FormData) => {
         alert(JSON.stringify(data, null, 2));
     };
+
+    const handleProductSelect = (product: any) => {
+        form.setValue('product.productId', product._id);
+        form.clearErrors('product.productId');
+    }
 
     return (
         <Form {...form}>
@@ -294,12 +304,15 @@ export default function RequestQuotePage() {
                                         <FormItem>
                                             <FormLabel className='mr-2'>Select Product</FormLabel>
                                             <FormControl>
-                                                <SelectShirtDialog />
+                                                <SelectShirtDialog
+                                                    onProductSelect={handleProductSelect}
+                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+                                {selectedProduct && <SelectedProductInfo product={selectedProduct} />}
                                 <FormField
                                     control={form.control}
                                     name="product.quantity"
