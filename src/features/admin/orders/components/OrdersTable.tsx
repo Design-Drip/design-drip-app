@@ -45,7 +45,12 @@ interface OrderItem {
   imageUrl?: string;
 }
 
-type OrderStatus = "pending" | "processing" | "shipped" | "delivered" | "canceled";
+type OrderStatus =
+  | "pending"
+  | "processing"
+  | "shipped"
+  | "delivered"
+  | "canceled";
 
 interface Order {
   id: string;
@@ -63,14 +68,6 @@ interface OrdersTableProps {
 }
 
 export function OrdersTable({ orders }: OrdersTableProps) {
-  const [statusUpdates, setStatusUpdates] = useState<Record<string, OrderStatus>>({});
-
-  const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    setStatusUpdates(prev => ({ ...prev, [orderId]: newStatus }));
-    // TODO: Implement status update API call
-    console.log(`Updating order ${orderId} to status: ${newStatus}`);
-  };
-
   const getItemsPreview = (items: OrderItem[]) => {
     if (items.length === 0) return "No items";
     if (items.length === 1) return items[0].name;
@@ -79,7 +76,13 @@ export function OrdersTable({ orders }: OrdersTableProps) {
 
   const getTotalQuantity = (items: OrderItem[]) => {
     return items.reduce((total, item) => {
-      return total + item.sizes.reduce((itemTotal, size) => itemTotal + size.quantity, 0);
+      return (
+        total +
+        item.sizes.reduce(
+          (itemTotal, size) => itemTotal + size.quantity,
+          0
+        )
+      );
     }, 0);
   };
 
@@ -103,14 +106,14 @@ export function OrdersTable({ orders }: OrdersTableProps) {
           {orders.map((order) => (
             <TableRow key={order.id}>
               <TableCell className="font-medium">
-                <Link 
+                <Link
                   href={`/admin/orders/${order.id}`}
                   className="hover:underline text-blue-600"
                 >
-                  #{order.id.slice(-8)}
+                  #{order.id}
                 </Link>
               </TableCell>
-              
+
               <TableCell>
                 <div className="text-sm">
                   <div className="font-medium">{order.userId}</div>
@@ -119,7 +122,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   </div>
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <div className="flex items-center gap-2">
                   {order.items[0]?.imageUrl ? (
@@ -143,25 +146,22 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   </div>
                 </div>
               </TableCell>
-              
+
               <TableCell>
                 <Badge variant="secondary" className="text-xs">
                   {getTotalQuantity(order.items)} pcs
                 </Badge>
               </TableCell>
-              
+
               <TableCell className="font-medium">
                 {formatPrice(order.totalAmount)}
               </TableCell>
-              
+
               <TableCell>
-                <Select
-                  value={statusUpdates[order.id] || order.status}
-                  onValueChange={(value: OrderStatus) => handleStatusChange(order.id, value)}
-                >
+                <Select value={order.status} disabled={true}>
                   <SelectTrigger className="w-[130px] h-8">
                     <SelectValue>
-                      <OrderStatusBadge status={statusUpdates[order.id] || order.status} />
+                      <OrderStatusBadge status={order.status} />
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
@@ -183,17 +183,20 @@ export function OrdersTable({ orders }: OrdersTableProps) {
                   </SelectContent>
                 </Select>
               </TableCell>
-              
+
               <TableCell>
-                <Badge variant="outline" className="text-xs capitalize">
+                <Badge
+                  variant="outline"
+                  className="text-xs capitalize"
+                >
                   {order.paymentMethod}
                 </Badge>
               </TableCell>
-              
+
               <TableCell className="text-sm text-muted-foreground">
                 {formatOrderDate(order.createdAt)}
               </TableCell>
-              
+
               <TableCell className="text-right">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
