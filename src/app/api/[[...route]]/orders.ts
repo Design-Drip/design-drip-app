@@ -8,6 +8,7 @@ import { Order } from "@/models/order";
 import { checkRole } from "@/lib/roles";
 
 const app = new Hono()
+  .use(verifyAuth)
   .get("/", async (c) => {
     const user = c.get("user")!;
     const isAdmin = await checkRole("admin");
