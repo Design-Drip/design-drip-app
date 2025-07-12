@@ -254,18 +254,13 @@ const app = new Hono()
             shirt_id: product._id,
           }).select(["color", "color_value", "images"]);
 
-          let sizes = [];
-          if (colors) {
-            for (const color of colors) {
-              sizes = await ShirtSizeVariant.find({
-                shirtColor: color._id,
-              }).select(["shirtColor", "size"])
-            }
-          }
-
-          const transformedColors = colors.map((color) => {
+          const transformedColors = await Promise.all(colors.map(async (color) => {
             const primaryImage =
               color.images?.find((img) => img.is_primary) || color.images?.[0];
+
+            const sizes = await ShirtSizeVariant.find({
+              shirtColor: color._id,
+            }).select(["shirtColor", "size"])
 
             return {
               id: color._id,
@@ -278,8 +273,9 @@ const app = new Hono()
                   view_side: primaryImage.view_side,
                 }
                 : null,
+              sizes: sizes || [],
             };
-          });
+          }));
 
           results.push({
             ...product,

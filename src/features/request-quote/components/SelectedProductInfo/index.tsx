@@ -2,9 +2,11 @@ import { ColorPanel, ProductColor } from '@/components/products/ColorPanel';
 import { ProductImageDisplay } from '@/components/products/ProductImageDisplay';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Package, X } from 'lucide-react';
 import React, { useState } from 'react'
+import { Controller, useFormContext } from 'react-hook-form';
 
 interface SelectedProductInfoProps {
     product: any;
@@ -17,15 +19,24 @@ const SelectedProductInfo: React.FC<SelectedProductInfoProps> = ({
     onRemove,
     className
 }) => {
-    console.log(product)
-
     const [selectedColor, setSelectedColor] = useState(
         product.colors.length > 0 ? product.colors[0] : null
     )
 
+    const { control } = useFormContext();
+
     const handleColorSelect = (color: ProductColor) => {
         setSelectedColor(color);
     };
+
+    const getSizeByColor = (): string[] => {
+        if (!selectedColor) return [];
+
+        return Array.isArray(selectedColor.sizes) ? selectedColor.sizes.map((sizeObj: any) => sizeObj.size) : [];
+    }
+
+    const getFieldName = (colorId: string, size: string) =>
+        `productsQuantities.${colorId}.${size}`
 
     return (
         <Card className={cn("border-green-200 bg-green-50", className)}>
@@ -71,8 +82,28 @@ const SelectedProductInfo: React.FC<SelectedProductInfoProps> = ({
                                 />
                             </div>
                             <div>
-                                <h3 className='font-semibold'>Product sizing:</h3>
-                                
+                                <h3 className='font-semibold mb-4'>Product sizing & quantity:</h3>
+                                <ul className='flex gap-x-4'>
+                                    {getSizeByColor().map((size) => (
+                                        <li key={size} className='flex items-center'>
+                                            <span className='inline-block pr-2'>{size}</span>
+                                            <Controller
+                                                name={getFieldName(selectedColor.id, size)}
+                                                control={control}
+                                                defaultValue={0}
+                                                render={({ field }) => (
+                                                    <Input
+                                                        type='number'
+                                                        min={0}
+                                                        value={field.value}
+                                                        onChange={e => field.onChange(Number(e.target.value))}
+                                                        className='w-24'
+                                                    />
+                                                )}
+                                            />
+                                        </li>
+                                    ))}
+                                </ul>
                             </div>
                         </div>
                     </div>

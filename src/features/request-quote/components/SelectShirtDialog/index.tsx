@@ -76,7 +76,7 @@ const SelectShirtDialog = ({
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-                <Button>
+                <Button className='mb-4'>
                     OPEN PRODUCT SELECTOR
                 </Button>
             </DialogTrigger>

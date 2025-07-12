@@ -312,20 +312,7 @@ export default function RequestQuotePage() {
                                         </FormItem>
                                     )}
                                 />
-                                {selectedProduct && <SelectedProductInfo product={selectedProduct} />}
-                                <FormField
-                                    control={form.control}
-                                    name="product.quantity"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Quantity</FormLabel>
-                                            <FormControl>
-                                                <Input type="number" min={1} {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                {selectedProduct && <SelectedProductInfo product={selectedProduct} className='mt-4' />}
                             </div>
                         ) : (
                             <div className='mt-4'>
