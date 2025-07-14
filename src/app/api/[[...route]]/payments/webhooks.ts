@@ -1,7 +1,9 @@
 import { stripe } from "@/lib/stripe";
 import { Hono } from "hono";
 import Stripe from "stripe";
+import mongoose from "mongoose";
 import { Order } from "@/models/order";
+import { Cart } from "@/models/cart";
 
 const app = new Hono().post("/", async (c) => {
   const body = await c.req.text();
@@ -67,8 +69,34 @@ async function handlePaymentIntentSucceeded(
     return;
   }
 
+  if (!paymentIntent.metadata?.itemIds) {
+    console.log(
+      "No item IDs in payment intent metadata, skipping order update"
+    );
+    return;
+  }
+
+  const itemIds = paymentIntent.metadata.itemIds
+    ? paymentIntent.metadata.itemIds.split(",")
+    : [];
+
   try {
-    // Find the order by payment intent ID and update its status
+    const cart = await Cart.findOne({
+      userId: paymentIntent.metadata.userId,
+    });
+
+    if (cart && cart.items.length > 0) {
+      await cart.updateOne({
+        $pull: {
+          items: {
+            _id: {
+              $in: itemIds.map((id) => new mongoose.Types.ObjectId(id)),
+            },
+          },
+        },
+      });
+    }
+
     const order = await Order.findOne({
       stripePaymentIntentId: paymentIntent.id,
     });
