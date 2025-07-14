@@ -11,9 +11,22 @@ import { getOrders } from "./_action";
 import { OrderFilters } from "@/features/admin/orders/components/OrderFilters";
 import { OrdersTable } from "@/features/admin/orders/components/OrdersTable";
 import PaginationBtn from "@/components/pagination-button";
+import { clerkClient, User } from "@clerk/nextjs/server";
 
 const ITEMS_PER_PAGE = 10;
-
+export interface ClerkUser {
+  id: string;
+  email: string;
+  firstName?: string;
+  lastName?: string;
+  fullName: string;
+  imageUrl?: string;
+  isActive: boolean;
+  lastSignInAt?: number | null;
+  createdAt: number;
+  updatedAt: number;
+  role?: string;
+}
 export default async function OrdersManagementPage({
   searchParams,
 }: {
@@ -35,7 +48,6 @@ export default async function OrdersManagementPage({
     statusFilter,
     searchTerm
   );
-
   const orders = result.data || [];
   const pagination = result.pagination || {
     totalOrders: 0,
@@ -45,6 +57,35 @@ export default async function OrdersManagementPage({
     hasPrevPage: false,
   };
 
+  // Fetch users from Clerk
+  const client = await clerkClient();
+  const clerkUsersResponse = await client.users.getUserList({
+    limit: 100,
+  });
+  const clerkUsersList = clerkUsersResponse.data;
+  const users: ClerkUser[] = clerkUsersList.map((user: User) => {
+    const primaryEmail =
+      user.emailAddresses.find(
+        (email: any) => email.id === user.primaryEmailAddressId
+      )?.emailAddress || "";
+
+    return {
+      id: user.id,
+      email: primaryEmail,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      fullName:
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+        primaryEmail,
+      imageUrl: user.imageUrl,
+      isActive: !user.banned,
+      lastSignInAt: user.lastSignInAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      role: (user.publicMetadata.role as string) || "",
+    };
+  });
+  
   // Count by status - only based on current page data
   const stats = {
     total: pagination.totalOrders,
@@ -145,7 +186,7 @@ export default async function OrdersManagementPage({
         </Card>
       ) : (
         <>
-          <OrdersTable orders={orders} />
+          <OrdersTable orders={orders} users={users} />
           <PaginationBtn
             currentPage={pagination.currentPage}
             totalPages={pagination.totalPages}

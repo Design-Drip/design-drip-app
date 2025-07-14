@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { Eye, MoreHorizontal, Package } from "lucide-react";
 import {
@@ -21,16 +20,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+
 import OrderStatusBadge from "@/components/orders/OrderStatusBadge";
 import { formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
+import { ClerkUser } from "@/app/admin/orders/page";
 
 interface OrderItem {
   designId: string;
@@ -65,9 +59,10 @@ interface Order {
 
 interface OrdersTableProps {
   orders: Order[];
+  users: ClerkUser[];
 }
 
-export function OrdersTable({ orders }: OrdersTableProps) {
+export function OrdersTable({ orders, users }: OrdersTableProps) {
   const getItemsPreview = (items: OrderItem[]) => {
     if (items.length === 0) return "No items";
     if (items.length === 1) return items[0].name;
@@ -116,9 +111,17 @@ export function OrdersTable({ orders }: OrdersTableProps) {
 
               <TableCell>
                 <div className="text-sm">
-                  <div className="font-medium">{order.userId}</div>
+                  <div className="font-medium">
+                    {
+                      users.find((user) => user.id === order.userId)
+                        ?.fullName
+                    }
+                  </div>
                   <div className="text-muted-foreground text-xs">
-                    User ID: {order.userId.slice(-8)}
+                    {
+                      users.find((user) => user.id === order.userId)
+                        ?.email
+                    }
                   </div>
                 </div>
               </TableCell>
@@ -158,30 +161,7 @@ export function OrdersTable({ orders }: OrdersTableProps) {
               </TableCell>
 
               <TableCell>
-                <Select value={order.status} disabled={true}>
-                  <SelectTrigger className="w-[130px] h-8">
-                    <SelectValue>
-                      <OrderStatusBadge status={order.status} />
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">
-                      <OrderStatusBadge status="pending" />
-                    </SelectItem>
-                    <SelectItem value="processing">
-                      <OrderStatusBadge status="processing" />
-                    </SelectItem>
-                    <SelectItem value="shipped">
-                      <OrderStatusBadge status="shipped" />
-                    </SelectItem>
-                    <SelectItem value="delivered">
-                      <OrderStatusBadge status="delivered" />
-                    </SelectItem>
-                    <SelectItem value="canceled">
-                      <OrderStatusBadge status="canceled" />
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <OrderStatusBadge status={order.status} />
               </TableCell>
 
               <TableCell>
