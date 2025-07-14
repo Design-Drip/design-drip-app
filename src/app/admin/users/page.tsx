@@ -1,13 +1,11 @@
 import * as React from "react";
 import { Users, UserCheck, UserX, Eye } from "lucide-react";
 import { clerkClient } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import type { User } from "@clerk/nextjs/server";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 import { TableUsers } from "@/features/admin/components/TableUsers";
-import { checkRole } from "@/lib/roles";
 
 export interface ClerkUser {
   id: string;
@@ -28,12 +26,6 @@ export default async function UsersManagementPage({
 }: {
   searchParams: { search?: string; status?: string };
 }) {
-  // Verify admin access
-  const isAdmin = await checkRole("admin");
-  if (!isAdmin) {
-    redirect("/");
-  }
-
   // Get the search and status parameters
   const searchTerm = searchParams.search || "";
   const statusFilter = searchParams.status || "all";

@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
 import { getProductDetails } from "@/app/admin/products/_actions";
-import { checkRole } from "@/lib/roles";
 import { ProductVariantsManager } from "@/features/admin/components/ProductVariantsManager";
 
 export default async function ProductVariantsPage({
@@ -8,12 +7,6 @@ export default async function ProductVariantsPage({
 }: {
   params: { productId: string };
 }) {
-  // Verify admin access
-  const isAdmin = await checkRole("admin");
-  if (!isAdmin) {
-    redirect("/");
-  }
-
   const productId = params.productId;
   const product = await getProductDetails(productId);
 
