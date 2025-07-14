@@ -8,7 +8,6 @@ import {
   Package,
   Loader2,
   AlertTriangle,
-  MapPin,
   CreditCard,
   Clock,
 } from "lucide-react";
@@ -84,7 +83,7 @@ export default function OrderDetailPage() {
       <div className="grid gap-6">
         {/* Order header */}
         <Card>
-          <CardHeader className="pb-2">
+          <CardHeader>
             <div className="flex flex-col md:flex-row justify-between gap-4">
               <div>
                 <CardTitle className="text-xl">Order #{order.id}</CardTitle>
@@ -96,7 +95,7 @@ export default function OrderDetailPage() {
             </div>
           </CardHeader>
 
-          <CardContent className="pb-0">
+          <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Payment Method */}
               <div>
@@ -105,7 +104,10 @@ export default function OrderDetailPage() {
                   <h3 className="font-medium">Payment Method</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {order.paymentMethod}
+                  {order.paymentMethod
+                    ? order.paymentMethod.charAt(0).toUpperCase() +
+                      order.paymentMethod.slice(1)
+                    : "N/A"}
                 </p>
               </div>
 
