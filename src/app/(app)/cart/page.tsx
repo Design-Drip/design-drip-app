@@ -200,34 +200,20 @@ export default function Cart() {
 
   if (!cartData?.items || cartData.items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Continue Shopping
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Shopping Cart</h1>
-          </div>
-
-          {/* Empty Cart */}
-          <div className="bg-white rounded-xl p-12 text-center">
-            <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Your cart is empty
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Looks like you haven't added any items to your cart yet.
-            </p>
-            <Link href="/products">
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                Start Shopping
-              </Button>
-            </Link>
-          </div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-xl p-12 text-center">
+          <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Your cart is empty
+          </h2>
+          <p className="text-gray-500 mb-6">
+            Looks like you haven't added any items to your cart yet.
+          </p>
+          <Link href="/products">
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              Start Shopping
+            </Button>
+          </Link>
         </div>
       </div>
     );
