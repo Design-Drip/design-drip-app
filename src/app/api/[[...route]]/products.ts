@@ -388,7 +388,7 @@ const app = new Hono()
 
         const sizes = await ShirtSizeVariant.find({
           shirtColor: { $in: colors.map((color) => color._id) },
-        }).select(["size", "additional_price"]);
+        }).select(["size", "additional_price", "quantity", "shirtColor"]);
 
         return c.json({
           product,
