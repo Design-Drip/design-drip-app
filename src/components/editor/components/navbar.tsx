@@ -1,22 +1,10 @@
 "use client";
 
-import { CiFileOn } from "react-icons/ci";
 import { BsCloudCheck, BsCloudSlash } from "react-icons/bs";
-import { useFilePicker } from "use-file-picker";
-import {
-  ChevronDown,
-  Download,
-  HomeIcon,
-  Loader,
-  MousePointerClick,
-  Redo2,
-  Save,
-  Undo2,
-} from "lucide-react";
+import { HomeIcon, Loader, Redo2, Save, Undo2 } from "lucide-react";
 
 import { ActiveTool, Editor } from "@/features/editor/types";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
@@ -25,7 +13,6 @@ import { UserButton } from "@clerk/nextjs";
 import { Input } from "@/components/ui/input";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   Tooltip,
   TooltipContent,
@@ -162,7 +149,7 @@ export const Navbar = ({
             <Save className="size-4 ml-2" />
           </Button>
 
-          <UserButton />
+          <UserButton userProfileMode="navigation" userProfileUrl="/settings" />
         </div>
       </div>
     </nav>
