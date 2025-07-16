@@ -50,7 +50,7 @@ const ProductItem = ({ product, onSelect, isSelected }: ProductItemProps) => {
                 </div>
                 <div className='mt-4'>
                     <Button
-                        className={cn(isSelected && 'bg-green-600 hover:bg-green-700')}
+                        className=""
                         onClick={handleSelectProduct}
                     >
                         {isSelected ? (

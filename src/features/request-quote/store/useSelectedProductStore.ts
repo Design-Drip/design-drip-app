@@ -27,31 +27,29 @@ const initialState = {
 
 export const useSelectedProductStore = create<SelectedProductState>()(
     devtools(
-        persist(
-            (set) => ({
-                ...initialState,
+        (set) => ({
+            ...initialState,
 
-                setSelectedProduct: (product: SelectedProduct) =>
-                    set(
-                        {
-                            selectedProduct: product,
-                            isProductSelected: true,
-                        },
-                    ),
+            setSelectedProduct: (product: SelectedProduct) =>
+                set(
+                    {
+                        selectedProduct: product,
+                        isProductSelected: true,
+                    },
+                ),
 
 
-                clearSelectedProduct: () => {
-                    set(
-                        {
-                            selectedProduct: null,
-                            isProductSelected: false,
-                        },
-                    )
-                },
-            }),
-            {
-                name: 'selected-product-store',
-            }
-        ),
+            clearSelectedProduct: () => {
+                set(
+                    {
+                        selectedProduct: null,
+                        isProductSelected: false,
+                    },
+                )
+            },
+        }),
+        {
+            name: 'selected-product-store',
+        }
     )
 );

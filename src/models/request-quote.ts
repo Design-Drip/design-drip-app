@@ -1,33 +1,5 @@
 import mongoose, { Model } from "mongoose";
 
-const addressSchema = new mongoose.Schema({
-    streetAddress: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    suburbCity: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    country: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    state: {
-        type: String,
-        required: true,
-        trim: true,
-    },
-    postcode: {
-        type: String,
-        required: true,
-        trim: true,
-    }
-});
-
 const productDetailsSchema = new mongoose.Schema({
     productId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -54,7 +26,7 @@ const productDetailsSchema = new mongoose.Schema({
             min: 0,
         },
     }]
-});
+}, { _id: false });
 
 const customRequestSchema = new mongoose.Schema({
     customNeed: {
@@ -63,7 +35,7 @@ const customRequestSchema = new mongoose.Schema({
         trim: true,
         minLength: 5,
     },
-});
+}, { _id: false });
 
 interface RequestQuoteDoc extends mongoose.Document {
     firstName: string,
@@ -71,13 +43,11 @@ interface RequestQuoteDoc extends mongoose.Document {
     emailAddress: string,
     phone: string,
     company?: string,
-    address: {
-        streetAddress: string,
-        suburbCity: string,
-        country: string,
-        state: string,
-        postcode: string,
-    },
+    streetAddress: string,
+    suburbCity: string,
+    country: string,
+    state: string,
+    postcode: string,
     agreeTerms: boolean,
 
     type: "product" | "custom";
@@ -137,8 +107,24 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
             type: String,
             trim: true,
         },
-        address: {
-            type: addressSchema,
+        streetAddress: {
+            type: String,
+            required: true,
+        },
+        suburbCity: {
+            type: String,
+            required: true,
+        },
+        country: {
+            type: String,
+            required: true,
+        },
+        state: {
+            type: String,
+            required: true,
+        },
+        postcode: {
+            type: String,
             required: true,
         },
         agreeTerms: {
@@ -158,13 +144,13 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
         },
         productDetails: {
             type: productDetailsSchema,
-            required: function(this: RequestQuoteDoc) {
+            required: function (this: RequestQuoteDoc) {
                 return this.type === "product"
             },
         },
         customRequest: {
             type: customRequestSchema,
-            required: function(this: RequestQuoteDoc) {
+            required: function (this: RequestQuoteDoc) {
                 return this.type === "custom"
             }
         },
@@ -212,8 +198,8 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
         toJSON: {
             transform(_, ret) {
                 ret.id = ret._id,
-                delete ret._id,
-                delete ret.__v
+                    delete ret._id,
+                    delete ret.__v
             },
         },
     }
@@ -221,23 +207,23 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
 
 //Indexes for better query performance
 requestQuoteSchema.index({ emailAddress: 1 }),
-requestQuoteSchema.index({ status: 1, createAt: -1 }),
-requestQuoteSchema.index({ createdAt: -1 }),
-requestQuoteSchema.index({ type: 1 })
+    requestQuoteSchema.index({ status: 1, createAt: -1 }),
+    requestQuoteSchema.index({ createdAt: -1 }),
+    requestQuoteSchema.index({ type: 1 })
 
 //Validation: Ensure either productDetails or customRequest is provided based on type
-requestQuoteSchema.pre("validate", function(this: RequestQuoteDoc) {
-    if(this.type === "product" && !this.productDetails) {
+requestQuoteSchema.pre("validate", function (this: RequestQuoteDoc) {
+    if (this.type === "product" && !this.productDetails) {
         this.invalidate("productDetails", "Product details are required for product type requests");
     }
-    if(this.type === "custom" && !this.customRequest) {
+    if (this.type === "custom" && !this.customRequest) {
         this.invalidate("customRequest", "Custom request details are required for custom type requests");
     }
 });
 
-interface RequestQuoteModel extends Model<RequestQuoteDoc> {}
+interface RequestQuoteModel extends Model<RequestQuoteDoc> { }
 
-const RequestQuote = 
+const RequestQuote =
     (mongoose.models.RequestQuote as RequestQuoteModel) ||
     mongoose.model<RequestQuoteDoc, RequestQuoteModel>("RequestQuote", requestQuoteSchema);
 

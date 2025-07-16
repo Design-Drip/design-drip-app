@@ -1,3 +1,5 @@
+'use client'
+
 import { ColorPanel, ProductColor } from '@/components/products/ColorPanel';
 import { ProductImageDisplay } from '@/components/products/ProductImageDisplay';
 import { Button } from '@/components/ui/button';
@@ -5,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Package, X } from 'lucide-react';
-import React, { useState } from 'react'
-import { Controller, useFormContext } from 'react-hook-form';
+import React, { useEffect, useState } from 'react'
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 interface SelectedProductInfoProps {
     product: any;
@@ -23,10 +25,17 @@ const SelectedProductInfo: React.FC<SelectedProductInfoProps> = ({
         product.colors.length > 0 ? product.colors[0] : null
     )
 
-    const { control } = useFormContext();
+    const { control, setValue, watch } = useFormContext();
 
     const handleColorSelect = (color: ProductColor) => {
         setSelectedColor(color);
+
+        if (Array.isArray(color.sizes)) {
+            color.sizes.forEach((sizeObj: any) => {
+                const fieldName = `product.quantityBySize.${color.id}.${sizeObj.size}`;
+                setValue(fieldName, 0);
+            })
+        }
     };
 
     const getSizeByColor = (): string[] => {
@@ -36,7 +45,21 @@ const SelectedProductInfo: React.FC<SelectedProductInfoProps> = ({
     }
 
     const getFieldName = (colorId: string, size: string) =>
-        `productsQuantities.${colorId}.${size}`
+        `product.quantityBySize.${colorId}.${size}`
+
+    const sizeFields = getSizeByColor().map(size => `product.quantityBySize.${selectedColor?.id}.${size}`);
+    const quantities = useWatch({ control, name: sizeFields });
+
+    const totalQuantity = React.useMemo(() => {
+        return quantities.reduce((total, q) => total + (Number(q) || 0), 0);
+    }, [quantities]);
+
+    useEffect(() => {
+        setValue('product.quantity', totalQuantity, {
+            shouldValidate: false,
+            shouldDirty: false
+        });
+    }, [totalQuantity, setValue]);
 
     return (
         <Card className={cn("border-green-200 bg-green-50", className)}>

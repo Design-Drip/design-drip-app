@@ -10,6 +10,7 @@ import products from "./products";
 import wishlist from "./wishlist";
 import designTemplate from "./designTemplates";
 import cart from "./cart";
+import requestQuotes from "./requestQuotes";
 
 await dbConnect();
 
@@ -25,7 +26,8 @@ const routes = app
   .route("/products", products)
   .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate)
-  .route("/cart", cart);
+  .route("/cart", cart)
+  .route("/request-quotes", requestQuotes);
 
 export const GET = handle(app);
 export const POST = handle(app);
