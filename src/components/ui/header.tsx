@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignOutButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
-import { User, Heart, LogOut } from "lucide-react";
+import { User, Heart, LogOut, ClipboardList } from "lucide-react";
 
 import {
   NavigationMenu,
@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import CartWidget from "../cart/CartWidget";
-import { getTotalItemsInCart } from "@/features/cart/actions";
 
 const productCategories = [
   {
@@ -168,6 +167,16 @@ export default async function Header() {
                     >
                       <Heart className="mr-2 h-4 w-4" />
                       <span>Wishlist</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="w-full" asChild>
+                    <Link
+                      href="/orders"
+                      className="flex cursor-pointer items-center"
+                    >
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      <span>Orders</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

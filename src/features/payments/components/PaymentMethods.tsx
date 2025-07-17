@@ -7,7 +7,17 @@ import PaymentMethodCard from "./PaymentMethodCard";
 import AddPaymentMethod from "./AddPaymentMethod";
 import { getPaymentMethodsQuery } from "../services/queries";
 
-const PaymentMethods = () => {
+interface PaymentMethodsProps {
+  selectMode?: boolean;
+  onSelect?: (id: string) => void;
+  selectedPaymentMethod?: string | null;
+}
+
+const PaymentMethods = ({
+  selectMode = false,
+  onSelect,
+  selectedPaymentMethod,
+}: PaymentMethodsProps) => {
   const [addPaymentMethodOpen, setAddPaymentMethodOpen] = useState(false);
   let content = (
     <div className="flex flex-col items-center gap-2 py-8">
@@ -54,7 +64,9 @@ const PaymentMethods = () => {
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Payment Methods</h2>
+        {!selectMode && (
+          <h2 className="text-xl font-semibold">Payment Methods</h2>
+        )}
         <AddPaymentMethod
           open={addPaymentMethodOpen}
           onOpenChange={setAddPaymentMethodOpen}
@@ -74,7 +86,13 @@ const PaymentMethods = () => {
       ) : (
         <div className="space-y-3">
           {paymentMethods.map((method) => (
-            <PaymentMethodCard key={method.id} paymentMethod={method} />
+            <PaymentMethodCard
+              key={method.id}
+              paymentMethod={method}
+              selectMode={selectMode}
+              isSelected={selectedPaymentMethod === method.id}
+              onSelect={onSelect ? () => onSelect(method.id) : undefined}
+            />
           ))}
         </div>
       )}

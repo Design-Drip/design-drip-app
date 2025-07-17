@@ -24,10 +24,12 @@ import {
 } from "@/components/ui/pagination";
 import { toast } from "sonner";
 import { formatPrice } from "@/lib/price";
+import { useRouter } from "next/navigation";
 
 const ITEMS_PER_PAGE = 4;
 
 export default function Cart() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const {
@@ -136,17 +138,30 @@ export default function Cart() {
     }
   };
 
-  const calculateItemTotal = (item) => {
-    return item.data.reduce(
-      (sum, sizeData) => sum + sizeData.pricePerSize * sizeData.quantity,
-      0
-    );
+  const handleCheckout = () => {
+    if (!hasSelectedItems) {
+      toast.error("Please select items to checkout");
+      return;
+    }
+
+    // Store selected item IDs in session storage to use them in checkout
+    sessionStorage.setItem("checkoutItems", JSON.stringify(selectedItems));
+    router.push("/checkout");
   };
 
   const subtotal = cartData?.items
     ? cartData.items
         .filter((item) => selectedItems.includes(item.id))
-        .reduce((sum, item) => sum + calculateItemTotal(item), 0)
+        .reduce(
+          (sum, item) =>
+            sum +
+            item.data.reduce(
+              (sum, sizeData) =>
+                sum + sizeData.pricePerSize * sizeData.quantity,
+              0
+            ),
+          0
+        )
     : 0;
 
   // Calculate shipping based on subtotal
@@ -185,34 +200,20 @@ export default function Cart() {
 
   if (!cartData?.items || cartData.items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 py-8">
-          {/* Header */}
-          <div className="flex items-center gap-4 mb-8">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Continue Shopping
-              </Button>
-            </Link>
-            <h1 className="text-2xl font-bold text-gray-900">Shopping Cart</h1>
-          </div>
-
-          {/* Empty Cart */}
-          <div className="bg-white rounded-xl p-12 text-center">
-            <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-900 mb-2">
-              Your cart is empty
-            </h2>
-            <p className="text-gray-500 mb-6">
-              Looks like you haven't added any items to your cart yet.
-            </p>
-            <Link href="/products">
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                Start Shopping
-              </Button>
-            </Link>
-          </div>
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="bg-white rounded-xl p-12 text-center">
+          <ShoppingBag className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Your cart is empty
+          </h2>
+          <p className="text-gray-500 mb-6">
+            Looks like you haven't added any items to your cart yet.
+          </p>
+          <Link href="/products">
+            <Button className="bg-blue-600 hover:bg-blue-700">
+              Start Shopping
+            </Button>
+          </Link>
         </div>
       </div>
     );
@@ -313,7 +314,11 @@ export default function Cart() {
                     : "/api/placeholder/300/300";
 
                 // Calculate total price for this item
-                const itemTotal = calculateItemTotal(item);
+                const itemTotal = item.data.reduce(
+                  (sum, sizeData) =>
+                    sum + sizeData.pricePerSize * sizeData.quantity,
+                  0
+                );
 
                 return (
                   <CartItem
@@ -420,6 +425,11 @@ export default function Cart() {
 
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Selected Items</span>
+                  <span className="font-medium">{selectedItems.length}</span>
+                </div>
+
+                <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">{formatPrice(subtotal)}</span>
                 </div>
@@ -443,7 +453,7 @@ export default function Cart() {
                 </div>
               </div>
 
-              {shipping > 0 && (
+              {shipping > 0 && subtotal > 0 && (
                 <div className="mt-4 p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-700">
                     Add {formatPrice(200000 - subtotal)} more for free shipping!
@@ -454,6 +464,7 @@ export default function Cart() {
               <Button
                 className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3"
                 disabled={!hasSelectedItems}
+                onClick={handleCheckout}
               >
                 Proceed to Checkout
               </Button>

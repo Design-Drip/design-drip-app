@@ -13,6 +13,7 @@ import { AiSidebar } from "./components/ai-sidebar";
 import { SettingsSidebar } from "./components/settings-sidebar";
 import { FontSidebar } from "./components/font-sidebar";
 import { ImageSidebar } from "./components/image-sidebar";
+import { DesignTemplateSidebar } from "./components/design-template-sidebar";
 import { useCreateDesign } from "@/features/design/use-create-design";
 import { toast } from "sonner";
 import { ProductImage } from "@/types/product";
@@ -25,6 +26,11 @@ import { generateReactHelpers } from "@uploadthing/react";
 import type { OurFileRouter } from "@/app/api/uploadthing/core";
 import { useUpdateDesign } from "@/features/design/use-update-design";
 import { useQueryClient } from "@tanstack/react-query";
+import { FilterSidebar } from "./components/filter-sidebar";
+import { StrokeColorSidebar } from "./components/stroke-color-sidebar";
+import { StrokeWidthSidebar } from "./components/stroke-width-sidebar";
+import { RemoveBgSidebar } from "./components/remove-bg-sidebar";
+import { OpacitySidebar } from "./components/opacity-sidebar";
 
 // Add inside your component
 const { useUploadThing } = generateReactHelpers<OurFileRouter>();
@@ -51,6 +57,9 @@ export const Editor = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<Error | null>(null);
   const [designName, setDesignName] = useState<string>("Shirt Design");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    designDetail?.template_id || null
+  );
 
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
@@ -384,16 +393,23 @@ export const Editor = ({
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
+        console.log("Saving design with template ID:", selectedTemplateId);
+
         const designData = {
           shirt_color_id: productColorId,
           element_design: elementDesign,
           name: designName || "Shirt Design",
           design_images: designImages,
+          template_id: selectedTemplateId,
+          template_applied_at: selectedTemplateId
+            ? new Date().toISOString()
+            : null,
         };
         if (designDetail && designDetail._id) {
           // We're updating an existing design
           await updateDesignMutation.mutateAsync({
             ...designData,
+            template_applied_at: designData.template_applied_at || undefined,
             id: designDetail._id, // Pass the ID for updating
           });
           queryClient.invalidateQueries({ queryKey: ["designs"] });
@@ -872,6 +888,21 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
+        <StrokeColorSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <StrokeWidthSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
+        <OpacitySidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <TextSidebar
           editor={editor}
           activeTool={activeTool}
@@ -887,13 +918,34 @@ export const Editor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
-
+        <FilterSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <AiSidebar
           editor={editor}
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
 
+        <DesignTemplateSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+          selectedTemplateId={selectedTemplateId}
+          onSelectTemplate={(templateId) => {
+            console.log("Setting selectedTemplateId to:", templateId);
+            setSelectedTemplateId(templateId);
+            // Set unsaved changes flag
+            setHasUnsavedChanges(true);
+          }}
+        />
+        <RemoveBgSidebar
+          editor={editor}
+          activeTool={activeTool}
+          onChangeActiveTool={onChangeActiveTool}
+        />
         <SettingsSidebar
           editor={editor}
           activeTool={activeTool}

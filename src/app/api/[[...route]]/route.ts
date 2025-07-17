@@ -5,11 +5,14 @@ import dbConnect from "@/lib/db";
 
 import ai from "./ai";
 import design from "./design";
-import paymentMethods from "./payments/paymentMethods";
 import products from "./products";
 import wishlist from "./wishlist";
 import designTemplate from "./designTemplates";
 import cart from "./cart";
+import orders from "./orders";
+import paymentMethods from "./payments/paymentMethods";
+import checkout from "./payments/checkout";
+import webhooks from "./payments/webhooks";
 import requestQuotes from "./requestQuotes";
 
 await dbConnect();
@@ -23,10 +26,13 @@ const routes = app
   .route("/ai", ai)
   .route("/design", design)
   .route("/payments/payment-methods", paymentMethods)
+  .route("/payments/checkout", checkout)
+  .route("/payments/webhooks", webhooks)
   .route("/products", products)
   .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate)
   .route("/cart", cart)
+  .route("/orders", orders);
   .route("/request-quotes", requestQuotes);
 
 export const GET = handle(app);

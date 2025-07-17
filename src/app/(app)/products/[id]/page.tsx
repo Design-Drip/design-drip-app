@@ -59,7 +59,7 @@ export default function ProductDetailPage({
   const currentColor =
     data?.colors && data.colors.length > 0
       ? data.colors.find((c) => c.color_value === selectedColor) ||
-        data.colors[0]
+      data.colors[0]
       : undefined;
 
   // Filter images for the current view
@@ -143,11 +143,10 @@ export default function ProductDetailPage({
                   {productViews.map((view) => (
                     <div
                       key={view.id}
-                      className={`relative cursor-pointer border-2 ${
-                        selectedView === view.id
-                          ? "border-red-600"
-                          : "border-gray-200"
-                      } rounded overflow-hidden`}
+                      className={`relative cursor-pointer border-2 ${selectedView === view.id
+                        ? "border-red-600"
+                        : "border-gray-200"
+                        } rounded overflow-hidden`}
                       onClick={() => setSelectedView(view.id)}
                     >
                       <div className="relative h-24 w-full">
@@ -180,23 +179,21 @@ export default function ProductDetailPage({
                   {data.colors.map((color) => (
                     <button
                       key={color.id}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        selectedColor === color.color_value
-                          ? "ring-2 ring-red-600 ring-offset-2"
-                          : "border border-gray-200"
-                      }`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedColor === color.color_value
+                        ? "ring-2 ring-red-600 ring-offset-2"
+                        : "border border-gray-200"
+                        }`}
                       style={{ backgroundColor: color.color_value }}
                       onClick={() => setSelectedColor(color.color_value)}
                       title={color.color}
                     >
                       {selectedColor === color.color_value && (
                         <Check
-                          className={`h-4 w-4 ${
-                            color.color_value === "#FFFFFF" ||
+                          className={`h-4 w-4 ${color.color_value === "#FFFFFF" ||
                             color.color_value.toLowerCase() === "#fff"
-                              ? "text-black"
-                              : "text-white"
-                          }`}
+                            ? "text-black"
+                            : "text-white"
+                            }`}
                         />
                       )}
                     </button>
@@ -211,11 +208,10 @@ export default function ProductDetailPage({
                   {uniqueSizes.map((size) => (
                     <button
                       key={size}
-                      className={`px-4 py-2 ${
-                        selectedSize === size
-                          ? "bg-red-600 text-white"
-                          : "border border-gray-300 hover:border-gray-400"
-                      } rounded-md text-sm font-medium min-w-[50px]`}
+                      className={`px-4 py-2 ${selectedSize === size
+                        ? "bg-red-600 text-white"
+                        : "border border-gray-300 hover:border-gray-400"
+                        } rounded-md text-sm font-medium min-w-[50px]`}
                       onClick={() => setSelectedSize(size)}
                     >
                       {size}
@@ -356,7 +352,7 @@ export default function ProductDetailPage({
 
             {/* Request Quote Button */}
             <div className="mt-4">
-              <Button variant="outline" className="w-full py-3 h-auto">
+              <Button variant="outline" className="w-full py-3 h-auto" onClick={() => router.push('/request-quote')}>
                 Request a quote
               </Button>
             </div>

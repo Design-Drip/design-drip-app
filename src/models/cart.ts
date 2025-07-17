@@ -13,7 +13,7 @@ const quantityBySizeSub = new mongoose.Schema({
 
 interface CartModel extends mongoose.Model<CartDoc> {}
 
-interface CartDoc extends mongoose.Document {
+export interface CartDoc extends mongoose.Document {
   userId: string;
   items: {
     _id?: mongoose.Types.ObjectId;
