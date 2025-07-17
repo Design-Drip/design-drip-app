@@ -53,11 +53,16 @@ export const TableSavedDesign = ({
   const [selectedDesign, setSelectedDesign] = useState<{
     id: string;
     designName: string;
+    colorId: string;
   } | null>(null);
   const [deleteDesignId, setDeleteDesignId] = useState<string | null>(null);
 
-  const handleOrderClick = (id: string, designName: string) => {
-    setSelectedDesign({ id, designName });
+  const handleOrderClick = (
+    id: string,
+    designName: string,
+    colorId: string
+  ) => {
+    setSelectedDesign({ id, designName, colorId });
     setOrderModalOpen(true);
   };
 
@@ -97,7 +102,9 @@ export const TableSavedDesign = ({
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => handleOrderClick(item.id, item.designName)}
+                onClick={() =>
+                  handleOrderClick(item.id, item.designName, item.colorId)
+                }
                 className="flex items-center cursor-pointer"
               >
                 <ShoppingCart className="mr-2 h-4 w-4" />
@@ -140,7 +147,9 @@ export const TableSavedDesign = ({
           <Button
             variant="default"
             size="sm"
-            onClick={() => handleOrderClick(item.id, item.designName)}
+            onClick={() =>
+              handleOrderClick(item.id, item.designName, item.colorId)
+            }
           >
             Order
           </Button>
@@ -246,6 +255,7 @@ export const TableSavedDesign = ({
           onOpenChange={setOrderModalOpen}
           designId={selectedDesign.id}
           designName={selectedDesign.designName}
+          colorId={selectedDesign.colorId}
           mode="add"
         />
       )}
