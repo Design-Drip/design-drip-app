@@ -32,7 +32,7 @@ const routes = app
   .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate)
   .route("/cart", cart)
-  .route("/orders", orders);
+  .route("/orders", orders)
   .route("/request-quotes", requestQuotes);
 
 export const GET = handle(app);
