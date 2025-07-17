@@ -8,7 +8,6 @@ import { Shirt, ShirtColor, ShirtSizeVariant } from "@/models/product";
 import { HTTPException } from "hono/http-exception";
 import { clerkClient } from "@clerk/nextjs/server";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
-import mongoose from "mongoose";
 import { Order } from "@/models/order";
 import Stripe from "stripe";
 
@@ -40,6 +39,19 @@ const getOrderItems = async (cart: CartDoc, itemIds: string[]) => {
       const shirtSizeVariants = await ShirtSizeVariant.find({
         shirtColor: shirtColor._id,
       }).lean();
+
+      for (const sizeQty of item.quantityBySize) {
+        const variant = shirtSizeVariants.find((v) => v.size === sizeQty.size);
+        if (!variant) {
+          throw new Error(`Size ${sizeQty.size} not found for this product.`);
+        }
+
+        if (variant.quantity < sizeQty.quantity) {
+          throw new Error(
+            `Not enough inventory for ${shirt.name} (${shirtColor.color}) in size ${sizeQty.size}. Only ${variant.quantity} available.`
+          );
+        }
+      }
 
       const sizes = item.quantityBySize.map((sizeQty) => {
         const variant = shirtSizeVariants.find((v) => v.size === sizeQty.size);
@@ -298,6 +310,16 @@ const app = new Hono()
           });
         }
 
+        // Get validated order items with inventory check
+        let validOrderItems;
+        try {
+          validOrderItems = await getOrderItems(cart, itemIds);
+        } catch (error) {
+          throw new HTTPException(400, {
+            message: (error as Error).message || "Inventory validation failed",
+          });
+        }
+
         // Get or create customer
         const client = await clerkClient();
         let stripeId = user?.privateMetadata?.["stripe_cus_id"] as
@@ -321,8 +343,6 @@ const app = new Hono()
             },
           });
         }
-
-        const validOrderItems = await getOrderItems(cart, itemIds);
 
         // Create payment intent
         const paymentIntentParams: Stripe.PaymentIntentCreateParams = {

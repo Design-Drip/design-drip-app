@@ -341,6 +341,64 @@ const app = new Hono()
     }
   })
   .get(
+    "/colors/:colorId/sizes",
+    zValidator(
+      "param",
+      z.object({
+        colorId: z
+          .string()
+          .trim()
+          .refine((val) => {
+            if (!mongoose.isObjectIdOrHexString(val)) {
+              throw new HTTPException(400, {
+                message: "Invalid color ID",
+              });
+            }
+            return true;
+          }),
+      })
+    ),
+    async (c) => {
+      const colorId = c.req.valid("param").colorId;
+
+      try {
+        const color = await ShirtColor.findById(colorId)
+          .populate("shirt_id", "name base_price isActive categories")
+          .select(["color", "color_value", "images"]);
+
+        if (!color) {
+          throw new HTTPException(404, {
+            message: "Color not found",
+          });
+        }
+
+        const sizes = await ShirtSizeVariant.find({
+          shirtColor: color._id,
+        }).select(["size", "additional_price", "quantity"]);
+
+        return c.json({
+          color: {
+            id: color._id,
+            color: color.color,
+            color_value: color.color_value,
+            images: color.images,
+          },
+          sizes: sizes.map((size) => ({
+            id: size._id,
+            size: size.size,
+            additional_price: size.additional_price,
+            quantity: size.quantity,
+          })),
+        });
+      } catch (err) {
+        console.error("Error fetching color details:", err);
+        throw new HTTPException(500, {
+          message: "Failed to fetch color details",
+        });
+      }
+    }
+  )
+  .get(
     "/:id",
     zValidator(
       "param",
@@ -388,7 +446,7 @@ const app = new Hono()
 
         const sizes = await ShirtSizeVariant.find({
           shirtColor: { $in: colors.map((color) => color._id) },
-        }).select(["size", "additional_price"]);
+        }).select(["size", "additional_price", "quantity", "shirtColor"]);
 
         return c.json({
           product,
@@ -403,5 +461,4 @@ const app = new Hono()
       }
     }
   );
-
 export default app;

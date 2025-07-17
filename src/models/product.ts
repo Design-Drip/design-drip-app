@@ -251,6 +251,7 @@ interface ShirtSizeVariantDoc extends mongoose.Document {
   shirtColor: mongoose.Types.ObjectId;
   size: string;
   additional_price: number;
+  quantity: number;
 }
 
 const shirtSizeVariantSchema = new mongoose.Schema<ShirtSizeVariantDoc>(
@@ -266,6 +267,10 @@ const shirtSizeVariantSchema = new mongoose.Schema<ShirtSizeVariantDoc>(
       trim: true,
     },
     additional_price: {
+      type: Number,
+      default: 0,
+    },
+    quantity: {
       type: Number,
       default: 0,
     },

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "../ui/card";
 import { Checkbox } from "../ui/checkbox";
 import { formatPrice } from "@/lib/price";
-import { OrderModal } from "@/components/order/OrderModal";
+import { OrderModal } from "@/components/orders/OrderModal";
 
 interface CartItemProps {
   id: string;

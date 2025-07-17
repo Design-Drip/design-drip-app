@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { Order } from "@/models/order";
+import dbConnect from "@/lib/db";
 
 interface OrderItem {
   designId: string;
@@ -43,27 +44,6 @@ interface OrdersResponse {
     hasPrevPage: boolean;
   };
 }
-const connectMongoDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      const uri = process.env.MONGODB_URI;
-      if (!uri) {
-        throw new Error(
-          "MONGODB_URI is not defined in environment variables"
-        );
-      }
-
-      console.log("Connecting to MongoDB...");
-      await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 5000, 
-        connectTimeoutMS: 10000,
-      });
-      console.log("Connected to MongoDB successfully");
-    }
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-  }
-};
 
 export async function getOrders(
   page = 1,
@@ -72,25 +52,19 @@ export async function getOrders(
   search?: string
 ): Promise<OrdersResponse> {
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     const query: any = {};
     if (status && status !== "all") {
       query.status = status;
     }
     if (search) {
-      query.$or = [
-        { "items.name": { $regex: search, $options: "i" } },
-      ];
+      query.$or = [{ "items.name": { $regex: search, $options: "i" } }];
     }
     const skip = (page - 1) * limit;
 
     const [orders, totalOrders] = await Promise.all([
-      Order.find(query)
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
+      Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Order.countDocuments(query),
     ]);
 
@@ -137,7 +111,7 @@ export async function getOrders(
 
 export async function getOrderById(orderId: string) {
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     if (!mongoose.Types.ObjectId.isValid(orderId)) {
       return null;
