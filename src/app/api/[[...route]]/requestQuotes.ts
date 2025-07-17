@@ -4,6 +4,8 @@ import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 import mongoose from "mongoose";
+import { checkRole } from "@/lib/roles";
+import verifyAuth from "@/lib/middlewares/verifyAuth";
 
 const createRequestQuoteSchema = z.object({
     //Customer information
@@ -51,6 +53,7 @@ const createRequestQuoteSchema = z.object({
 });
 
 const app = new Hono()
+    .use(verifyAuth)
     //Get all request quotes
     .get(
         "/",
@@ -67,12 +70,19 @@ const app = new Hono()
             })
         ),
         async (c) => {
+            const user = c.get("user")!;
+            const isAdmin = await checkRole("admin");
+
             try {
                 const { page, limit, status, type, search, sortBy, sortOrder } = c.req.valid("query");
 
                 const skip = (page - 1) * limit;
 
                 const query: any = {};
+
+                if (!isAdmin) {
+                    query.userId = user.id;
+                }
 
                 if (status) {
                     query.status = status;
@@ -117,6 +127,7 @@ const app = new Hono()
                 //Transform data for response
                 const transformQuotes = requestQuotes.map((quote) => ({
                     id: quote._id?.toString(),
+                    userId: quote.userId,
                     firstName: quote.firstName,
                     lastName: quote.lastName,
                     emailAddress: quote.emailAddress,
@@ -162,10 +173,12 @@ const app = new Hono()
         zValidator("json", createRequestQuoteSchema),
         async (c) => {
             try {
+                const user = c.get("user")!;
                 const data = c.req.valid("json");
 
                 //Prepare request quote data
                 const requestQuoteData: any = {
+                    userId: user.id,
                     firstName: data.firstName,
                     lastName: data.lastName,
                     emailAddress: data.emailAddress,
@@ -254,7 +267,15 @@ const app = new Hono()
         ),
         async (c) => {
             try {
+                const user = c.get("user")!;
+                const isAdmin = await checkRole("admin");
                 const { id } = c.req.valid("param");
+
+                const query: any = { _id: id };
+
+                if (!isAdmin) {
+                    query.userId = user.id;
+                }
 
                 const requestQuote = await RequestQuote.findById(id)
                     .populate({
@@ -277,6 +298,7 @@ const app = new Hono()
                     success: true,
                     data: {
                         id: requestQuote._id?.toString(),
+                        userId: requestQuote.userId,
                         firstName: requestQuote.firstName,
                         lastName: requestQuote.lastName,
                         emailAddress: requestQuote.emailAddress,

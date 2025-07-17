@@ -38,6 +38,7 @@ const customRequestSchema = new mongoose.Schema({
 }, { _id: false });
 
 interface RequestQuoteDoc extends mongoose.Document {
+    userId: string,
     firstName: string,
     lastName: string,
     emailAddress: string,
@@ -82,6 +83,11 @@ interface RequestQuoteDoc extends mongoose.Document {
 const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
     {
         //Customer information
+        userId: {
+            type: String,
+            ref: "Users",
+            required: true,
+        },
         firstName: {
             type: String,
             required: true,

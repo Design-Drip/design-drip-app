@@ -328,10 +328,11 @@ export default function MyRequestQuotesPage() {
                       {/* Left side - Main info */}
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-3">
-                          <div>
-                            <h3 className="font-semibold text-lg">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-sm">
                               {quote.type === "product" ? "Product Quote" : "Custom Quote"}
                             </h3>
+                            <div className="h-4 w-px bg-border"></div>
                             <p className="text-sm text-muted-foreground">
                               Request #{quote.id.slice(-8).toUpperCase()}
                             </p>
