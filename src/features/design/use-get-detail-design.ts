@@ -5,7 +5,6 @@ export function useGetDetailDesign(designId: string) {
   return useQuery({
     queryKey: ["design", designId],
     queryFn: async () => {
-      console.log("useGetDetailDesign - fetching design with ID:", designId);
       const response = await client.api.design[":id"].$get({
         param: { id: designId },
       });

@@ -31,18 +31,8 @@ function SavedDesigns() {
     const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Product";
     const colorId = item.shirt_color_id?.id || "Unknown Color";
 
-    console.log(`Design ${item.name} - IDs:`, {
-      designId: item.id,
-      productId: productId,
-      colorId: colorId,
-      fullColorObj: item.shirt_color_id,
-    }); // Debug log for IDs
-
     // Check if this design has a parent (is a version)
     const isVersion = !!item.parent_design_id;
-    console.log(
-      `Design ${item.name} - isVersion: ${isVersion}, parent_design_id: ${item.parent_design_id}, version: ${item.version}`
-    ); // Debug log
 
     const parentDesign: any = isVersion
       ? designsData.find((d: any) => d.id === item.parent_design_id)
