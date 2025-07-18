@@ -4,22 +4,7 @@ import { revalidatePath } from "next/cache";
 import mongoose from "mongoose";
 import { ShirtColor } from "@/models/product";
 import { checkRole } from "@/lib/roles";
-
-// Kết nối MongoDB
-const connectMongoDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      const uri = process.env.MONGODB_URI;
-      if (!uri) {
-        throw new Error("MONGODB_URI is not defined in environment variables");
-      }
-      await mongoose.connect(uri);
-    }
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw new Error("Failed to connect to database");
-  }
-};
+import dbConnect from "@/lib/db";
 
 // Add/Update product images for a specific color
 export async function addProductImage(formData: FormData) {
@@ -61,7 +46,7 @@ export async function addProductImage(formData: FormData) {
       };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     // Get the current color
     const color = await ShirtColor.findById(colorId);
@@ -139,7 +124,7 @@ export async function addProductColor(formData: FormData) {
       };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     // Check if color already exists for this product
     const existingColor = await ShirtColor.findOne({
@@ -201,7 +186,7 @@ export async function updateProductColor(formData: FormData) {
       };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     const updatedColor = await ShirtColor.findByIdAndUpdate(
       colorId,
@@ -253,7 +238,7 @@ export async function deleteProductColor(formData: FormData) {
       };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     const color = await ShirtColor.findById(colorId);
     if (!color) {
@@ -279,7 +264,7 @@ export async function deleteProductColor(formData: FormData) {
 // Get colors for a specific product
 export async function getProductColors(productId: string) {
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     const colors = await ShirtColor.find({ shirt_id: productId }).lean();
 

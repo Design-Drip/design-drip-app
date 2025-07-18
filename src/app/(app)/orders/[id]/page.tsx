@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { getFeedbackQuery } from "@/features/feedback/services/queries";
 
 export default function OrderDetailPage() {
-  const params = useParams<{ id?: string }>();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
   const orderId = params.id;
 

@@ -1,10 +1,6 @@
 import { redirect } from "next/navigation";
 import { ArrowLeft, Clock, Package } from "lucide-react";
 import Link from "next/link";
-import mongoose from "mongoose";
-
-import { Order } from "@/models/order";
-import { checkRole } from "@/lib/roles";
 import { formatPrice } from "@/lib/price";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/date";
 import { Button } from "@/components/ui/button";
@@ -21,6 +17,7 @@ import OrderStatusUpdate from "@/features/admin/orders/components/OrderStatusUpd
 import { getOrderById } from "../_action";
 import { clerkClient, User } from "@clerk/nextjs/server";
 import { ClerkUser } from "../page";
+import { checkRole } from "@/lib/roles";
 
 export default async function OrderDetailsPage({
   params,
@@ -76,12 +73,9 @@ export default async function OrderDetailsPage({
         <Card className="text-center py-10">
           <CardContent>
             <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
-              Order not found
-            </h2>
+            <h2 className="text-xl font-semibold mb-2">Order not found</h2>
             <p className="text-muted-foreground mb-6">
-              The order you're looking for doesn't exist or has been
-              removed.
+              The order you're looking for doesn't exist or has been removed.
             </p>
             <Button asChild>
               <Link href="/admin/orders">Return to Orders</Link>
@@ -135,10 +129,7 @@ export default async function OrderDetailsPage({
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <OrderStatusUpdate
-            orderId={order.id}
-            currentStatus={order.status}
-          />
+          <OrderStatusUpdate orderId={order.id} currentStatus={order.status} />
         </div>
       </div>
 
@@ -150,8 +141,7 @@ export default async function OrderDetailsPage({
               <CardTitle>Order Summary</CardTitle>
               <CardDescription>
                 {order.items.length}{" "}
-                {order.items.length === 1 ? "item" : "items"} •{" "}
-                {totalQuantity}{" "}
+                {order.items.length === 1 ? "item" : "items"} • {totalQuantity}{" "}
                 {totalQuantity === 1 ? "unit" : "units"}
               </CardDescription>
             </CardHeader>
@@ -188,9 +178,7 @@ export default async function OrderDetailsPage({
                                 Size: {size.size} x {size.quantity}
                               </span>
                               <span>
-                                {formatPrice(
-                                  size.pricePerUnit * size.quantity
-                                )}
+                                {formatPrice(size.pricePerUnit * size.quantity)}
                               </span>
                             </div>
                           ))}
@@ -213,23 +201,17 @@ export default async function OrderDetailsPage({
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Payment Method
-                  </span>
+                  <span className="text-muted-foreground">Payment Method</span>
                   <span className="font-medium capitalize">
                     {order.paymentMethod}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Subtotal
-                  </span>
+                  <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatPrice(order.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Shipping
-                  </span>
+                  <span className="text-muted-foreground">Shipping</span>
                   <span>Free</span>
                 </div>
                 <Separator className="my-2" />

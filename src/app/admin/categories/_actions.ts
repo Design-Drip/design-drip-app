@@ -1,51 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import mongoose from "mongoose";
 import { Category } from "@/models/product";
 import { checkRole } from "@/lib/roles";
-
-// Connect to MongoDB
-const connectMongoDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      const uri = process.env.MONGODB_URI;
-      if (!uri) {
-        throw new Error("MONGODB_URI is not defined in environment variables");
-      }
-      console.log("Connecting to MongoDB for category operations...");
-      await mongoose.connect(uri);
-      console.log("MongoDB connection successful");
-    } else {
-      console.log("MongoDB already connected");
-    }
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw new Error("Failed to connect to database");
-  }
-};
+import dbConnect from "@/lib/db";
 
 // Get all categories
 export async function getCategories() {
   try {
-    await connectMongoDB();
+    await dbConnect();
 
-    console.log("Fetching categories from database...");
-    // Fetch all categories
     const categories = (await Category.find().lean()) as any[];
-    console.log("Raw categories from DB:", JSON.stringify(categories, null, 2));
 
-    // Format the categories before returning
     const formattedCategories = categories.map((category) => ({
       id: category._id.toString(),
       name: category.name,
       description: category.description || "",
     }));
 
-    console.log(
-      "Formatted categories:",
-      JSON.stringify(formattedCategories, null, 2)
-    );
     return formattedCategories;
   } catch (err) {
     console.error("Error fetching categories:", err);
@@ -69,7 +41,7 @@ export async function addCategory(formData: FormData) {
       return { success: false, message: "Category name is required" };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     // Check if category with the same name already exists
     const existingCategory = await Category.findOne({ name });
@@ -120,7 +92,7 @@ export async function updateCategory(formData: FormData) {
       return { success: false, message: "Category ID and name are required" };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     // Check if category with the same name already exists (excluding this one)
     const existingCategory = await Category.findOne({ name, _id: { $ne: id } });
@@ -177,7 +149,7 @@ export async function deleteCategory(formData: FormData) {
       return { success: false, message: "Category ID is required" };
     }
 
-    await connectMongoDB();
+    await dbConnect();
 
     console.log(`Attempting to delete category with ID: ${id}`);
 

@@ -159,7 +159,6 @@ export default async function Header() {
                       <span>My Account</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="w-full" asChild>
                     <Link
                       href="/wishlist"
@@ -169,7 +168,6 @@ export default async function Header() {
                       <span>Wishlist</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="w-full" asChild>
                     <Link
                       href="/orders"

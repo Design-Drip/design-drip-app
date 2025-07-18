@@ -33,7 +33,7 @@ export default function PaginationBtn({
   const searchParams = useSearchParams();
 
   const createPageURL = (pageNumber: number | string) => {
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString());
     params.set("pageNum", pageNumber.toString());
 
     const path = pathname || "/admin/orders";
