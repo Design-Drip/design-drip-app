@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignOutButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
-import { User, Heart, LogOut } from "lucide-react";
+import { User, Heart, LogOut, ClipboardList } from "lucide-react";
 
 import {
   NavigationMenu,
@@ -159,7 +159,6 @@ export default async function Header() {
                       <span>My Account</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem className="w-full" asChild>
                     <Link
                       href="/wishlist"
@@ -167,6 +166,15 @@ export default async function Header() {
                     >
                       <Heart className="mr-2 h-4 w-4" />
                       <span>Wishlist</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="w-full" asChild>
+                    <Link
+                      href="/orders"
+                      className="flex cursor-pointer items-center"
+                    >
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      <span>Orders</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

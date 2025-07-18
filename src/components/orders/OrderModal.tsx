@@ -16,6 +16,9 @@ import {
 } from "@/features/cart/services/mutations";
 import { toast } from "sonner";
 import { FIXED_SIZES } from "@/constants/size";
+import { useQuery } from "@tanstack/react-query";
+import { Loader2 } from "lucide-react";
+import { getProductSizesByColorQuery } from "@/features/products/services/queries";
 
 interface OrderModalProps {
   open: boolean;
@@ -25,6 +28,7 @@ interface OrderModalProps {
   mode?: "add" | "edit";
   itemId?: string;
   initialQuantities?: { size: string; quantity: number }[];
+  colorId?: string;
 }
 
 export function OrderModal({
@@ -35,13 +39,27 @@ export function OrderModal({
   mode = "add",
   itemId,
   initialQuantities,
+  colorId,
 }: OrderModalProps) {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const addToCartMutation = useAddToCartMutation();
   const updateCartMutation = useUpdateCartItemMutation();
 
+  const { data: productData, isLoading } = useQuery({
+    ...getProductSizesByColorQuery(colorId),
+    enabled: !!colorId && open,
+  });
+
   const isPending =
     mode === "add" ? addToCartMutation.isPending : updateCartMutation.isPending;
+
+  // Get available inventory by size
+  const availableQuantities: Record<string, number> = {};
+  if (productData?.sizes) {
+    productData.sizes.forEach((sizeItem) => {
+      availableQuantities[sizeItem.size] = sizeItem.quantity;
+    });
+  }
 
   // Initialize quantities from initialQuantities if provided (for edit mode)
   useEffect(() => {
@@ -59,9 +77,19 @@ export function OrderModal({
 
   const handleQuantityChange = (size: string, value: string) => {
     const quantity = parseInt(value) || 0;
+    const maxAvailable = availableQuantities[size] || 0;
+
+    // Limit the quantity to the available stock
+    const limitedQuantity = Math.min(quantity < 0 ? 0 : quantity, maxAvailable);
+
+    // If user tries to set more than available, show a toast warning
+    if (quantity > maxAvailable) {
+      toast.warning(`Only ${maxAvailable} items available for size ${size}`);
+    }
+
     setQuantities((prev) => ({
       ...prev,
-      [size]: quantity < 0 ? 0 : quantity,
+      [size]: limitedQuantity,
     }));
   };
 
@@ -74,6 +102,20 @@ export function OrderModal({
       toast.error("Please select at least one size and quantity");
       return;
     }
+
+    // Validate quantities against available inventory one more time
+    let hasInventoryIssue = false;
+    quantityBySize.forEach(({ size, quantity }) => {
+      const available = availableQuantities[size] || 0;
+      if (quantity > available) {
+        toast.error(
+          `Not enough inventory for size ${size}. Only ${available} available.`
+        );
+        hasInventoryIssue = true;
+      }
+    });
+
+    if (hasInventoryIssue) return;
 
     if (mode === "add") {
       addToCartMutation.mutate(
@@ -116,23 +158,43 @@ export function OrderModal({
             {designName} - Select sizes and quantities
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
-          {FIXED_SIZES.map((size) => (
-            <div key={size} className="flex items-center gap-4">
-              <Label htmlFor={`size-${size}`} className="w-12">
-                {size}:
-              </Label>
-              <Input
-                id={`size-${size}`}
-                type="number"
-                min="0"
-                value={quantities[size] || ""}
-                onChange={(e) => handleQuantityChange(size, e.target.value)}
-                className="w-20"
-              />
-            </div>
-          ))}
-        </div>
+
+        {isLoading ? (
+          <div className="py-8 flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        ) : (
+          <div className="grid gap-4 py-4">
+            {FIXED_SIZES.map((size) => {
+              const availableQty = availableQuantities[size] || 0;
+              const isOutOfStock = availableQty === 0;
+
+              return (
+                <div key={size} className="flex items-center gap-4">
+                  <Label htmlFor={`size-${size}`} className="w-12">
+                    {size}:
+                  </Label>
+                  <Input
+                    id={`size-${size}`}
+                    type="number"
+                    min="0"
+                    max={availableQty}
+                    value={quantities[size] || ""}
+                    onChange={(e) => handleQuantityChange(size, e.target.value)}
+                    className="w-20"
+                    disabled={isOutOfStock}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {isOutOfStock
+                      ? "Out of stock"
+                      : `Available: ${availableQty}`}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         <DialogFooter>
           <Button
             type="button"
@@ -142,7 +204,7 @@ export function OrderModal({
           >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending}>
+          <Button onClick={handleSubmit} disabled={isPending || isLoading}>
             {isPending
               ? mode === "add"
                 ? "Adding..."
