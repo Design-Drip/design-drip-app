@@ -8,6 +8,7 @@ import {
   ToggleRight,
   Search,
   Layers,
+  Box,
 } from "lucide-react";
 import { useState, useTransition, useMemo, useEffect } from "react";
 import Link from "next/link";
@@ -296,6 +297,14 @@ export function TableProducts({ products }: ProductTableProps) {
                           <Link href={`/admin/products/${product.id}/variants`}>
                             <Layers className="mr-2 h-4 w-4" />
                             Manage Variants
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/admin/products/${product.id}/inventory`}
+                          >
+                            <Box className="mr-2 h-4 w-4" />
+                            Manage Inventory
                           </Link>
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />

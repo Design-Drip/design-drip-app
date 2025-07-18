@@ -44,8 +44,8 @@ const limit = 5;
 export default function OrdersPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const statusParam = searchParams.get("status") || "all";
-  const pageParam = parseInt(searchParams.get("page") || "1");
+  const statusParam = searchParams?.get("status") || "all";
+  const pageParam = parseInt(searchParams?.get("page") || "1");
 
   const [status, setStatus] = useState<string>(statusParam);
   const [page, setPage] = useState<number>(pageParam);

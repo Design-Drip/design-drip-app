@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { OrderModal } from "@/components/order/OrderModal";
+import { OrderModal } from "@/components/orders/OrderModal";
 import {
   Dialog,
   DialogContent,
@@ -215,12 +215,12 @@ export const TableSavedDesign = ({
                       <Link
                         href={`/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`}
                         onClick={() => {
-                          console.log('Edit button clicked for design:', {
+                          console.log("Edit button clicked for design:", {
                             designId: item.id,
                             designName: item.designName,
                             productId: item.productId,
                             colorId: item.colorId,
-                            fullURL: `/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`
+                            fullURL: `/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`,
                           });
                         }}
                       >

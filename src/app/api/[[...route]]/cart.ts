@@ -150,6 +150,34 @@ const app = new Hono()
         });
       }
 
+      // Get color and product to check inventory
+      const shirtColor = await ShirtColor.findById(
+        design.shirt_color_id
+      ).lean();
+      if (!shirtColor) {
+        throw new HTTPException(404, { message: "Product variant not found" });
+      }
+
+      // Check inventory for each size
+      for (const sizeQty of quantityBySize) {
+        const sizeVariant = await ShirtSizeVariant.findOne({
+          shirtColor: shirtColor._id,
+          size: sizeQty.size,
+        }).lean();
+
+        if (!sizeVariant) {
+          throw new HTTPException(400, {
+            message: `Size ${sizeQty.size} is not available for this product`,
+          });
+        }
+
+        if (sizeVariant.quantity < sizeQty.quantity) {
+          throw new HTTPException(400, {
+            message: `Not enough inventory for size ${sizeQty.size}. Only ${sizeVariant.quantity} available.`,
+          });
+        }
+      }
+
       let cart = await Cart.findOne({ userId: user.id });
 
       if (!cart) {
@@ -239,13 +267,21 @@ const app = new Hono()
         }).lean();
 
         // Validate all sizes in the request are valid for this product
+        // and have sufficient inventory
         for (const sizeItem of quantityBySize) {
-          const sizeExists = availableSizes.some(
+          const sizeVariant = availableSizes.find(
             (s) => s.size === sizeItem.size
           );
-          if (!sizeExists) {
+
+          if (!sizeVariant) {
             throw new HTTPException(400, {
               message: `Size ${sizeItem.size} is not available for this product`,
+            });
+          }
+
+          if (sizeVariant.quantity < sizeItem.quantity) {
+            throw new HTTPException(400, {
+              message: `Not enough inventory for size ${sizeItem.size}. Only ${sizeVariant.quantity} available.`,
             });
           }
         }

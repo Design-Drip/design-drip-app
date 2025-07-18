@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { ProductsKeys } from "./keys";
 import { useProductsQueryStore } from "../../store/useProductsQueryStore";
@@ -112,3 +112,25 @@ export const getProductDetailQuery = (productId: string) =>
       return response.json() as Promise<ProductDetailResponse>;
     },
   });
+
+// Get product sizes by color
+export const getProductSizesByColorQuery = (colorId?: string) => {
+  return queryOptions({
+    queryKey: [ProductsKeys.GetProductDetailsQuery, "sizes", colorId],
+    queryFn: colorId
+      ? async () => {
+          const response = await client.api.products.colors[
+            ":colorId"
+          ].sizes.$get({
+            param: { colorId },
+          });
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch product sizes by color");
+          }
+
+          return response.json();
+        }
+      : skipToken,
+  });
+};

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { Order } from "@/models/order";
-import { Product } from "@/models/product";
-import { User } from "@/models/user";
+import { Shirt } from "@/models/product";
+import User from "@/models/user";
 import { DesignTemplate } from "@/models/design-template";
 
 const app = new Hono()
@@ -34,7 +34,7 @@ const app = new Hono()
       ]);
 
       // Get products statistics
-      const productStats = await Product.aggregate([
+      const productStats = await Shirt.aggregate([
         {
           $group: {
             _id: null,
@@ -50,7 +50,7 @@ const app = new Hono()
       ]);
 
       // Get variants statistics
-      const variantStats = await Product.aggregate([
+      const variantStats = await Shirt.aggregate([
         { $unwind: "$variants" },
         {
           $group: {

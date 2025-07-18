@@ -31,7 +31,7 @@ export function ProductFilters({
   // Function to create a new URL with updated search parameters
   const createQueryString = useCallback(
     (name: string, value: string) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString());
       params.set(name, value);
       return params.toString();
     },
