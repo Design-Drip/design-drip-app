@@ -124,7 +124,16 @@ const app = new Hono()
         const order = await Order.findOne({
           _id: orderId,
           userId: user.id,
-        }).lean();
+        }).populate({
+          path: "items.designId", 
+          populate: {
+            path: "shirt_color_id", 
+            populate: {
+              path: "shirt_id",
+              select: "name", 
+            },
+          },
+        });
 
         return c.json({
           id: order?._id?.toString() as string,
@@ -165,9 +174,18 @@ const app = new Hono()
           }),
       })
     ),
-    zValidator("json", z.object({
-      status: z.enum(["pending", "processing", "shipped", "delivered", "canceled"]),
-    })),
+    zValidator(
+      "json",
+      z.object({
+        status: z.enum([
+          "pending",
+          "processing",
+          "shipped",
+          "delivered",
+          "canceled",
+        ]),
+      })
+    ),
     async (c) => {
       const orderId = c.req.param("id");
       const isAdmin = await checkRole("admin");

@@ -54,7 +54,13 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "shipped", "delivered", "canceled"],
+      enum: [
+        "pending",
+        "processing",
+        "shipped",
+        "delivered",
+        "canceled",
+      ],
       default: "pending",
     },
     items: [orderItemSchema],
@@ -116,11 +122,25 @@ const orderSchema = new mongoose.Schema(
 );
 
 interface OrderDoc extends mongoose.Document {
+  _id: mongoose.Types.ObjectId;
   userId: string;
   stripePaymentIntentId: string;
-  status: "pending" | "processing" | "shipped" | "delivered" | "canceled";
+  status:
+    | "pending"
+    | "processing"
+    | "shipped"
+    | "delivered"
+    | "canceled";
   items: {
-    designId: mongoose.Types.ObjectId;
+    designId: {
+      _id: mongoose.Types.ObjectId;
+      shirt_color_id?: {
+        shirt_id?: {
+          _id: mongoose.Types.ObjectId;
+          name: string;
+        };
+      } | null;
+    } | null;
     name: string;
     color: string;
     sizes: {

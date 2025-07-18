@@ -9,6 +9,7 @@ import products from "./products";
 import wishlist from "./wishlist";
 import designTemplate from "./designTemplates";
 import cart from "./cart";
+import feedback from "./feedback";
 import orders from "./orders";
 import paymentMethods from "./payments/paymentMethods";
 import checkout from "./payments/checkout";
@@ -31,7 +32,8 @@ const routes = app
   .route("/wish-list", wishlist)
   .route("/design-templates", designTemplate)
   .route("/cart", cart)
-  .route("/orders", orders);
+  .route("/orders", orders)
+  .route("/feedback", feedback);
 
 export const GET = handle(app);
 export const POST = handle(app);
