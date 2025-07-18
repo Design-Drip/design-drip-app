@@ -27,15 +27,14 @@ import { formatPrice } from "@/lib/price";
 import { getOrderDetailQuery } from "@/features/orders/services/queries";
 
 export default function OrderDetailPage() {
-  const params = useParams<{ id?: string }>();
+  const params = useParams<{ id: string }>();
   const router = useRouter();
-  const orderId = params.id;
 
   const {
     data: order,
     isLoading,
     isError,
-  } = useQuery(getOrderDetailQuery(orderId));
+  } = useQuery(getOrderDetailQuery(params?.id));
 
   if (isLoading) {
     return (

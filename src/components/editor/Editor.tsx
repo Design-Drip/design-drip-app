@@ -283,7 +283,7 @@ export const Editor = ({
         console.error("Error saving to localStorage:", error);
       }
       // Build the redirect URL with all parameters
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams(searchParams?.toString());
 
       // Ensure colorId parameter is included
       if (!params.has("colorId") && productColorId) {
@@ -291,14 +291,15 @@ export const Editor = ({
       }
 
       // Construct full redirect URL
-      let fullRedirectUrl = pathname;
-      if (params.toString()) {
-        fullRedirectUrl += `?${params.toString()}`;
+      if (pathname) {
+        const fullRedirectUrl = pathname + `?${params.toString()}`;
+        // Navigate to sign-in with redirect URL
+        router.push(
+          `/sign-in?redirect_url=${encodeURIComponent(fullRedirectUrl)}`
+        );
+      } else {
+        router.push("/sign-in");
       }
-      // Navigate to sign-in with redirect URL
-      router.push(
-        `/sign-in?redirect_url=${encodeURIComponent(fullRedirectUrl)}`
-      );
       return;
     }
 

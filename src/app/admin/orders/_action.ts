@@ -126,11 +126,11 @@ export async function getOrderById(orderId: string) {
     return {
       id: order._id.toString(),
       userId: order.userId.toString(),
-      items: order.items.map((item: any) => ({
+      items: order.items.map((item) => ({
         designId: item.designId.toString(),
         name: item.name,
         color: item.color,
-        sizes: item.sizes.map((size: any) => ({
+        sizes: item.sizes.map((size) => ({
           size: size.size,
           quantity: size.quantity,
           pricePerUnit: size.pricePerUnit,
