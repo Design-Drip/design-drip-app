@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   CreditCard,
   Clock,
+  MapPin,
 } from "lucide-react";
 import {
   Card,
@@ -111,36 +112,41 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Shipping Address */}
-              {/* <div>
+              <div>
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <h3 className="font-medium">Shipping Address</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {order.shippingDetails?.name &&
-                  order.shippingDetails.address ? (
+                  {order.shipping?.name ? (
                     <>
-                      {order.shippingDetails.name}
+                      {order.shipping.name}
                       <br />
-                      {order.shippingDetails.address.line1}
-                      {order.shippingDetails.address.line2 && (
+                      {order.shipping.phone && (
+                        <>
+                          {order.shipping.phone}
+                          <br />
+                        </>
+                      )}
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
                         <>
                           <br />
-                          {order.shippingDetails.address.line2}
+                          {order.shipping.address.line2}
                         </>
                       )}
                       <br />
-                      {order.shippingDetails.address.city},{" "}
-                      {order.shippingDetails.address.state}{" "}
-                      {order.shippingDetails.address.postalCode}
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
                       <br />
-                      {order.shippingDetails.address.country}
+                      {order.shipping.address.country}
                     </>
                   ) : (
                     "No shipping details available"
                   )}
                 </p>
-              </div> */}
+              </div>
 
               {/* Delivery timeline */}
               <div className="col-span-1 md:col-span-2">

@@ -194,6 +194,56 @@ export default async function OrderDetailsPage({
 
           <Card>
             <CardHeader>
+              <CardTitle>Shipping Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {order.shipping ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Recipient
+                    </h3>
+                    <p>{order.shipping.name}</p>
+                  </div>
+                  {order.shipping.phone && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Phone
+                      </h3>
+                      <p>{order.shipping.phone}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Address
+                    </h3>
+                    <p>
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
+                        <>
+                          <br />
+                          {order.shipping.address.line2}
+                        </>
+                      )}
+                      <br />
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
+                      <br />
+                      {order.shipping.address.country}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  No shipping information available
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Order Status</CardTitle>
             </CardHeader>
             <CardContent>

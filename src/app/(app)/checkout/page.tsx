@@ -14,6 +14,7 @@ import { getCheckoutInfoQuery } from "@/features/payments/services/queries";
 import { useProcessCheckoutMutation } from "@/features/payments/services/mutations";
 import PaymentMethods from "@/features/payments/components/PaymentMethods";
 import NewCardForm from "@/features/payments/components/NewCardForm";
+import ShippingAddressElement from "@/features/payments/components/AddressElement";
 import { formatPrice } from "@/lib/price";
 import { Loader2, ShoppingBag } from "lucide-react";
 import StripeWrapper from "@/components/StripeWrapper";
@@ -29,6 +30,8 @@ const CheckoutPage = () => {
   const [cardError, setCardError] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [addressComplete, setAddressComplete] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState<any>(null);
 
   const stripe = useStripe();
   const elements = useElements();
@@ -80,6 +83,11 @@ const CheckoutPage = () => {
     setCardError(error);
   };
 
+  const handleAddressChange = (complete: boolean, address: any) => {
+    setAddressComplete(complete);
+    setShippingAddress(address);
+  };
+
   const handleCheckout = async () => {
     if (selectedItemIds.length === 0) {
       toast.error("No items selected for checkout");
@@ -89,6 +97,13 @@ const CheckoutPage = () => {
     if (paymentTab === "saved" && !selectedPaymentMethod) {
       toast.error("Payment method required", {
         description: "Please select a payment method to continue",
+      });
+      return;
+    }
+
+    if (!addressComplete || !shippingAddress) {
+      toast.error("Shipping address required", {
+        description: "Please provide a complete shipping address",
       });
       return;
     }
@@ -118,6 +133,7 @@ const CheckoutPage = () => {
           savePaymentMethod: saveNewCard,
           itemIds: selectedItemIds,
           return_url,
+          shipping: shippingAddress,
         },
         {
           onSuccess: async (data) => {
@@ -144,6 +160,31 @@ const CheckoutPage = () => {
               {
                 payment_method: {
                   card: cardElement,
+                  billing_details: {
+                    name: shippingAddress.name,
+                    email: shippingAddress.email,
+                    phone: shippingAddress.phone,
+                    address: {
+                      city: shippingAddress.address.city,
+                      country: shippingAddress.address.country,
+                      line1: shippingAddress.address.line1,
+                      line2: shippingAddress.address.line2 || "",
+                      postal_code: shippingAddress.address.postal_code,
+                      state: shippingAddress.address.state,
+                    },
+                  },
+                },
+                shipping: {
+                  name: shippingAddress.name,
+                  phone: shippingAddress.phone,
+                  address: {
+                    city: shippingAddress.address.city,
+                    country: shippingAddress.address.country,
+                    line1: shippingAddress.address.line1,
+                    line2: shippingAddress.address.line2 || "",
+                    postal_code: shippingAddress.address.postal_code,
+                    state: shippingAddress.address.state,
+                  },
                 },
               }
             );
@@ -155,7 +196,10 @@ const CheckoutPage = () => {
             } else if (paymentIntent.status === "succeeded") {
               // Confirm the payment was successful on the server
               processCheckout(
-                { paymentIntent: paymentIntent.id },
+                {
+                  paymentIntent: paymentIntent.id,
+                  shipping: shippingAddress,
+                },
                 {
                   onSuccess: () => {
                     toast.success("Payment successful", {
@@ -193,13 +237,27 @@ const CheckoutPage = () => {
           paymentMethodId: selectedPaymentMethod,
           itemIds: selectedItemIds,
           return_url,
+          shipping: shippingAddress,
         },
         {
           onSuccess: (data) => {
             if (data.requiresAction && data.clientSecret) {
               // Handle 3D Secure authentication if needed
               stripe!
-                .confirmCardPayment(data.clientSecret)
+                .confirmCardPayment(data.clientSecret, {
+                  shipping: {
+                    name: shippingAddress.name,
+                    phone: shippingAddress.phone,
+                    address: {
+                      city: shippingAddress.address.city,
+                      country: shippingAddress.address.country,
+                      line1: shippingAddress.address.line1,
+                      line2: shippingAddress.address.line2 || "",
+                      postal_code: shippingAddress.address.postal_code,
+                      state: shippingAddress.address.state,
+                    },
+                  },
+                })
                 .then(function (result) {
                   if (result.error) {
                     toast.error("Payment failed", {
@@ -307,6 +365,15 @@ const CheckoutPage = () => {
 
           <Card>
             <CardHeader>
+              <CardTitle>Shipping Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ShippingAddressElement onChange={handleAddressChange} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Payment Method</CardTitle>
             </CardHeader>
             <CardContent>
@@ -315,14 +382,14 @@ const CheckoutPage = () => {
                 value={paymentTab}
                 onValueChange={setPaymentTab}
               >
-                {/* {checkoutInfo.hasPaymentMethods && (
+                {checkoutInfo.hasPaymentMethods && (
                   <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="saved">
                       Saved Payment Methods
                     </TabsTrigger>
                     <TabsTrigger value="new">Use New Card</TabsTrigger>
                   </TabsList>
-                )} */}
+                )}
 
                 <TabsContent value="saved">
                   {checkoutInfo.hasPaymentMethods ? (
@@ -342,7 +409,7 @@ const CheckoutPage = () => {
                   )}
                 </TabsContent>
 
-                {/* <TabsContent value="new">
+                <TabsContent value="new">
                   <div className="space-y-6">
                     <NewCardForm onCardChange={handleCardChange} />
 
@@ -357,7 +424,7 @@ const CheckoutPage = () => {
                       </Label>
                     </div>
                   </div>
-                </TabsContent> */}
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
@@ -385,6 +452,7 @@ const CheckoutPage = () => {
                 disabled={
                   isProcessing ||
                   processingPayment ||
+                  !addressComplete ||
                   (paymentTab === "new" && (!cardComplete || !!cardError))
                 }
               >
