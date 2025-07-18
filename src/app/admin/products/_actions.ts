@@ -10,30 +10,7 @@ import {
   Category,
 } from "@/models/product";
 import type { Product } from "./page";
-
-// Connect to MongoDB
-const connectMongoDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      const uri = process.env.MONGODB_URI;
-      if (!uri) {
-        throw new Error(
-          "MONGODB_URI is not defined in environment variables"
-        );
-      }
-
-      console.log("Connecting to MongoDB...");
-      await mongoose.connect(uri, {
-        serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of default 30s
-        connectTimeoutMS: 10000,
-      });
-      console.log("Connected to MongoDB successfully");
-    }
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw new Error("Failed to connect to database");
-  }
-};
+import dbConnect from "@/lib/db";
 
 export async function getProducts(): Promise<Product[]> {
   if (!(await checkRole("admin"))) {
@@ -41,7 +18,7 @@ export async function getProducts(): Promise<Product[]> {
   }
 
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Fetch shirts with populated categories
     const shirts = await Shirt.find().populate("categories").lean();
@@ -58,9 +35,7 @@ export async function getProducts(): Promise<Product[]> {
 
         // Map categories to strings if they exist
         const categories =
-          shirt.categories?.map(
-            (cat: any) => cat.name || "Unknown"
-          ) || [];
+          shirt.categories?.map((cat: any) => cat.name || "Unknown") || [];
 
         return {
           id: shirt._id.toString(),
@@ -94,7 +69,7 @@ export async function getProductDetails(productId: string) {
   }
 
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Fetch the shirt with populated categories
     const shirt = (await Shirt.findById(productId)
@@ -165,7 +140,7 @@ export async function toggleProductStatus(formData: FormData) {
   }
 
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Update the product status
     await Shirt.findByIdAndUpdate(productId, { isActive: !isActive });
@@ -185,7 +160,7 @@ export async function deleteProduct(formData: FormData) {
   }
 
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Delete associated variants and images first
     await ShirtSizeVariant.deleteMany({ shirt_id: productId });
@@ -209,14 +184,12 @@ export async function createProduct(formData: FormData) {
   }
 
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Extract product data from form
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
-    const default_price = parseFloat(
-      formData.get("default_price") as string
-    );
+    const default_price = parseFloat(formData.get("default_price") as string);
     const isActive = formData.get("isActive") === "true";
     const categoriesRaw = formData.get("categories") as string;
 
@@ -244,9 +217,7 @@ export async function createProduct(formData: FormData) {
       isActive,
     });
 
-    console.log(
-      `Product created successfully with ID: ${newShirt._id}`
-    );
+    console.log(`Product created successfully with ID: ${newShirt._id}`);
 
     // Revalidate the products page to show updated data
     revalidatePath("/admin/products");
@@ -270,15 +241,13 @@ export async function updateProduct(formData: FormData) {
   }
 
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Extract product data from form
     const productId = formData.get("id") as string;
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
-    const default_price = parseFloat(
-      formData.get("default_price") as string
-    );
+    const default_price = parseFloat(formData.get("default_price") as string);
     const isActive = formData.get("isActive") === "true";
     const categoriesRaw = formData.get("categories") as string;
 
@@ -336,7 +305,7 @@ export async function updateProduct(formData: FormData) {
 
 export async function getCategories() {
   try {
-    await connectMongoDB();
+    await dbConnect();
 
     // Fetch all categories
     const categories = (await Category.find().lean()) as any[];

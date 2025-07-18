@@ -8,6 +8,8 @@ export interface ProductSize {
   id: string;
   size: string;
   additional_price: number;
+  quantity: number;
+  shirtColor: string;
 }
 
 export interface ProductImage {

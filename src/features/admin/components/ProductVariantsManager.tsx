@@ -14,6 +14,7 @@ import {
   UserSquare,
   Circle,
   ArrowLeft,
+  Box,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -284,6 +285,14 @@ export function ProductVariantsManager({
         <Button variant="outline" onClick={handleBackToProducts}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Products
+        </Button>
+
+        {/* Inventory management */}
+        <Button variant="outline" asChild>
+          <Link href={`/admin/products/${product.id}/inventory`}>
+            <Box className="mr-2 h-4 w-4" />
+            Manage Inventory
+          </Link>
         </Button>
       </div>
 
