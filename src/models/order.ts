@@ -77,6 +77,15 @@ const orderSchema = new mongoose.Schema(
         country: String,
         postal_code: String,
       },
+      method: {
+        type: String,
+        enum: ["standard", "express"],
+        default: "standard",
+      },
+      cost: {
+        type: Number,
+        default: 0,
+      },
     },
     paymentMethod: {
       type: String,
@@ -131,7 +140,10 @@ interface OrderDoc extends mongoose.Document {
     imageUrl?: string;
   }[];
   totalAmount: number;
-  shipping?: OrderAddress;
+  shipping?: OrderAddress & {
+    method?: "standard" | "express";
+    cost?: number;
+  };
   paymentMethod: string;
   paymentMethodDetails?: any;
   paymentFailureReason?: string;

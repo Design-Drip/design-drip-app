@@ -243,10 +243,12 @@ const app = new Hono()
               city: z.string(),
               country: z.string(),
               line1: z.string(),
-              line2: z.string().optional(),
+              line2: z.string().nullable(),
               postal_code: z.string(),
               state: z.string(),
             }),
+            method: z.enum(["standard", "express"]).default("standard"),
+            cost: z.number().default(0),
           })
           .optional(),
       })
@@ -360,18 +362,26 @@ const app = new Hono()
           });
         }
 
+        // Calculate total amount including shipping cost
+        const itemsTotal = validOrderItems.reduce(
+          (sum, item) => sum + item.totalPrice,
+          0
+        );
+
+        const shippingCost = shipping?.cost || 0;
+        const totalAmount = itemsTotal + shippingCost;
+
         // Create payment intent
         const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-          amount: validOrderItems.reduce(
-            (sum, item) => sum + item.totalPrice,
-            0
-          ),
+          amount: totalAmount,
           currency: "vnd",
           customer: stripeId,
           metadata: {
             userId: user.id,
             cartId: cart._id.toString(),
             itemIds: itemIds ? itemIds.join(",") : "",
+            shippingMethod: shipping?.method || "standard",
+            shippingCost: String(shippingCost),
           },
           shipping: shipping
             ? {
@@ -381,7 +391,7 @@ const app = new Hono()
                   city: shipping.address.city,
                   country: shipping.address.country,
                   line1: shipping.address.line1,
-                  line2: shipping.address.line2,
+                  line2: shipping.address.line2 || undefined,
                   postal_code: shipping.address.postal_code,
                   state: shipping.address.state,
                 },
@@ -421,7 +431,7 @@ const app = new Hono()
           userId: user.id,
           stripePaymentIntentId: createdPaymentIntent.id,
           items: validOrderItems,
-          totalAmount: createdPaymentIntent.amount,
+          totalAmount: totalAmount,
           paymentMethod: "card",
           shipping: shipping,
         });

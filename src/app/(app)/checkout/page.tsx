@@ -18,6 +18,7 @@ import ShippingAddressElement from "@/features/payments/components/AddressElemen
 import { formatPrice } from "@/lib/price";
 import { Loader2, ShoppingBag } from "lucide-react";
 import StripeWrapper from "@/components/StripeWrapper";
+import { Separator } from "@/components/ui/separator";
 
 const CheckoutPage = () => {
   const router = useRouter();
@@ -32,6 +33,10 @@ const CheckoutPage = () => {
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [addressComplete, setAddressComplete] = useState(false);
   const [shippingAddress, setShippingAddress] = useState<any>(null);
+  const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
+    "standard"
+  );
+  const [shippingCost, setShippingCost] = useState(0);
 
   const stripe = useStripe();
   const elements = useElements();
@@ -73,6 +78,14 @@ const CheckoutPage = () => {
       setSelectedPaymentMethod(checkoutInfo.defaultPaymentMethod.id);
     }
   }, [checkoutInfo]);
+
+  useEffect(() => {
+    if (shippingMethod === "express") {
+      setShippingCost(30000); // 30,000 VND for express shipping
+    } else {
+      setShippingCost(0); // Free for standard shipping
+    }
+  }, [shippingMethod]);
 
   const handlePaymentMethodSelect = (id: string) => {
     setSelectedPaymentMethod(id);
@@ -127,13 +140,20 @@ const CheckoutPage = () => {
 
       setProcessingPayment(true);
 
+      // Add shipping method and cost to the shipping address
+      const shippingWithMethod = {
+        ...shippingAddress,
+        method: shippingMethod,
+        cost: shippingCost,
+      };
+
       // First, create a payment intent and get the client secret
       processCheckout(
         {
           savePaymentMethod: saveNewCard,
           itemIds: selectedItemIds,
           return_url,
-          shipping: shippingAddress,
+          shipping: shippingWithMethod,
         },
         {
           onSuccess: async (data) => {
@@ -232,12 +252,18 @@ const CheckoutPage = () => {
       );
     } else {
       // Using an existing payment method
+      const shippingWithMethod = {
+        ...shippingAddress,
+        method: shippingMethod,
+        cost: shippingCost,
+      };
+
       processCheckout(
         {
           paymentMethodId: selectedPaymentMethod,
           itemIds: selectedItemIds,
           return_url,
-          shipping: shippingAddress,
+          shipping: shippingWithMethod,
         },
         {
           onSuccess: (data) => {
@@ -369,6 +395,54 @@ const CheckoutPage = () => {
             </CardHeader>
             <CardContent>
               <ShippingAddressElement onChange={handleAddressChange} />
+
+              <div className="mt-6">
+                <h3 className="font-medium mb-3">Shipping Method</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="standard-shipping"
+                      name="shipping-method"
+                      value="standard"
+                      checked={shippingMethod === "standard"}
+                      onChange={() => setShippingMethod("standard")}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label
+                      htmlFor="standard-shipping"
+                      className="flex flex-col"
+                    >
+                      <span className="font-medium">
+                        Standard Shipping (Free)
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        Delivery in 5-7 business days
+                      </span>
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="express-shipping"
+                      name="shipping-method"
+                      value="express"
+                      checked={shippingMethod === "express"}
+                      onChange={() => setShippingMethod("express")}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="express-shipping" className="flex flex-col">
+                      <span className="font-medium">
+                        Express Shipping ({formatPrice(30000)})
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        Delivery in 1-2 business days
+                      </span>
+                    </Label>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -440,9 +514,18 @@ const CheckoutPage = () => {
                 <span>Subtotal</span>
                 <span>{formatPrice(checkoutInfo.totalAmount)}</span>
               </div>
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <span>
+                  {shippingCost > 0 ? formatPrice(shippingCost) : "Free"}
+                </span>
+              </div>
+              <Separator className="my-2" />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>{formatPrice(checkoutInfo.totalAmount)}</span>
+                <span>
+                  {formatPrice(checkoutInfo.totalAmount + shippingCost)}
+                </span>
               </div>
 
               <Button
@@ -462,7 +545,7 @@ const CheckoutPage = () => {
                     Processing...
                   </>
                 ) : (
-                  `Pay ${formatPrice(checkoutInfo.totalAmount)}`
+                  `Pay ${formatPrice(checkoutInfo.totalAmount + shippingCost)}`
                 )}
               </Button>
             </CardContent>

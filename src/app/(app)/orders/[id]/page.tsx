@@ -141,6 +141,18 @@ export default function OrderDetailPage() {
                       {order.shipping.address.postal_code}
                       <br />
                       {order.shipping.address.country}
+                      <br />
+                      <span className="mt-2 inline-block">
+                        <span className="capitalize font-medium">
+                          {order.shipping.method === "express"
+                            ? "Express"
+                            : "Standard"}{" "}
+                          Shipping
+                        </span>
+                        {order.shipping.cost && order.shipping.cost > 0 && (
+                          <span> ({formatPrice(order.shipping.cost)})</span>
+                        )}
+                      </span>
                     </>
                   ) : (
                     "No shipping details available"
@@ -237,11 +249,19 @@ export default function OrderDetailPage() {
             <div className="w-full md:w-1/3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>{formatPrice(order.totalAmount!)}</span>
+                <span>
+                  {formatPrice(
+                    order.totalAmount! - (order.shipping?.cost || 0)
+                  )}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>Free</span>
+                <span>
+                  {order.shipping?.cost
+                    ? formatPrice(order.shipping.cost)
+                    : "Free"}
+                </span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-medium">
