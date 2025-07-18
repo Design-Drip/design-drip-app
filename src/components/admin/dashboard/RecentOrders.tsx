@@ -22,7 +22,7 @@ interface RecentOrdersProps {
   recentOrders: RecentOrder[];
 }
 
-export default function RecentOrders({ recentOrders }: RecentOrdersProps) {
+export default function RecentOrders({ recentOrders = [] }: RecentOrdersProps) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -88,42 +88,51 @@ export default function RecentOrders({ recentOrders }: RecentOrdersProps) {
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
-          {recentOrders.slice(0, 5).map((order) => (
-            <div
-              key={order._id}
-              className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                <div
-                  className={`w-2 h-2 rounded-full ${getStatusColor(
-                    order.status
-                  )}`}
-                ></div>
-                <div>
-                  <p className="font-medium">#{order._id.slice(-8)}</p>
-                  <p className="text-sm text-gray-500">
-                    {formatDate(order.createdAt)}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="text-right">
-                  <p className="font-medium">
-                    {formatCurrency(order.totalAmount)}
-                  </p>
-                  <Badge
-                    variant={getStatusVariant(order.status)}
-                    className="text-xs"
-                  >
-                    {order.status}
-                  </Badge>
-                </div>
-                <Button variant="ghost" size="sm">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </div>
+          {!recentOrders || recentOrders.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Clock className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+              <p className="text-sm">No recent orders found</p>
             </div>
-          ))}
+          ) : (
+            (recentOrders || []).slice(0, 5).map((order) => (
+              <div
+                key={order._id}
+                className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`w-2 h-2 rounded-full ${getStatusColor(
+                      order.status
+                    )}`}
+                  ></div>
+                  <div>
+                    <p className="font-medium">
+                      #{order._id?.slice(-8) || "N/A"}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      {formatDate(order.createdAt)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-right">
+                    <p className="font-medium">
+                      {formatCurrency(order.totalAmount)}
+                    </p>
+                    <Badge
+                      variant={getStatusVariant(order.status)}
+                      className="text-xs"
+                    >
+                      {order.status}
+                    </Badge>
+                  </div>
+                  <Button variant="ghost" size="sm">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
         <div className="mt-4 pt-4 border-t">
           <Button variant="outline" className="w-full">

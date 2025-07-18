@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DashboardHeader from "./dashboard/DashboardHeader";
 import StatsCards from "./dashboard/StatsCards";
 import ProductStatsCards from "./dashboard/ProductStatsCards";
+import InventoryCards from "./dashboard/InventoryCards";
 import TopProducts from "./dashboard/TopProducts";
 import RecentOrders from "./dashboard/RecentOrders";
 import OrderStatusChart from "./dashboard/OrderStatusChart";
@@ -83,10 +84,11 @@ export default function SimpleAdminDashboard() {
           totalProducts: dashboardData.products?.total || 0,
           activeProducts: dashboardData.products?.active || 0,
           inactiveProducts: dashboardData.products?.inactive || 0,
-          totalVariants: dashboardData.products?.variants?.total || 0,
-          variantsWithImages: dashboardData.products?.variants?.withImages || 0,
-          variantsWithoutImages:
-            dashboardData.products?.variants?.withoutImages || 0,
+          totalColors: dashboardData.products?.colors?.total || 0,
+          colorsWithImages: dashboardData.products?.colors?.withImages || 0,
+          colorsWithoutImages:
+            dashboardData.products?.colors?.withoutImages || 0,
+          totalCategories: dashboardData.products?.categories || 0,
         },
         // Additional metrics - using real data
         dailyStats: {
@@ -101,6 +103,12 @@ export default function SimpleAdminDashboard() {
         },
         averageOrderValue: dashboardData.revenue?.average || 0,
         conversionRate: 0, // Will be calculated from real data
+        // Inventory data
+        inventory: dashboardData.products?.inventory || {
+          totalStock: 0,
+          lowStockItems: 0,
+          outOfStockItems: 0,
+        },
       };
     },
     refetchInterval: 60000, // Auto refresh every minute
@@ -133,13 +141,18 @@ export default function SimpleAdminDashboard() {
       {/* Additional Stats Row */}
       <ProductStatsCards productStats={stats.productStats} />
 
+      {/* Inventory Overview */}
+      <InventoryCards inventory={stats.inventory} />
+
       {/* Top Products Section */}
       <div className="grid gap-4 md:grid-cols-2">
         <TopProducts topProducts={stats.topProducts} />
-        <RecentOrders recentOrders={stats.recentOrders} />
+        <OrderStatusChart
+          orderStatusDistribution={stats.orderStatusDistribution}
+        />
       </div>
 
-      {/* Detailed Analytics with Tabs */}
+      {/* Detailed Analytics with Tabs
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -150,23 +163,24 @@ export default function SimpleAdminDashboard() {
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <RecentOrders recentOrders={stats.recentOrders} />
             <OrderStatusChart
               orderStatusDistribution={stats.orderStatusDistribution}
             />
-            <RecentOrders recentOrders={stats.recentOrders} />
             <ProductStatsCards productStats={stats.productStats} />
           </div>
           <QuickActions />
         </TabsContent>
 
         <TabsContent value="orders" className="space-y-4">
+          <RecentOrders recentOrders={stats.recentOrders} />
           <OrderStatusChart
             orderStatusDistribution={stats.orderStatusDistribution}
           />
-          <RecentOrders recentOrders={stats.recentOrders} />
         </TabsContent>
 
         <TabsContent value="products" className="space-y-4">
+          <InventoryCards inventory={stats.inventory} />
           <ProductStatsCards productStats={stats.productStats} />
           <TopProducts topProducts={stats.topProducts} />
         </TabsContent>
@@ -183,12 +197,10 @@ export default function SimpleAdminDashboard() {
           />
           <div className="grid gap-4 md:grid-cols-2">
             <TopProducts topProducts={stats.topProducts} />
-            <OrderStatusChart
-              orderStatusDistribution={stats.orderStatusDistribution}
-            />
+            <RecentOrders recentOrders={stats.recentOrders} />
           </div>
         </TabsContent>
-      </Tabs>
+      </Tabs> */}
     </div>
   );
 }

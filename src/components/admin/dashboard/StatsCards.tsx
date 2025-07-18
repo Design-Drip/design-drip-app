@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardTitle } from "@/components/ui/card";
 import {
   Users,
   ShoppingCart,
@@ -56,26 +56,18 @@ export default function StatsCards({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      <Card className="relative overflow-hidden border-l-4 border-l-blue-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {totalUsers.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600" />
-            </div>
+      <Card>
+        <CardContent className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+          <Users className="h-4 w-4 text-muted-foreground" />
+        </CardContent>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {totalUsers.toLocaleString()}
           </div>
-          <div className="mt-4 flex items-center">
+          <div className="flex items-center text-xs text-muted-foreground">
             {getGrowthIcon(userGrowth)}
-            <span
-              className={`ml-2 text-sm font-medium ${getGrowthColor(
-                userGrowth
-              )}`}
-            >
+            <span className={`ml-1 ${getGrowthColor(userGrowth)}`}>
               {userGrowth > 0 ? "+" : ""}
               {userGrowth}% from last month
             </span>
@@ -83,26 +75,18 @@ export default function StatsCards({
         </CardContent>
       </Card>
 
-      <Card className="relative overflow-hidden border-l-4 border-l-green-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Orders</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {totalOrders.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg">
-              <ShoppingCart className="h-6 w-6 text-green-600" />
-            </div>
+      <Card>
+        <CardContent className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+        </CardContent>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {totalOrders.toLocaleString()}
           </div>
-          <div className="mt-4 flex items-center">
+          <div className="flex items-center text-xs text-muted-foreground">
             {getGrowthIcon(orderGrowth)}
-            <span
-              className={`ml-2 text-sm font-medium ${getGrowthColor(
-                orderGrowth
-              )}`}
-            >
+            <span className={`ml-1 ${getGrowthColor(orderGrowth)}`}>
               {orderGrowth > 0 ? "+" : ""}
               {orderGrowth}% from last month
             </span>
@@ -110,26 +94,18 @@ export default function StatsCards({
         </CardContent>
       </Card>
 
-      <Card className="relative overflow-hidden border-l-4 border-l-purple-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <p className="text-3xl font-bold text-gray-900">
-                {formatCurrency(totalRevenue)}
-              </p>
-            </div>
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <DollarSign className="h-6 w-6 text-purple-600" />
-            </div>
+      <Card>
+        <CardContent className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+          <DollarSign className="h-4 w-4 text-muted-foreground" />
+        </CardContent>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {formatCurrency(totalRevenue)}
           </div>
-          <div className="mt-4 flex items-center">
+          <div className="flex items-center text-xs text-muted-foreground">
             {getGrowthIcon(revenueGrowth)}
-            <span
-              className={`ml-2 text-sm font-medium ${getGrowthColor(
-                revenueGrowth
-              )}`}
-            >
+            <span className={`ml-1 ${getGrowthColor(revenueGrowth)}`}>
               {revenueGrowth > 0 ? "+" : ""}
               {revenueGrowth}% from last month
             </span>
@@ -137,27 +113,16 @@ export default function StatsCards({
         </CardContent>
       </Card>
 
-      <Card className="relative overflow-hidden border-l-4 border-l-orange-500">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">
-                Total Products
-              </p>
-              <p className="text-3xl font-bold text-gray-900">
-                {totalProducts.toLocaleString()}
-              </p>
-            </div>
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <Package className="h-6 w-6 text-orange-600" />
-            </div>
+      <Card>
+        <CardContent className="flex flex-row items-center justify-between space-y-0 pb-2 pt-6">
+          <CardTitle className="text-sm font-medium">Total Products</CardTitle>
+          <Package className="h-4 w-4 text-muted-foreground" />
+        </CardContent>
+        <CardContent>
+          <div className="text-2xl font-bold">
+            {totalProducts.toLocaleString()}
           </div>
-          <div className="mt-4 flex items-center">
-            <TrendingUp className="h-4 w-4 text-gray-500" />
-            <span className="ml-2 text-sm font-medium text-gray-600">
-              Active products
-            </span>
-          </div>
+          <p className="text-xs text-muted-foreground">Active products</p>
         </CardContent>
       </Card>
     </div>

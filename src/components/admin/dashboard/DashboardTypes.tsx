@@ -32,9 +32,10 @@ export interface DashboardStats {
     totalProducts: number;
     activeProducts: number;
     inactiveProducts: number;
-    totalVariants: number;
-    variantsWithImages: number;
-    variantsWithoutImages: number;
+    totalColors: number;
+    colorsWithImages: number;
+    colorsWithoutImages: number;
+    totalCategories: number;
   };
   // Additional metrics
   dailyStats: {
@@ -49,4 +50,22 @@ export interface DashboardStats {
   };
   averageOrderValue: number;
   conversionRate: number;
+  // Inventory stats
+  inventory: {
+    totalStock: number;
+    lowStockItems: number;
+    outOfStockItems: number;
+    outOfStockProducts?: Array<{
+      productName: string;
+      color: string;
+      size: string;
+      quantity: number;
+    }>;
+    lowStockProducts?: Array<{
+      productName: string;
+      color: string;
+      size: string;
+      quantity: number;
+    }>;
+  };
 }
