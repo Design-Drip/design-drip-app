@@ -143,6 +143,7 @@ export async function getOrderById(orderId: string) {
       createdAt: order.createdAt.toISOString(),
       updatedAt: order.updatedAt.toISOString(),
       paymentMethod: order.paymentMethod,
+      shipping: order.shipping,
     };
   } catch (error) {
     console.error("Error fetching order:", error);

@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   CreditCard,
   Clock,
+  MapPin,
   Star,
   MessageSquare,
 } from "lucide-react";
@@ -45,13 +46,11 @@ export default function OrderDetailPage() {
     isError,
   } = useQuery(getOrderDetailQuery(orderId));
   const submitFeedback = useCreateFeedbackMutation();
-  const productId =
-    order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?._id;
+  const productId = order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?._id;
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
-  const [isSubmittingFeedback, setIsSubmittingFeedback] =
-    useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const queryClient = useQueryClient();
 
   if (isLoading) {
@@ -139,9 +138,7 @@ export default function OrderDetailPage() {
           <CardHeader>
             <div className="flex flex-col md:flex-row justify-between gap-4">
               <div>
-                <CardTitle className="text-xl">
-                  Order #{order.id}
-                </CardTitle>
+                <CardTitle className="text-xl">Order #{order.id}</CardTitle>
                 <CardDescription>
                   Placed on {formatOrderDateTime(order.createdAt!)}
                 </CardDescription>
@@ -167,36 +164,53 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Shipping Address */}
-              {/* <div>
+              <div>
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <h3 className="font-medium">Shipping Address</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {order.shippingDetails?.name &&
-                  order.shippingDetails.address ? (
+                  {order.shipping?.name ? (
                     <>
-                      {order.shippingDetails.name}
+                      {order.shipping.name}
                       <br />
-                      {order.shippingDetails.address.line1}
-                      {order.shippingDetails.address.line2 && (
+                      {order.shipping.phone && (
+                        <>
+                          {order.shipping.phone}
+                          <br />
+                        </>
+                      )}
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
                         <>
                           <br />
-                          {order.shippingDetails.address.line2}
+                          {order.shipping.address.line2}
                         </>
                       )}
                       <br />
-                      {order.shippingDetails.address.city},{" "}
-                      {order.shippingDetails.address.state}{" "}
-                      {order.shippingDetails.address.postalCode}
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
                       <br />
-                      {order.shippingDetails.address.country}
+                      {order.shipping.address.country}
+                      <br />
+                      <span className="mt-2 inline-block">
+                        <span className="capitalize font-medium">
+                          {order.shipping.method === "express"
+                            ? "Express"
+                            : "Standard"}{" "}
+                          Shipping
+                        </span>
+                        {order.shipping.cost && order.shipping.cost > 0 && (
+                          <span> ({formatPrice(order.shipping.cost)})</span>
+                        )}
+                      </span>
                     </>
                   ) : (
                     "No shipping details available"
                   )}
                 </p>
-              </div> */}
+              </div>
 
               {/* Delivery timeline */}
               <div className="col-span-1 md:col-span-2">
@@ -268,8 +282,7 @@ export default function OrderDetailPage() {
                             </span>
                             <span className="font-medium">
                               {formatPrice(
-                                sizeInfo.pricePerUnit *
-                                  sizeInfo.quantity
+                                sizeInfo.pricePerUnit * sizeInfo.quantity
                               )}
                             </span>
                           </div>
@@ -290,11 +303,19 @@ export default function OrderDetailPage() {
             <div className="w-full md:w-1/3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>{formatPrice(order.totalAmount!)}</span>
+                <span>
+                  {formatPrice(
+                    order.totalAmount! - (order.shipping?.cost || 0)
+                  )}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>Free</span>
+                <span>
+                  {order.shipping?.cost
+                    ? formatPrice(order.shipping.cost)
+                    : "Free"}
+                </span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-medium">
@@ -314,8 +335,8 @@ export default function OrderDetailPage() {
                 <CardTitle>Share Your Experience</CardTitle>
               </div>
               <CardDescription>
-                How was your experience with this order? Your feedback
-                helps us improve.
+                How was your experience with this order? Your feedback helps us
+                improve.
               </CardDescription>
             </CardHeader>
 
