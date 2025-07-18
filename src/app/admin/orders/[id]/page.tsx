@@ -158,11 +158,19 @@ export default async function OrderDetailsPage({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatPrice(order.totalAmount)}</span>
+                  <span>
+                    {formatPrice(
+                      order.totalAmount - (order.shipping?.cost || 0)
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>Free</span>
+                  <span>
+                    {order.shipping?.cost
+                      ? formatPrice(order.shipping.cost)
+                      : "Free"}
+                  </span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex justify-between font-medium">
@@ -189,6 +197,69 @@ export default async function OrderDetailsPage({
                   <p>{order.userId}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {order.shipping ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Recipient
+                    </h3>
+                    <p>{order.shipping.name}</p>
+                  </div>
+                  {order.shipping.phone && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Phone
+                      </h3>
+                      <p>{order.shipping.phone}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Address
+                    </h3>
+                    <p>
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
+                        <>
+                          <br />
+                          {order.shipping.address.line2}
+                        </>
+                      )}
+                      <br />
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
+                      <br />
+                      {order.shipping.address.country}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Shipping Method
+                    </h3>
+                    <p>
+                      {order.shipping.method === "express"
+                        ? "Express Shipping"
+                        : "Standard Shipping"}
+                      {order.shipping?.cost &&
+                        order.shipping.cost > 0 &&
+                        ` (${formatPrice(order.shipping.cost)})`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  No shipping information available
+                </p>
+              )}
             </CardContent>
           </Card>
 
