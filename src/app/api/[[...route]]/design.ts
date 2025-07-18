@@ -43,6 +43,7 @@ const app = new Hono()
 
       console.log("[API POST] Request payload:", { parent_design_id });
 
+
       // Convert string IDs to ObjectIds for the database
       const elementDesignObj: {
         [key: string]: {
@@ -99,6 +100,7 @@ const app = new Hono()
         // This is a new original design
         designData.version = "original";
         console.log("[API POST] Creating original design");
+
       }
 
       const design = new Design(designData);
@@ -241,6 +243,7 @@ const app = new Hono()
           c.req.valid("json");
 
         console.log("[API PUT] Request payload template info:", { parent_design_id });
+
         // Check if the design exists and belongs to the user
         const existingDesign = await Design.findOne({
           _id: id,
@@ -275,7 +278,7 @@ const app = new Hono()
         if (design_images) {
           existingDesign.design_images = design_images;
         }
-        
+
         // Save the updated design
         const updatedDesign = await existingDesign.save();
 

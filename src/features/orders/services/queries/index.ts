@@ -2,7 +2,12 @@ import { queryOptions, skipToken } from "@tanstack/react-query";
 import { client } from "@/lib/hono";
 import { OrdersKeys } from "./keys";
 
-export const getOrdersQuery = (page = 1, limit = 10, status?: string) => {
+export const getOrdersQuery = (
+  page = 1,
+  limit = 10,
+  status?: string,
+  search?: string
+) => {
   let queryParams: Record<string, string> = {
     page: page.toString(),
     limit: limit.toString(),
@@ -10,9 +15,12 @@ export const getOrdersQuery = (page = 1, limit = 10, status?: string) => {
   if (status) {
     queryParams.status = status;
   }
+  if (search) {
+    queryParams.search = search;
+  }
 
   return queryOptions({
-    queryKey: [OrdersKeys.GetOrdersQuery, page, limit, status],
+    queryKey: [OrdersKeys.GetOrdersQuery, page, limit, status, search],
     queryFn: async () => {
       const response = await client.api.orders.$get({
         query: queryParams,

@@ -270,24 +270,6 @@ const app = new Hono()
 
             await order.save();
 
-            // Clear the purchased items from cart
-            if (itemIds.length > 0) {
-              await Cart.updateOne(
-                { userId: user.id },
-                {
-                  $pull: {
-                    items: {
-                      _id: {
-                        $in: itemIds.map(
-                          (id) => new mongoose.Types.ObjectId(id)
-                        ),
-                      },
-                    },
-                  },
-                }
-              );
-            }
-
             return c.json({
               success: true,
               clientSecret: intent.client_secret,

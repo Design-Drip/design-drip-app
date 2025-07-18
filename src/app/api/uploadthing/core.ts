@@ -22,7 +22,7 @@ export const ourFileRouter = {
       console.log("Upload complete:", file.name);
 
       // Return the file URL
-      return { url: file.url };
+      return { url: file.ufsUrl };
     }),
   designCanvas: f({
     image: {
@@ -39,7 +39,7 @@ export const ourFileRouter = {
       console.log("Design canvas upload complete:", file.name);
 
       // Return the file URL
-      return { url: file.url };
+      return { url: file.ufsUrl };
     }),
 } satisfies FileRouter;
 
