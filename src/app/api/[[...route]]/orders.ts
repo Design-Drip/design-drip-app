@@ -27,13 +27,9 @@ const app = new Hono()
 
       if (
         status &&
-        [
-          "pending",
-          "processing",
-          "shipped",
-          "delivered",
-          "canceled",
-        ].includes(status)
+        ["pending", "processing", "shipped", "delivered", "canceled"].includes(
+          status
+        )
       ) {
         query.status = status;
       }
@@ -45,10 +41,7 @@ const app = new Hono()
         // If search looks like an ObjectId or partial ObjectId, search by _id
         if (mongoose.isObjectIdOrHexString(search)) {
           query._id = search;
-        } else if (
-          search.length >= 3 &&
-          /^[a-fA-F0-9]+$/.test(search)
-        ) {
+        } else if (search.length >= 3 && /^[a-fA-F0-9]+$/.test(search)) {
           // Partial ObjectId search (at least 3 hex characters)
           query._id = new RegExp(search, "i");
         } else {
@@ -135,6 +128,7 @@ const app = new Hono()
           createdAt: order?.createdAt,
           updatedAt: order?.updatedAt,
           paymentMethod: order?.paymentMethod,
+          shipping: order?.shipping,
         });
       } catch (error) {
         console.error(`Error fetching order ${orderId}:`, error);
@@ -165,9 +159,18 @@ const app = new Hono()
           }),
       })
     ),
-    zValidator("json", z.object({
-      status: z.enum(["pending", "processing", "shipped", "delivered", "canceled"]),
-    })),
+    zValidator(
+      "json",
+      z.object({
+        status: z.enum([
+          "pending",
+          "processing",
+          "shipped",
+          "delivered",
+          "canceled",
+        ]),
+      })
+    ),
     async (c) => {
       const orderId = c.req.param("id");
       const isAdmin = await checkRole("admin");
@@ -179,13 +182,9 @@ const app = new Hono()
       const { status } = body;
 
       if (
-        ![
-          "pending",
-          "processing",
-          "shipped",
-          "delivered",
-          "canceled",
-        ].includes(status)
+        !["pending", "processing", "shipped", "delivered", "canceled"].includes(
+          status
+        )
       ) {
         throw new HTTPException(400, {
           message: "Invalid order status",
