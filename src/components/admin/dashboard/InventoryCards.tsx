@@ -70,9 +70,9 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
               <p className="text-2xl font-bold text-blue-900">
                 {inventory.totalStock.toLocaleString()}
               </p>
-              <p className="text-xs text-blue-600">
+              {/* <p className="text-xs text-blue-600">
                 {stockHealthPercentage}% available
-              </p>
+              </p> */}
             </div>
           </div>
 
@@ -86,7 +86,7 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
               <p className="text-2xl font-bold text-yellow-900">
                 {inventory.lowStockItems.toLocaleString()}
               </p>
-              <p className="text-xs text-yellow-600">≤ 10 items remaining</p>
+              {/* <p className="text-xs text-yellow-600">≤ 10 items remaining</p> */}
             </div>
           </div>
 
@@ -100,13 +100,13 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
               <p className="text-2xl font-bold text-red-900">
                 {inventory.outOfStockItems.toLocaleString()}
               </p>
-              <p className="text-xs text-red-600">Needs restocking</p>
+              {/* <p className="text-xs text-red-600">Needs restocking</p> */}
             </div>
           </div>
         </div>
 
         {/* Stock Health Indicator */}
-        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+        {/* <div className="mt-6 p-4 bg-gray-50 rounded-lg">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium text-gray-600">
               Stock Health
@@ -135,7 +135,7 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
             <span>0%</span>
             <span>100%</span>
           </div>
-        </div>
+        </div> */}
 
         {/* Quick Actions */}
         {inventory.lowStockItems > 0 || inventory.outOfStockItems > 0 ? (
@@ -171,7 +171,7 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
         {/* Out of Stock Products List */}
         {inventory.outOfStockProducts &&
           inventory.outOfStockProducts.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-6 p-3">
               <h4 className="text-sm font-semibold text-red-800 mb-3 flex items-center gap-2">
                 <XCircle className="h-4 w-4" />
                 Out of Stock Products
@@ -180,12 +180,12 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
                 {inventory.outOfStockProducts.map((product, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 bg-red-50 rounded text-xs"
+                    className="flex items-center justify-between p-2  rounded text-xs"
                   >
                     <span className="font-medium text-red-900">
                       {product.productName} - {product.color} ({product.size})
                     </span>
-                    <span className="text-red-600 font-bold">0</span>
+                    {/* <span className="font-bold">0</span> */}
                   </div>
                 ))}
               </div>
@@ -195,7 +195,7 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
         {/* Low Stock Products List */}
         {inventory.lowStockProducts &&
           inventory.lowStockProducts.length > 0 && (
-            <div className="mt-6">
+            <div className="mt-3 p-3">
               <h4 className="text-sm font-semibold text-yellow-800 mb-3 flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4" />
                 Low Stock Products
@@ -204,7 +204,7 @@ export default function InventoryCards({ inventory }: InventoryCardsProps) {
                 {inventory.lowStockProducts.map((product, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between p-2 bg-yellow-50 rounded text-xs"
+                    className="flex items-center justify-between p-2  rounded text-xs"
                   >
                     <span className="font-medium text-yellow-900">
                       {product.productName} - {product.color} ({product.size})

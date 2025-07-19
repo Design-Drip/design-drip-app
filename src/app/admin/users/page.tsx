@@ -110,7 +110,7 @@ export default async function UsersManagementPage({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Active</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-600" />
+            <UserCheck className="h-4 w-4 " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.active}</div>
@@ -125,7 +125,7 @@ export default async function UsersManagementPage({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Admin</CardTitle>
-            <Eye className="h-4 w-4 text-blue-600" />
+            <Eye className="h-4 w-4 " />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.admin}</div>
