@@ -51,8 +51,7 @@ export default function OrderDetailPage() {
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
-  const [isSubmittingFeedback, setIsSubmittingFeedback] =
-    useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const queryClient = useQueryClient();
 
   if (isLoading) {
@@ -140,9 +139,7 @@ export default function OrderDetailPage() {
           <CardHeader>
             <div className="flex flex-col md:flex-row justify-between gap-4">
               <div>
-                <CardTitle className="text-xl">
-                  Order #{order.id}
-                </CardTitle>
+                <CardTitle className="text-xl">Order #{order.id}</CardTitle>
                 <CardDescription>
                   Placed on {formatOrderDateTime(order.createdAt!)}
                 </CardDescription>
@@ -286,8 +283,7 @@ export default function OrderDetailPage() {
                             </span>
                             <span className="font-medium">
                               {formatPrice(
-                                sizeInfo.pricePerUnit *
-                                  sizeInfo.quantity
+                                sizeInfo.pricePerUnit * sizeInfo.quantity
                               )}
                             </span>
                           </div>
@@ -340,8 +336,8 @@ export default function OrderDetailPage() {
                 <CardTitle>Share Your Experience</CardTitle>
               </div>
               <CardDescription>
-                How was your experience with this order? Your feedback
-                helps us improve.
+                How was your experience with this order? Your feedback helps us
+                improve.
               </CardDescription>
             </CardHeader>
 
