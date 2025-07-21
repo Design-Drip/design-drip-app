@@ -46,7 +46,7 @@ export default function OrderDetailPage() {
   } = useQuery(getOrderDetailQuery(orderId));
   const submitFeedback = useCreateFeedbackMutation();
   const productId =
-    order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?._id;
+    order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?.id;
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");

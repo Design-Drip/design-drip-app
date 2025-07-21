@@ -592,6 +592,10 @@ export default function ProductDetailPage({
                   (feedback: {
                     id: string;
                     rating: number;
+                    user: {
+                      fullName: string;
+                      imageUrl?: string;
+                    };
                     createdAt: string;
                     comment?: string;
                   }) => (
@@ -601,6 +605,11 @@ export default function ProductDetailPage({
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
+                          {feedback.user?.fullName && (
+                            <span className="font-semibold">
+                              {feedback.user.fullName}
+                            </span>
+                          )}
                           {renderStars(feedback.rating)}
                           <span className="text-sm text-gray-600">
                             {formatDate(feedback.createdAt)}

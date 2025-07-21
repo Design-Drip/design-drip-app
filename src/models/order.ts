@@ -136,7 +136,7 @@ interface OrderDoc extends mongoose.Document {
       _id: mongoose.Types.ObjectId;
       shirt_color_id?: {
         shirt_id?: {
-          _id: mongoose.Types.ObjectId;
+          id: mongoose.Types.ObjectId;
           name: string;
         };
       } | null;

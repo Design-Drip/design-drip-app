@@ -8,6 +8,10 @@ export interface FeedbackDoc extends mongoose.Document {
 
 const feedbackSchema = new mongoose.Schema(
   {
+    userId: {
+      type: String,
+      required: true,
+    },
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,

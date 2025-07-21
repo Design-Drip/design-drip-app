@@ -6,6 +6,7 @@ import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { clerkClient } from "@clerk/nextjs/server";
 
 const app = new Hono()
   .use(verifyAuth)
@@ -43,7 +44,7 @@ const app = new Hono()
       const filteredOrders = orders.filter((order) =>
         order.items.some(
           (item) =>
-            item.designId?.shirt_color_id?.shirt_id?._id?.toString() ===
+            item.designId?.shirt_color_id?.shirt_id?.id?.toString() ===
             productId
         )
       );
@@ -52,16 +53,31 @@ const app = new Hono()
         .lean();
       const productFeedbacks = feedbacks.filter((feedback) =>
         filteredOrders.some(
-          (order) => order._id.toString() === feedback.orderId.toString()
+          (order) =>
+            order._id.toString() === (feedback.orderId as any)?.toString()
         )
       );
+      const client = await clerkClient();
+      const clerkUsersResponse = await client.users.getUserList({
+        limit: 100,
+      });
+      const clerkUsersList = clerkUsersResponse.data;
+      const resultFeedbacks = productFeedbacks.map((feedback) => {
+        const user = clerkUsersList.find(
+          (user) => user.id === (feedback as any).userId?.toString()
+        );
+        return {
+          ...feedback,
+          id: feedback._id.toString(),
+          user: {
+            id: user?.id || "",
+            fullName: user?.fullName || "Unknown User",
+          },
+        };
+      });
       try {
-        
         return c.json({
-          data: productFeedbacks.map((feedback) => ({
-            ...feedback,
-            id: feedback._id.toString(),
-          })),
+          data: resultFeedbacks,
         });
       } catch (error) {
         throw new HTTPException(500, {
@@ -85,6 +101,7 @@ const app = new Hono()
       })
     ),
     async (c) => {
+      const user = c.get("user")!;
       const body = await c.req.json();
       const { orderId, rating, comment } = body;
       try {
@@ -95,6 +112,7 @@ const app = new Hono()
           });
         }
         const feedback = new Feedback({
+          userId: user.id,
           orderId,
           rating,
           comment,
