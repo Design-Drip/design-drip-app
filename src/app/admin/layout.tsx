@@ -40,21 +40,18 @@ export default function AdminLayout({
                         title: "Users",
                         url: "/admin/users",
                         icon: Users,
-                        badge: "1.2k",
                         isActive: pathname === "/admin/users" || pathname.startsWith("/admin/users/"),
                     },
                     {
                         title: "Products",
                         url: "/admin/products",
                         icon: Package,
-                        badge: "234",
                         isActive: pathname === "/admin/products" || pathname.startsWith("/admin/products/"),
                     },
                     {
                         title: "Orders",
                         url: "/admin/orders",
                         icon: ShoppingCart,
-                        badge: "12",
                         isActive: pathname === "/admin/orders" || pathname.startsWith("/admin/orders/"),
                     },
                     {
