@@ -15,7 +15,7 @@ export default async function AppLayout({ children }: AppLayoutProps) {
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">{children}</div>
+        {children}
       </main>
       <Footer />
     </div>
