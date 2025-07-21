@@ -32,6 +32,69 @@ import { formatOrderDateTime, formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
 import { getRequestQuoteQuery } from "@/features/request-quote/services/queries";
 
+interface ProductDetail {
+  productId?: {
+    _id: string;
+    name: string;
+    default_price?: number;
+  } | string;
+  quantity: number;
+  selectedColorId?: {
+    _id: string;
+    color: string;
+    hex_code?: string;
+  } | string;
+  quantityBySize?: Array<{
+    size: string;
+    quantity: number;
+  }>;
+}
+
+interface QuoteData {
+  id: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  emailAddress: string;
+  phone: string;
+  company?: string;
+  streetAddress: string;
+  suburbCity: string;
+  country: string;
+  state: string;
+  postcode: string;
+  type: "product" | "custom";
+  productDetails?: ProductDetail;
+  customRequest?: {
+    customNeed: string;
+  };
+  needDeliveryBy?: string;
+  extraInformation?: string;
+  status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
+  quotedPrice?: number;
+  quotedAt?: string;
+  approvedAt?: string;
+  rejectedAt?: string;
+  rejectionReason?: string;
+  adminNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+const getProductName = (productId: ProductDetail['productId']): string => {
+  if (typeof productId === 'object' && productId?.name) {
+    return productId.name;
+  }
+  return 'Unknown Product';
+};
+
+const getColorName = (selectedColorId: ProductDetail['selectedColorId']): string => {
+  if (typeof selectedColorId === 'object' && selectedColorId?.color) {
+    return selectedColorId.color;
+  }
+  return 'Unknown Color';
+};
+
 // Status badge component
 const StatusBadge = ({ status }: { status: string }) => {
   const getStatusConfig = (status: string) => {
@@ -145,34 +208,46 @@ export default function RequestQuoteDetailPage() {
     );
   }
 
-  const quoteData = quote.data;
+  const quoteData = quote.data as QuoteData;
 
   return (
     <div className="container mx-auto max-w-5xl py-8 px-4">
       <Card>
-        {/* Header với Back button, Request ID và Status */}
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.back()}
-              className="p-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-
             <div className="flex items-center gap-4">
-              <p className="text-sm text-muted-foreground">
-                Request #{quoteData.id.slice(-8).toUpperCase()}
-              </p>
-              <div className="h-8 w-px bg-border"></div>
-              <p className="text-sm text-muted-foreground">
-                {quoteData.type === "product" ? "Product Quote" : "Custom Quote"}
-              </p>
-              <div className="h-8 w-px bg-border"></div>
-              <StatusBadge status={quoteData.status} />
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.back()}
+                className="p-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center gap-4">
+                <div>
+                  <h1 className="text-xl font-semibold">
+                    Request #{quoteData.id.slice(-8).toUpperCase()}
+                  </h1>
+                  <p className="text-sm text-muted-foreground">
+                    {quoteData.type === "product" ? "Product Quote" : "Custom Quote"}
+                  </p>
+                </div>
+
+                <div className="h-8 w-px bg-border"></div>
+
+                <StatusBadge status={quoteData.status} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button asChild size="sm" variant="outline">
+                <Link href="/request-quote">
+                  <FileText className="h-4 w-4 mr-2" />
+                  New Request
+                </Link>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -225,7 +300,7 @@ export default function RequestQuoteDetailPage() {
                     <div>
                       <span className="text-muted-foreground text-sm">Product:</span>
                       <p className="font-medium">
-                        {quoteData.productDetails.productId.name}
+                        {getProductName(quoteData.productDetails.productId)}
                       </p>
                     </div>
                   )}
@@ -237,25 +312,26 @@ export default function RequestQuoteDetailPage() {
                     <div>
                       <span className="text-muted-foreground text-sm">Color:</span>
                       <p className="font-medium">
-                        {quoteData.productDetails.selectedColorId.color}
+                        {getColorName(quoteData.productDetails.selectedColorId)}
                       </p>
                     </div>
                   )}
                 </div>
 
-                {quoteData.productDetails.quantityBySize?.length > 0 && (
-                  <div>
-                    <span className="text-muted-foreground text-sm">Size Breakdown:</span>
-                    <div className="mt-2 space-y-2">
-                      {quoteData.productDetails.quantityBySize.map((item: any, index: number) => (
-                        <div key={index} className="flex justify-between items-center p-2 bg-muted/50 rounded text-sm">
-                          <span>Size {item.size}</span>
-                          <span className="font-medium">{item.quantity} pcs</span>
-                        </div>
-                      ))}
+                {quoteData.productDetails.quantityBySize &&
+                  quoteData.productDetails.quantityBySize.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground text-sm">Size Breakdown:</span>
+                      <div className="mt-2 space-y-2">
+                        {quoteData.productDetails.quantityBySize.map((item, index) => (
+                          <div key={index} className="flex justify-between items-center p-2 bg-muted/50 rounded text-sm">
+                            <span>Size {item.size}</span>
+                            <span className="font-medium">{item.quantity} pcs</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             </div>
           ) : (

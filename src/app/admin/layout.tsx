@@ -2,7 +2,7 @@
 
 import SidebarLayout from "@/components/layout/SidebarLayout"
 import { SidebarConfig } from "@/types/sidebar"
-import { BarChart3, Database, FileText, HelpCircle, Home, Images, Package, Settings, Shield, ShoppingCart, Tickets, Users } from "lucide-react"
+import { BarChart3, Database, FileText, HelpCircle, Home, Images, MessageSquareQuote, Package, Settings, Shield, ShoppingCart, Tickets, Users } from "lucide-react"
 import type React from "react"
 import { usePathname } from "next/navigation"
 
@@ -74,6 +74,12 @@ export default function AdminLayout({
                         url: "/admin/design-template",
                         icon: Images,
                         isActive: pathname === "/admin/design-template" || pathname.startsWith("/admin/design-template/"),
+                    },
+                    {
+                        title: "Request quotes",
+                        url: "/admin/request-quotes",
+                        icon: MessageSquareQuote,
+                        isActive: pathname === "/admin/request-quotes" || pathname.startsWith("/admin/request-quotes/"),
                     },
                 ],
             },

@@ -1,0 +1,267 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+    Eye,
+    MoreHorizontal,
+    Package,
+    FileText,
+    DollarSign,
+    Clock,
+    CheckCircle,
+    XCircle,
+    User,
+} from "lucide-react";
+import { formatOrderDate, formatOrderDateTime } from "@/lib/date";
+import { formatPrice } from "@/lib/price";
+import { cn } from "@/lib/utils";
+import { QuoteActions } from "./QuoteActions";
+
+interface RequestQuote {
+    id: string;
+    userId: string;
+    firstName: string;
+    lastName: string;
+    emailAddress: string;
+    phone: string;
+    company?: string;
+    type: "product" | "custom";
+    status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
+    quotedPrice?: number;
+    productDetails?: any;
+    customRequest?: any;
+    needDeliveryBy?: string;
+    createdAt: string;
+    updatedAt: string;
+}
+
+interface ClerkUser {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    fullName: string;
+    imageUrl: string;
+    isActive: boolean;
+    role: string;
+}
+
+interface RequestQuotesTableProps {
+    requestQuotes: RequestQuote[];
+}
+
+// Status badge component
+const StatusBadge = ({ status }: { status: string }) => {
+    const getStatusConfig = (status: string) => {
+        switch (status) {
+            case "pending":
+                return {
+                    label: "Pending",
+                    className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+                    icon: Clock,
+                };
+            case "reviewing":
+                return {
+                    label: "Reviewing",
+                    className: "bg-blue-100 text-blue-800 border-blue-200",
+                    icon: Eye,
+                };
+            case "quoted":
+                return {
+                    label: "Quoted",
+                    className: "bg-purple-100 text-purple-800 border-purple-200",
+                    icon: DollarSign,
+                };
+            case "approved":
+                return {
+                    label: "Approved",
+                    className: "bg-green-100 text-green-800 border-green-200",
+                    icon: CheckCircle,
+                };
+            case "rejected":
+                return {
+                    label: "Rejected",
+                    className: "bg-red-100 text-red-800 border-red-200",
+                    icon: XCircle,
+                };
+            case "completed":
+                return {
+                    label: "Completed",
+                    className: "bg-gray-100 text-gray-800 border-gray-200",
+                    icon: CheckCircle,
+                };
+            default:
+                return {
+                    label: status,
+                    className: "bg-gray-100 text-gray-800 border-gray-200",
+                    icon: FileText,
+                };
+        }
+    };
+
+    const config = getStatusConfig(status);
+    const IconComponent = config.icon;
+
+    return (
+        <Badge variant="outline" className={cn("text-xs font-medium", config.className)}>
+            <IconComponent className="w-3 h-3 mr-1" />
+            {config.label}
+        </Badge>
+    );
+};
+
+export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
+
+    const getRequestSummary = (quote: RequestQuote) => {
+        if (quote.type === "product" && quote.productDetails) {
+            const productName = quote.productDetails.productId?.name || "Product";
+            return `${productName} (Qty: ${quote.productDetails.quantity})`;
+        }
+
+        if (quote.type === "custom" && quote.customRequest) {
+            const preview = quote.customRequest.customNeed.substring(0, 50);
+            return `${preview}${preview.length < quote.customRequest.customNeed.length ? "..." : ""}`;
+        }
+
+        return `${quote.type === "product" ? "Product" : "Custom"} Quote`;
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    Request Quotes ({requestQuotes.length})
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Customer</TableHead>
+                                <TableHead>Request Details</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Quote Price</TableHead>
+                                <TableHead>Submitted</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {requestQuotes.map((quote) => {
+                                return (
+                                    <TableRow key={quote.id} className="hover:bg-muted/50">
+                                        <TableCell>
+                                            <div className="flex items-center space-x-3">
+                                                <Avatar className="h-8 w-8">
+                                                    <AvatarImage src="" />
+                                                    <AvatarFallback>
+                                                        {quote.firstName[0]}{quote.lastName[0]}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div>
+                                                    <div className="font-medium">
+                                                        {quote.firstName} {quote.lastName}
+                                                    </div>
+                                                    <div className="text-sm text-muted-foreground">
+                                                        {quote.emailAddress}
+                                                    </div>
+                                                    {quote.company && (
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {quote.company}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <div className="max-w-xs">
+                                                <div className="font-medium text-sm">
+                                                    {getRequestSummary(quote)}
+                                                </div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    ID: #{quote.id.slice(-8).toUpperCase()}
+                                                </div>
+                                                {quote.needDeliveryBy && (
+                                                    <div className="text-xs text-muted-foreground">
+                                                        Needed: {formatOrderDate(quote.needDeliveryBy)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <Badge variant="secondary" className="text-xs">
+                                                {quote.type === "product" ? (
+                                                    <>
+                                                        <Package className="w-3 h-3 mr-1" />
+                                                        Product
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <FileText className="w-3 h-3 mr-1" />
+                                                        Custom
+                                                    </>
+                                                )}
+                                            </Badge>
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <StatusBadge status={quote.status} />
+                                        </TableCell>
+
+                                        <TableCell>
+                                            {quote.quotedPrice ? (
+                                                <div className="font-medium text-green-600">
+                                                    {formatPrice(quote.quotedPrice)}
+                                                </div>
+                                            ) : (
+                                                <span className="text-muted-foreground text-sm">-</span>
+                                            )}
+                                        </TableCell>
+
+                                        <TableCell>
+                                            <div className="text-sm">
+                                                {formatOrderDate(quote.createdAt)}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                {formatOrderDateTime(quote.createdAt).split(" ")[1]}
+                                            </div>
+                                        </TableCell>
+
+                                        <TableCell className="text-right">
+                                            <QuoteActions quote={quote} />
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}

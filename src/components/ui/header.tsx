@@ -191,7 +191,7 @@ export default async function Header() {
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground w-full"
+                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground w-full cursor-pointer"
                     asChild
                   >
                     <SignOutButton>

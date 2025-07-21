@@ -52,6 +52,13 @@ const createRequestQuoteSchema = z.object({
     message: "Invalid request data based on type",
 });
 
+const updateRequestQuoteSchema = z.object({
+    status: z.enum(["pending", "reviewing", "quoted", "approved", "rejected", "completed"]),
+    quotedPrice: z.number().optional(),
+    rejectionReason: z.string().optional(),
+    adminNotes: z.string().optional(),
+});
+
 const app = new Hono()
     .use(verifyAuth)
     //Get all request quotes
@@ -337,5 +344,82 @@ const app = new Hono()
             }
         }
     )
+
+    //Update status of request quote
+    .patch(
+        "/:id",
+        zValidator("param", z.object({
+            id: z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
+                message: "Invalid request quote ID",
+            }),
+        })),
+        zValidator("json", updateRequestQuoteSchema),
+        async (c) => {
+            try {
+                const user = c.get("user")!;
+                const isAdmin = await checkRole("admin");
+                
+                if (!isAdmin) {
+                    throw new HTTPException(403, { message: "Admin access required" });
+                }
+
+                const { id } = c.req.valid("param");
+                const { status, quotedPrice, rejectionReason, adminNotes } = c.req.valid("json");
+
+                const updateData: any = {
+                    status,
+                    updatedAt: new Date(),
+                };
+
+                switch (status) {
+                    case "quoted":
+                        if (quotedPrice !== undefined) {
+                            updateData.quotedPrice = quotedPrice;
+                            updateData.quotedAt = new Date();
+                        }
+                        break;
+                    case "approved":
+                        updateData.approvedAt = new Date();
+                        break;
+                    case "rejected":
+                        updateData.rejectedAt = new Date();
+                        if (rejectionReason !== undefined) {
+                            updateData.rejectionReason = rejectionReason;
+                        }
+                        break;
+                }
+
+                if (adminNotes !== undefined) {
+                    updateData.adminNotes = adminNotes;
+                }
+
+                const updatedQuote = await RequestQuote.findByIdAndUpdate(
+                    id,
+                    updateData,
+                    { new: true }
+                );
+
+                if (!updatedQuote) {
+                    throw new HTTPException(404, { message: "Request quote not found" });
+                }
+
+                return c.json({
+                    success: true,
+                    data: updatedQuote,
+                    message: "Request quote updated successfully",
+                });
+
+            } catch (error) {
+                console.error("Error updating request quote:", error);
+                
+                if (error instanceof HTTPException) {
+                    throw error;
+                }
+
+                throw new HTTPException(500, { message: "Failed to update request quote" });
+            }
+        }
+    )
+
 
 export default app;

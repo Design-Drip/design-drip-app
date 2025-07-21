@@ -68,7 +68,7 @@ interface RequestQuoteDoc extends mongoose.Document {
     needDeliveryBy?: Date,
     extraInformation?: string,
 
-    status: "pending" | "reviewing" | "quote" | "approved" | "rejected" | "completed",
+    status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed",
     quotedPrice?: number,
     quotedAt?: Date,
     approvedAt?: Date,
