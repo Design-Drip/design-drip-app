@@ -1,19 +1,17 @@
 import { client } from "@/lib/hono";
-import { useQuery } from "@tanstack/react-query";
+import { skipToken, useQuery } from "@tanstack/react-query";
 
-export function useGetDetailDesign(designId: string) {
+export function useGetDetailDesign(designId?: string) {
   return useQuery({
     queryKey: ["design", designId],
     queryFn: async () => {
-      const response = await client.api.design[":id"].$get({
-        param: { id: designId },
+      const response = await client.api.design.$get({
+        params: { id: designId },
       });
       if (!response.ok) {
         throw new Error("Failed to fetch design details");
       }
-      const result = await response.json();
-      console.log("useGetDetailDesign - response:", result);
-      return result;
+      return response.json();
     },
     enabled: !!designId,
   });

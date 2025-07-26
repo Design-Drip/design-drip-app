@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { usePathname } from "next/navigation";
+import { useUser } from "@clerk/nextjs";
 
 export default function AdminLayout({
   children,
@@ -25,14 +26,15 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user } = useUser();
 
   // Create sidebar config with dynamic active states based on current path
   const adminSidebarConfig: SidebarConfig = {
     user: {
-      name: "Nguyễn Văn Admin",
-      email: "admin@company.com",
-      avatar: "/placeholder.svg?height=32&width=32",
-      role: "Admin",
+      name: user?.fullName || "User",
+      email: user?.primaryEmailAddress?.emailAddress || "user@example.com",
+      avatar: user?.imageUrl || "/placeholder.svg?height=32&width=32",
+      role: (user?.publicMetadata?.role as string) || "User",
     },
     menuGroups: [
       {

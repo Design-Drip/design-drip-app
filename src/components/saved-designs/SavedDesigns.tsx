@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { TableSavedDesign } from "./components/table-saved-design";
 import useGetDesign from "@/features/design/use-get-design";

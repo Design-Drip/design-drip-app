@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Users, UserCheck, UserX, Eye } from "lucide-react";
+import { Users, UserCheck, UserX, Eye, Palette } from "lucide-react";
 import { clerkClient } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
 
@@ -70,7 +70,8 @@ export default async function UsersManagementPage({
       (statusFilter === "active" && user.isActive) ||
       (statusFilter === "inactive" && !user.isActive) ||
       (statusFilter === "admin" && user.role === "admin") ||
-      (statusFilter === "user" && user.role === "user");
+      (statusFilter === "user" && user.role === "user") ||
+      (statusFilter === "designer" && user.role === "designer");
 
     return matchesSearch && matchesStatus;
   });
@@ -81,6 +82,7 @@ export default async function UsersManagementPage({
     active: users.filter((user) => user.isActive).length,
     admin: users.filter((user) => user.role === "admin").length,
     users: users.filter((user) => user.role === "user" || !user.role).length,
+    designer: users.filter((user) => user.role === "designer").length,
   };
 
   return (
@@ -96,7 +98,7 @@ export default async function UsersManagementPage({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total user</CardTitle>
@@ -144,6 +146,16 @@ export default async function UsersManagementPage({
             <p className="text-xs text-muted-foreground">Normal user</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Designer</CardTitle>
+            <Palette className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.designer}</div>
+            <p className="text-xs text-muted-foreground">Design users</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* User Management Section */}
@@ -167,6 +179,7 @@ export default async function UsersManagementPage({
                 <option value="all">All role</option>
                 <option value="normalUser">Normal User</option>
                 <option value="staff">Staff</option>
+                <option value="designer">Designer</option>
                 <option value="admin">Admin</option>
               </select>
               <button
