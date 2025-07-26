@@ -363,7 +363,7 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="container py-10">
+    <div className="container py-10 mx-auto">
       <h1 className="text-3xl font-bold">Checkout</h1>
 
       <div className="grid md:grid-cols-3 gap-6 mt-8">
@@ -558,7 +558,7 @@ const CheckoutPage = () => {
 
 export default function CheckoutWithStripe() {
   return (
-    <StripeWrapper>
+    <StripeWrapper >
       <CheckoutPage />
     </StripeWrapper>
   );

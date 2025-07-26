@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { TableSavedDesign } from "./TableSavedDesign";
+import { TableSavedDesign } from "./components/table-saved-design";
 import useGetDesign from "@/features/design/use-get-design";
 import { useDeleteDesign } from "@/features/design/use-delete-design";
 import { Loader2 } from "lucide-react";

@@ -28,6 +28,8 @@ export const TableSavedDesign = ({
   onDelete,
   onConfirmDelete,
   deleteLoading,
+  onConfirmModalOpen,
+
   confirmModalOpen,
 }: {
   data: Array<{
@@ -48,12 +50,14 @@ export const TableSavedDesign = ({
   onDelete: (id: string) => void;
   onConfirmDelete: (id: string) => void;
   deleteLoading?: boolean;
+  onConfirmModalOpen: (open: boolean) => void;
   confirmModalOpen: boolean;
 }) => {
   const [orderModalOpen, setOrderModalOpen] = useState(false);
   const [selectedDesign, setSelectedDesign] = useState<{
     id: string;
     designName: string;
+    colorId: string;
   } | null>(null);
 
   // Sort state
@@ -98,8 +102,8 @@ export const TableSavedDesign = ({
     }
   };
 
-  const handleOrderClick = (id: string, designName: string) => {
-    setSelectedDesign({ id, designName });
+  const handleOrderClick = (id: string, designName: string, colorId: string) => {
+    setSelectedDesign({ id, designName, colorId });
     setOrderModalOpen(true);
   };
 
@@ -230,7 +234,9 @@ export const TableSavedDesign = ({
                     <Button
                       variant="default"
                       size="sm"
-                      onClick={() => handleOrderClick(item.id, item.designName)}
+                      onClick={() =>
+                        handleOrderClick(item.id, item.designName, item.colorId)
+                      }
                     >
                       Order
                     </Button>
@@ -295,6 +301,7 @@ export const TableSavedDesign = ({
           onOpenChange={setOrderModalOpen}
           designId={selectedDesign.id}
           designName={selectedDesign.designName}
+          colorId={selectedDesign.colorId}
           mode="add"
         />
       )}
