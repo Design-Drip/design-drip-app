@@ -81,6 +81,7 @@ const app = new Hono()
             designId: design._id.toString(),
             designName: design.name,
             name: shirt.name,
+            colorId: shirtColor._id.toString(),
             color: shirtColor.color,
             colorValue: shirtColor.color_value,
             data: item.quantityBySize.map((size) => {
