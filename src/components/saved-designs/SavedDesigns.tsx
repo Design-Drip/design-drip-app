@@ -1,5 +1,5 @@
-import React, { use, useState } from "react";
-import { TableSavedDesign } from "./components/table-saved-design";
+import React, { useState } from "react";
+import { TableSavedDesign } from "./TableSavedDesign";
 import useGetDesign from "@/features/design/use-get-design";
 import { useDeleteDesign } from "@/features/design/use-delete-design";
 import { Loader2 } from "lucide-react";
@@ -8,7 +8,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCartQuery } from "@/features/cart/services/queries";
 import { CartKeys } from "@/features/cart/services/queries/keys";
 
-function SavedDesigns() {
+type SavedDesignsProps = {
+  displayActionMenu?: boolean;
+};
+
+function SavedDesigns({ displayActionMenu = false }: SavedDesignsProps) {
   const { data, isLoading } = useGetDesign();
   const designsData = data?.data || [];
   const queryClient = useQueryClient();
@@ -40,7 +44,6 @@ function SavedDesigns() {
   const deleteDesignMutation = useDeleteDesign();
   const handleDelete = (designId: string) => {
     if (existingDesigns?.id === designId) {
-      toast.error("Cannot delete design that is in the cart");
       setConfirmModalOpen(true);
     } else {
       deleteDesignMutation.mutate(designId, {
@@ -93,13 +96,15 @@ function SavedDesigns() {
   }
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-4">Saved Designs</h1>
+      <h2 className="text-xl font-semibold">Saved Designs</h2>
       <TableSavedDesign
         data={formatData}
         onDelete={handleDelete}
         onConfirmDelete={handleConfirmDelete}
         deleteLoading={deleteDesignMutation.isPending}
         confirmModalOpen={confirmModalOpen}
+        onConfirmModalOpen={setConfirmModalOpen}
+        displayActionMenu={displayActionMenu}
       />
     </div>
   );

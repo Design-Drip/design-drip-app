@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useRouter,
-  usePathname,
-  useSearchParams,
-} from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import {
   Select,
@@ -27,13 +23,12 @@ export function OrderFilters({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
-  const [localStatusFilter, setLocalStatusFilter] =
-    useState(statusFilter);
+  const [localStatusFilter, setLocalStatusFilter] = useState(statusFilter);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    const params = new URLSearchParams(searchParams.toString());
+    const params = new URLSearchParams(searchParams?.toString());
 
     // Set the new search parameters
     if (localSearchTerm) {
@@ -70,10 +65,7 @@ export function OrderFilters({
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col sm:flex-row gap-4"
-    >
+    <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
       <div className="flex-1 min-w-[200px]">
         <Input
           type="text"

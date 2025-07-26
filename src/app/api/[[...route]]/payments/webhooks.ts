@@ -4,6 +4,8 @@ import Stripe from "stripe";
 import mongoose from "mongoose";
 import { Order } from "@/models/order";
 import { Cart } from "@/models/cart";
+import { ShirtSizeVariant } from "@/models/product";
+import { Design } from "@/models/design";
 
 const app = new Hono().post("/", async (c) => {
   const body = await c.req.text();
@@ -104,6 +106,49 @@ async function handlePaymentIntentSucceeded(
     if (!order) {
       console.log(`No order found for payment intent ${paymentIntent.id}`);
       return;
+    }
+
+    if (order.items && order.items.length > 0) {
+      console.log(`Updating inventory for order ${order.id}`);
+
+      for (const item of order.items) {
+        const design = await Design.findById(item.designId).lean();
+        if (!design) {
+          console.log(
+            `Design ${item.designId} not found, skipping inventory update`
+          );
+          continue;
+        }
+
+        // Update inventory for each size purchased
+        for (const sizeData of item.sizes) {
+          const sizeVariant = await ShirtSizeVariant.findOne({
+            shirtColor: design.shirt_color_id,
+            size: sizeData.size,
+          });
+
+          if (!sizeVariant) {
+            console.log(
+              `Size variant not found for ${item.color} in size ${sizeData.size}, skipping`
+            );
+            continue;
+          }
+
+          const newQuantity = Math.max(
+            0,
+            sizeVariant.quantity - sizeData.quantity
+          );
+
+          await ShirtSizeVariant.updateOne(
+            { _id: sizeVariant._id },
+            { $set: { quantity: newQuantity } }
+          );
+
+          console.log(
+            `Updated inventory for ${item.name} (${item.color}) size ${sizeData.size}: ${sizeVariant.quantity} -> ${newQuantity}`
+          );
+        }
+      }
     }
 
     if (order.status === "pending") {

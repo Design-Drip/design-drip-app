@@ -8,7 +8,6 @@ import { Shirt, ShirtColor, ShirtSizeVariant } from "@/models/product";
 import { HTTPException } from "hono/http-exception";
 import { clerkClient } from "@clerk/nextjs/server";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
-import mongoose from "mongoose";
 import { Order } from "@/models/order";
 import Stripe from "stripe";
 
@@ -40,6 +39,19 @@ const getOrderItems = async (cart: CartDoc, itemIds: string[]) => {
       const shirtSizeVariants = await ShirtSizeVariant.find({
         shirtColor: shirtColor._id,
       }).lean();
+
+      for (const sizeQty of item.quantityBySize) {
+        const variant = shirtSizeVariants.find((v) => v.size === sizeQty.size);
+        if (!variant) {
+          throw new Error(`Size ${sizeQty.size} not found for this product.`);
+        }
+
+        if (variant.quantity < sizeQty.quantity) {
+          throw new Error(
+            `Not enough inventory for ${shirt.name} (${shirtColor.color}) in size ${sizeQty.size}. Only ${variant.quantity} available.`
+          );
+        }
+      }
 
       const sizes = item.quantityBySize.map((sizeQty) => {
         const variant = shirtSizeVariants.find((v) => v.size === sizeQty.size);
@@ -223,6 +235,22 @@ const app = new Hono()
         paymentIntent: z.string().optional(),
         itemIds: z.array(z.string()).optional(),
         return_url: z.string().optional(),
+        shipping: z
+          .object({
+            name: z.string(),
+            phone: z.string().optional(),
+            address: z.object({
+              city: z.string(),
+              country: z.string(),
+              line1: z.string(),
+              line2: z.string().nullable(),
+              postal_code: z.string(),
+              state: z.string(),
+            }),
+            method: z.enum(["standard", "express"]).default("standard"),
+            cost: z.number().default(0),
+          })
+          .optional(),
       })
     ),
     async (c) => {
@@ -233,6 +261,7 @@ const app = new Hono()
         paymentIntent,
         itemIds,
         return_url,
+        shipping,
       } = c.req.valid("json");
 
       const cart = await Cart.findOne({ userId: user.id }).lean();
@@ -266,6 +295,7 @@ const app = new Hono()
               totalAmount: intent.amount,
               paymentMethod: "card",
               paymentMethodDetails,
+              shipping: shipping || intent.shipping,
             });
 
             await order.save();
@@ -298,6 +328,16 @@ const app = new Hono()
           });
         }
 
+        // Get validated order items with inventory check
+        let validOrderItems;
+        try {
+          validOrderItems = await getOrderItems(cart, itemIds);
+        } catch (error) {
+          throw new HTTPException(400, {
+            message: (error as Error).message || "Inventory validation failed",
+          });
+        }
+
         // Get or create customer
         const client = await clerkClient();
         let stripeId = user?.privateMetadata?.["stripe_cus_id"] as
@@ -322,21 +362,41 @@ const app = new Hono()
           });
         }
 
-        const validOrderItems = await getOrderItems(cart, itemIds);
+        // Calculate total amount including shipping cost
+        const itemsTotal = validOrderItems.reduce(
+          (sum, item) => sum + item.totalPrice,
+          0
+        );
+
+        const shippingCost = shipping?.cost || 0;
+        const totalAmount = itemsTotal + shippingCost;
 
         // Create payment intent
         const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-          amount: validOrderItems.reduce(
-            (sum, item) => sum + item.totalPrice,
-            0
-          ),
+          amount: totalAmount,
           currency: "vnd",
           customer: stripeId,
           metadata: {
             userId: user.id,
             cartId: cart._id.toString(),
             itemIds: itemIds ? itemIds.join(",") : "",
+            shippingMethod: shipping?.method || "standard",
+            shippingCost: String(shippingCost),
           },
+          shipping: shipping
+            ? {
+                name: shipping.name,
+                phone: shipping.phone,
+                address: {
+                  city: shipping.address.city,
+                  country: shipping.address.country,
+                  line1: shipping.address.line1,
+                  line2: shipping.address.line2 || undefined,
+                  postal_code: shipping.address.postal_code,
+                  state: shipping.address.state,
+                },
+              }
+            : undefined,
         };
 
         // If using saved payment method
@@ -371,8 +431,9 @@ const app = new Hono()
           userId: user.id,
           stripePaymentIntentId: createdPaymentIntent.id,
           items: validOrderItems,
-          totalAmount: createdPaymentIntent.amount,
+          totalAmount: totalAmount,
           paymentMethod: "card",
+          shipping: shipping,
         });
 
         await processingOrder.save();

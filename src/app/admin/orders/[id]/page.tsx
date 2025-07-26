@@ -1,10 +1,5 @@
-import { redirect } from "next/navigation";
-import { ArrowLeft, Clock, Package, User } from "lucide-react";
+import { ArrowLeft, Clock, Package } from "lucide-react";
 import Link from "next/link";
-import mongoose from "mongoose";
-
-import { Order } from "@/models/order";
-import { checkRole } from "@/lib/roles";
 import { formatPrice } from "@/lib/price";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/date";
 import { Button } from "@/components/ui/button";
@@ -25,12 +20,6 @@ export default async function OrderDetailsPage({
 }: {
   params: { id: string };
 }) {
-  // Verify admin access
-  const isAdmin = await checkRole("admin");
-  if (!isAdmin) {
-    redirect("/");
-  }
-
   const orderId = params.id;
   const order = await getOrderById(orderId);
 
@@ -47,12 +36,9 @@ export default async function OrderDetailsPage({
         <Card className="text-center py-10">
           <CardContent>
             <Package className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
-              Order not found
-            </h2>
+            <h2 className="text-xl font-semibold mb-2">Order not found</h2>
             <p className="text-muted-foreground mb-6">
-              The order you're looking for doesn't exist or has been
-              removed.
+              The order you're looking for doesn't exist or has been removed.
             </p>
             <Button asChild>
               <Link href="/admin/orders">Return to Orders</Link>
@@ -67,10 +53,7 @@ export default async function OrderDetailsPage({
   const totalQuantity = order.items.reduce(
     (total, item) =>
       total +
-      item.sizes.reduce(
-        (itemTotal, size) => itemTotal + size.quantity,
-        0
-      ),
+      item.sizes.reduce((itemTotal, size) => itemTotal + size.quantity, 0),
     0
   );
 
@@ -96,10 +79,7 @@ export default async function OrderDetailsPage({
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <OrderStatusUpdate
-            orderId={order.id}
-            currentStatus={order.status}
-          />
+          <OrderStatusUpdate orderId={order.id} currentStatus={order.status} />
         </div>
       </div>
 
@@ -111,8 +91,7 @@ export default async function OrderDetailsPage({
               <CardTitle>Order Summary</CardTitle>
               <CardDescription>
                 {order.items.length}{" "}
-                {order.items.length === 1 ? "item" : "items"} •{" "}
-                {totalQuantity}{" "}
+                {order.items.length === 1 ? "item" : "items"} • {totalQuantity}{" "}
                 {totalQuantity === 1 ? "unit" : "units"}
               </CardDescription>
             </CardHeader>
@@ -149,9 +128,7 @@ export default async function OrderDetailsPage({
                                 Size: {size.size} x {size.quantity}
                               </span>
                               <span>
-                                {formatPrice(
-                                  size.pricePerUnit * size.quantity
-                                )}
+                                {formatPrice(size.pricePerUnit * size.quantity)}
                               </span>
                             </div>
                           ))}
@@ -174,24 +151,26 @@ export default async function OrderDetailsPage({
             <CardContent>
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Payment Method
-                  </span>
+                  <span className="text-muted-foreground">Payment Method</span>
                   <span className="font-medium capitalize">
                     {order.paymentMethod}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Subtotal
+                  <span className="text-muted-foreground">Subtotal</span>
+                  <span>
+                    {formatPrice(
+                      order.totalAmount - (order.shipping?.cost || 0)
+                    )}
                   </span>
-                  <span>{formatPrice(order.totalAmount)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    Shipping
+                  <span className="text-muted-foreground">Shipping</span>
+                  <span>
+                    {order.shipping?.cost
+                      ? formatPrice(order.shipping.cost)
+                      : "Free"}
                   </span>
-                  <span>Free</span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex justify-between font-medium">
@@ -218,6 +197,69 @@ export default async function OrderDetailsPage({
                   <p>{order.userId}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {order.shipping ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Recipient
+                    </h3>
+                    <p>{order.shipping.name}</p>
+                  </div>
+                  {order.shipping.phone && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Phone
+                      </h3>
+                      <p>{order.shipping.phone}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Address
+                    </h3>
+                    <p>
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
+                        <>
+                          <br />
+                          {order.shipping.address.line2}
+                        </>
+                      )}
+                      <br />
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
+                      <br />
+                      {order.shipping.address.country}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Shipping Method
+                    </h3>
+                    <p>
+                      {order.shipping.method === "express"
+                        ? "Express Shipping"
+                        : "Standard Shipping"}
+                      {order.shipping?.cost &&
+                        order.shipping.cost > 0 &&
+                        ` (${formatPrice(order.shipping.cost)})`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  No shipping information available
+                </p>
+              )}
             </CardContent>
           </Card>
 

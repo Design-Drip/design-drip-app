@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -69,7 +69,59 @@ export default function ProductDetailPage({
 
   const primaryImage = getImageForView(selectedView)?.url;
 
-  // Early return for loading and error states
+  // Get all available view images
+  const productViews = ["front", "back", "left", "right"]
+    .map((view) => ({
+      id: view,
+      label: view.charAt(0).toUpperCase() + view.slice(1),
+      imageUrl: getImageForView(view)?.url || "",
+    }))
+    .filter((view) => view.imageUrl !== "");
+
+  const incrementQuantity = () => setQuantity((q) => q + 1);
+  const decrementQuantity = () => setQuantity((q) => Math.max(1, q - 1));
+
+  const toggleSection = (section: string) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const createNewDesign = () => {
+    const colorId = currentColor?.id || "";
+    router.push(`/designer/${data?.product.id}?colorId=${colorId}`);
+  };
+
+  const getMaxAvailableQuantity = () => {
+    if (!currentColor) return 999;
+
+    const sizeVariant = data?.sizes.find(
+      (s) => s.size === selectedSize && s.shirtColor === currentColor.id
+    );
+
+    return sizeVariant?.quantity || 0;
+  };
+
+  // Add a useEffect to reset quantity if it's more than available
+  useEffect(() => {
+    const maxQuantity = getMaxAvailableQuantity();
+    if (quantity > maxQuantity && maxQuantity > 0) {
+      setQuantity(maxQuantity);
+    } else if (maxQuantity === 0 && selectedSize) {
+      // Find first available size if current size is out of stock
+      const firstAvailableSize = uniqueSizes.find((size) => {
+        const variant = data?.sizes.find(
+          (s) =>
+            s.size === size &&
+            (!currentColor || s.shirtColor === currentColor.id)
+        );
+        return variant && variant.quantity > 0;
+      });
+
+      if (firstAvailableSize) {
+        setSelectedSize(firstAvailableSize);
+      }
+    }
+  }, [selectedSize, selectedColor]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -91,28 +143,6 @@ export default function ProductDetailPage({
       </div>
     );
   }
-
-  // Get all available view images
-  const productViews = ["front", "back", "left", "right"]
-    .map((view) => ({
-      id: view,
-      label: view.charAt(0).toUpperCase() + view.slice(1),
-      imageUrl: getImageForView(view)?.url || "",
-    }))
-    .filter((view) => view.imageUrl !== "");
-
-  const incrementQuantity = () => setQuantity((q) => q + 1);
-  const decrementQuantity = () => setQuantity((q) => Math.max(1, q - 1));
-
-  const toggleSection = (section: string) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
-
-  const createNewDesign = () => {
-    const colorId = currentColor?.id || "";
-    router.push(`/designer/${data.product.id}?colorId=${colorId}`);
-  };
-
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -205,18 +235,45 @@ export default function ProductDetailPage({
               <div className="mb-6">
                 <h3 className="text-sm font-medium mb-2">Size</h3>
                 <div className="flex flex-wrap gap-2">
-                  {uniqueSizes.map((size) => (
-                    <button
-                      key={size}
-                      className={`px-4 py-2 ${selectedSize === size
-                        ? "bg-red-600 text-white"
-                        : "border border-gray-300 hover:border-gray-400"
-                        } rounded-md text-sm font-medium min-w-[50px]`}
-                      onClick={() => setSelectedSize(size)}
-                    >
-                      {size}
-                    </button>
-                  ))}
+                  {uniqueSizes.map((size) => {
+                    // Find size variant for current color to get quantity
+                    const sizeVariant = data.sizes.find(
+                      (s) =>
+                        s.size === size &&
+                        (!currentColor ||
+                          s.shirtColor.toString() === currentColor.id)
+                    );
+                    const stockQuantity = sizeVariant?.quantity || 0;
+                    const isOutOfStock = stockQuantity === 0;
+
+                    return (
+                      <button
+                        key={size}
+                        className={`px-4 py-2 ${
+                          selectedSize === size
+                            ? "bg-red-600 text-white"
+                            : isOutOfStock
+                            ? "border border-gray-300 text-gray-400 bg-gray-100"
+                            : "border border-gray-300 hover:border-gray-400"
+                        } rounded-md text-sm font-medium min-w-[50px] relative`}
+                        onClick={() => !isOutOfStock && setSelectedSize(size)}
+                        disabled={isOutOfStock}
+                      >
+                        {size}
+                        <div className="text-xs mt-1 font-normal">
+                          {isOutOfStock ? (
+                            <span className="text-gray-500">Out of stock</span>
+                          ) : stockQuantity <= 5 ? (
+                            <span className="text-amber-600">
+                              Only {stockQuantity} left
+                            </span>
+                          ) : (
+                            <span className="text-green-600">In stock</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -227,6 +284,7 @@ export default function ProductDetailPage({
                   <button
                     onClick={decrementQuantity}
                     className="border border-gray-300 rounded-l-md px-3 py-2 hover:bg-gray-100"
+                    disabled={quantity <= 1}
                   >
                     <Minus className="h-4 w-4" />
                   </button>
@@ -236,6 +294,7 @@ export default function ProductDetailPage({
                   <button
                     onClick={incrementQuantity}
                     className="border border-gray-300 rounded-r-md px-3 py-2 hover:bg-gray-100"
+                    disabled={quantity >= getMaxAvailableQuantity()}
                   >
                     <Plus className="h-4 w-4" />
                   </button>
@@ -256,11 +315,31 @@ export default function ProductDetailPage({
                   </div>
                 </div>
 
+                {/* Stock Status */}
+                <div className="mb-3">
+                  {getMaxAvailableQuantity() > 10 ? (
+                    <div className="text-green-600 flex items-center">
+                      <Check className="h-4 w-4 mr-1" />
+                      <span>In stock</span>
+                    </div>
+                  ) : getMaxAvailableQuantity() > 0 ? (
+                    <div className="text-amber-600 flex items-center">
+                      <Check className="h-4 w-4 mr-1" />
+                      <span>
+                        Low stock: only {getMaxAvailableQuantity()} available
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-red-600">Out of stock</div>
+                  )}
+                </div>
+
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="flex-1">
                     <Button
                       className="w-full bg-red-600 hover:bg-red-700 text-white py-3 h-auto text-base"
                       onClick={() => createNewDesign()}
+                      disabled={getMaxAvailableQuantity() === 0}
                     >
                       Start Designing
                     </Button>
@@ -324,8 +403,8 @@ export default function ProductDetailPage({
                 {/* Category Section */}
                 <div className="border border-gray-200 rounded">
                   <button
-                    className="w-full flex items-center justify-between px-4 py-3 text-left"
                     onClick={() => toggleSection("category")}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left"
                   >
                     <h3 className="text-lg font-medium">Categories</h3>
                     {expandedSection === "category" ? (
@@ -336,10 +415,14 @@ export default function ProductDetailPage({
                   </button>
 
                   {expandedSection === "category" && (
-                    <div className="px-4 py-3 border-t border-gray-200">
+                    <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
                       <div className="flex flex-wrap gap-2">
                         {data.product.categories.map((category) => (
-                          <Badge key={category.id} variant="secondary">
+                          <Badge
+                            key={category.id}
+                            variant="outline"
+                            className="cursor-default"
+                          >
                             {category.name}
                           </Badge>
                         ))}
@@ -347,14 +430,37 @@ export default function ProductDetailPage({
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            {/* Request Quote Button */}
-            <div className="mt-4">
-              <Button variant="outline" className="w-full py-3 h-auto" onClick={() => router.push('/request-quote')}>
-                Request a quote
-              </Button>
+                {/* Request a Quote Section */}
+                <div className="border border-gray-200 rounded">
+                  <button
+                    onClick={() => toggleSection("request-quote")}
+                    className="w-full flex items-center justify-between px-4 py-3 text-left"
+                  >
+                    <h3 className="text-lg font-medium">Request a quote</h3>
+                    {expandedSection === "request-quote" ? (
+                      <Minus className="h-5 w-5 text-gray-500" />
+                    ) : (
+                      <Plus className="h-5 w-5 text-gray-500" />
+                    )}
+                  </button>
+
+                  {expandedSection === "request-quote" && (
+                    <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
+                      <p>
+                        For bulk orders or custom designs, please{" "}
+                        <a
+                          href="/contact"
+                          className="text-red-600 hover:underline"
+                        >
+                          request a quote
+                        </a>
+                        .
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         </div>
