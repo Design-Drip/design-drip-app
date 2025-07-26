@@ -117,7 +117,16 @@ const app = new Hono()
         const order = await Order.findOne({
           _id: orderId,
           userId: user.id,
-        }).lean();
+        }).populate({
+          path: "items.designId", 
+          populate: {
+            path: "shirt_color_id", 
+            populate: {
+              path: "shirt_id",
+              select: "name", 
+            },
+          },
+        });
 
         return c.json({
           id: order?._id?.toString() as string,
