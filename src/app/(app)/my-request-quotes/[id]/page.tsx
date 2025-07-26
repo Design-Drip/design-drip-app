@@ -8,7 +8,6 @@ import {
   Package,
   Loader2,
   AlertTriangle,
-  Calendar,
   DollarSign,
   User,
   MapPin,
@@ -21,9 +20,7 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +28,9 @@ import { Separator } from "@/components/ui/separator";
 import { formatOrderDateTime, formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
 import { getRequestQuoteQuery } from "@/features/request-quote/services/queries";
+import AdminResponseTimeline from "@/features/my-request-quotes/components/AdminResponseTimeline";
 
+// Types (move to separate types file if needed)
 interface ProductDetail {
   productId?: {
     _id: string;
@@ -48,6 +47,37 @@ interface ProductDetail {
     size: string;
     quantity: number;
   }>;
+}
+
+interface PriceBreakdown {
+  basePrice?: number;
+  setupFee?: number;
+  designFee?: number;
+  rushFee?: number;
+  shippingCost?: number;
+  tax?: number;
+}
+
+interface ProductionDetails {
+  estimatedDays?: number;
+  printingMethod?: string;
+  materialSpecs?: string;
+  colorLimitations?: string;
+}
+
+interface AdminResponse {
+  id: string;
+  status: "pending" | "reviewing" | "quoted" | "revised" | "approved" | "rejected" | "completed";
+  responseMessage?: string;
+  quotedPrice?: number;
+  priceBreakdown?: PriceBreakdown;
+  productionDetails?: ProductionDetails;
+  validUntil?: string;
+  revisionReason?: string;
+  version: number;
+  isCurrentVersion: boolean;
+  customerViewed: boolean;
+  createdAt: string;
 }
 
 interface QuoteData {
@@ -70,13 +100,17 @@ interface QuoteData {
   };
   needDeliveryBy?: string;
   extraInformation?: string;
-  status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
+  status: "pending" | "reviewing" | "quoted" | "revised" | "approved" | "rejected" | "completed";
   quotedPrice?: number;
   quotedAt?: string;
   approvedAt?: string;
   rejectedAt?: string;
   rejectionReason?: string;
   adminNotes?: string;
+  adminResponses?: AdminResponse[];
+  hasUnviewedResponse?: boolean;
+  currentVersion?: number;
+  totalRevisions?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -103,43 +137,41 @@ const StatusBadge = ({ status }: { status: string }) => {
         return {
           label: "Pending",
           className: "bg-yellow-100 text-yellow-800 border-yellow-200",
-          icon: "⏳",
         };
       case "reviewing":
         return {
           label: "Reviewing",
           className: "bg-blue-100 text-blue-800 border-blue-200",
-          icon: "👀",
         };
       case "quoted":
         return {
           label: "Quoted",
           className: "bg-purple-100 text-purple-800 border-purple-200",
-          icon: "💰",
+        };
+      case "revised":
+        return {
+          label: "Revised",
+          className: "bg-orange-100 text-orange-800 border-orange-200",
         };
       case "approved":
         return {
           label: "Approved",
           className: "bg-green-100 text-green-800 border-green-200",
-          icon: "✅",
         };
       case "rejected":
         return {
           label: "Rejected",
           className: "bg-red-100 text-red-800 border-red-200",
-          icon: "❌",
         };
       case "completed":
         return {
           label: "Completed",
           className: "bg-gray-100 text-gray-800 border-gray-200",
-          icon: "🎉",
         };
       default:
         return {
           label: status,
           className: "bg-gray-100 text-gray-800 border-gray-200",
-          icon: "📄",
         };
     }
   };
@@ -151,7 +183,6 @@ const StatusBadge = ({ status }: { status: string }) => {
       variant="outline"
       className={`text-sm font-medium ${config.className}`}
     >
-      <span className="mr-1">{config.icon}</span>
       {config.label}
     </Badge>
   );
@@ -167,6 +198,22 @@ export default function RequestQuoteDetailPage() {
     isLoading,
     isError,
   } = useQuery(getRequestQuoteQuery(quoteId));
+
+  // Handler functions for admin response actions
+  const handleAcceptQuote = (responseId: string) => {
+    console.log("Accept quote:", responseId);
+    // TODO: Implement accept quote functionality
+  };
+
+  const handleRequestChanges = (responseId: string) => {
+    console.log("Request changes:", responseId);
+    // TODO: Implement request changes functionality
+  };
+
+  const handleAskQuestions = (responseId: string) => {
+    console.log("Ask questions:", responseId);
+    // TODO: Implement ask questions functionality
+  };
 
   if (isLoading) {
     return (
@@ -215,39 +262,35 @@ export default function RequestQuoteDetailPage() {
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.back()}
+              className="p-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => router.back()}
-                className="p-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-
-              <div className="flex items-center gap-4">
-                <div>
-                  <h1 className="text-xl font-semibold">
-                    Request #{quoteData.id.slice(-8).toUpperCase()}
-                  </h1>
-                  <p className="text-sm text-muted-foreground">
-                    {quoteData.type === "product" ? "Product Quote" : "Custom Quote"}
-                  </p>
-                </div>
-
-                <div className="h-8 w-px bg-border"></div>
-
-                <StatusBadge status={quoteData.status} />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button asChild size="sm" variant="outline">
-                <Link href="/request-quote">
-                  <FileText className="h-4 w-4 mr-2" />
-                  New Request
-                </Link>
-              </Button>
+              <p className="text-sm font-semibold">
+                Request #{quoteData.id.slice(-8).toUpperCase()}
+              </p>
+              <div className="h-8 w-px bg-border"></div>
+              <p className="text-sm text-muted-foreground">
+                {quoteData.type === "product" ? "Product Quote" : "Custom Quote"}
+              </p>
+              <div className="h-8 w-px bg-border"></div>
+              <StatusBadge status={quoteData.status} />
+              {/* Version Badge */}
+              {quoteData.currentVersion && quoteData.currentVersion > 1 && (
+                <Badge variant="secondary" className="text-xs">
+                  v{quoteData.currentVersion}
+                  {quoteData.totalRevisions && quoteData.totalRevisions > 0 &&
+                    ` (${quoteData.totalRevisions} revisions)`
+                  }
+                </Badge>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -412,8 +455,19 @@ export default function RequestQuoteDetailPage() {
             </>
           )}
 
-          {/* Quote Details */}
-          {quoteData.quotedPrice && (
+          {/* Admin Response Timeline - Now using the separate component */}
+          {quoteData.adminResponses && quoteData.adminResponses.length > 0 && (
+            <AdminResponseTimeline
+              adminResponses={quoteData.adminResponses}
+              hasUnviewedResponse={quoteData.hasUnviewedResponse}
+              onAcceptQuote={handleAcceptQuote}
+              onRequestChanges={handleRequestChanges}
+              onAskQuestions={handleAskQuestions}
+            />
+          )}
+
+          {/* Legacy Quote Details (fallback for old data structure) */}
+          {quoteData.quotedPrice && !quoteData.adminResponses?.length && (
             <>
               <Separator />
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -438,8 +492,8 @@ export default function RequestQuoteDetailPage() {
             </>
           )}
 
-          {/* Admin Notes */}
-          {quoteData.adminNotes && (
+          {/* Admin Notes (legacy) */}
+          {quoteData.adminNotes && !quoteData.adminResponses?.length && (
             <>
               <Separator />
               <div>
@@ -472,22 +526,6 @@ export default function RequestQuoteDetailPage() {
               </div>
             </>
           )}
-
-          {/* Actions */}
-          <Separator />
-          <div className="flex flex-wrap gap-3">
-            <Button asChild>
-              <Link href="/request-quote">Submit New Quote</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/my-request-quotes">Back to All Quotes</Link>
-            </Button>
-            {quoteData.status === "quoted" && (
-              <Button variant="outline">
-                Contact Support
-              </Button>
-            )}
-          </div>
         </CardContent>
       </Card>
     </div>

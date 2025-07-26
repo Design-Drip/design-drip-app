@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
 import {
     Card,
     CardContent,
@@ -13,37 +10,8 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
 import {
     Clock,
     DollarSign,
@@ -51,11 +19,15 @@ import {
     XCircle,
     Eye,
     FileCheck,
-    Loader2,
+    Calendar,
+    Package,
+    Palette,
+    MessageSquare,
 } from "lucide-react";
 import { formatPrice } from "@/lib/price";
-import { useUpdateRequestQuoteStatusMutation } from "../services/mutations";
+import { useCreateAdminResponse, useCreateRevision } from "../services/mutations";
 import { toast } from "sonner";
+import RequestQuoteResponseForm from "./RequestQuoteResponseForm";
 
 interface RequestQuote {
     id: string;
@@ -68,6 +40,27 @@ interface RequestQuote {
     quotedPrice?: number;
     rejectionReason?: string;
     adminNotes?: string;
+    responseMessage?: string;
+    currentVersion?: number;
+    totalRevisions?: number;
+    hasUnviewedResponse?: boolean;
+    priceBreakdown?: {
+        basePrice?: number;
+        setupFee?: number;
+        designFee?: number;
+        rushFee?: number;
+        shippingCost?: number;
+        tax?: number;
+        totalPrice?: number;
+    };
+    productionDetails?: {
+        estimatedDays?: number;
+        printingMethod?: "DTG" | "DTF" | "Screen Print" | "Vinyl" | "Embroidery";
+        materialSpecs?: string;
+        colorLimitations?: string;
+        sizeAvailability?: { size: string; available: boolean }[];
+    };
+    validUntil?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -76,42 +69,7 @@ interface RequestQuoteStatusUpdateProps {
     quote: RequestQuote;
 }
 
-// Form schema
-const statusUpdateSchema = z
-    .object({
-        status: z.enum(["pending", "reviewing", "quoted", "approved", "rejected", "completed"]),
-        quotedPrice: z.string().optional(),
-        rejectionReason: z.string().optional(),
-        adminNotes: z.string().optional(),
-    })
-    .refine(
-        (data) => {
-            if (data.status === "quoted") {
-                return data.quotedPrice && parseFloat(data.quotedPrice) > 0;
-            }
-            return true;
-        },
-        {
-            message: "Quoted price is required when status is 'quoted'",
-            path: ["quotedPrice"],
-        }
-    )
-    .refine(
-        (data) => {
-            if (data.status === "rejected") {
-                return data.rejectionReason && data.rejectionReason.trim().length > 0;
-            }
-            return true;
-        },
-        {
-            message: "Rejection reason is required when status is 'rejected'",
-            path: ["rejectionReason"],
-        }
-    );
-
-type StatusUpdateForm = z.infer<typeof statusUpdateSchema>;
-
-// Status configurations
+// ✅ UPDATED: Add revised status
 const getStatusConfig = (status: string) => {
     switch (status) {
         case "pending":
@@ -134,6 +92,13 @@ const getStatusConfig = (status: string) => {
                 description: "Price quote provided",
                 color: "bg-purple-100 text-purple-800 border-purple-200",
                 icon: DollarSign,
+            };
+        case "revised":
+            return {
+                label: "Revised",
+                description: "Quote has been revised",
+                color: "bg-orange-100 text-orange-800 border-orange-200",
+                icon: FileCheck,
             };
         case "approved":
             return {
@@ -167,55 +132,27 @@ const getStatusConfig = (status: string) => {
 };
 
 export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProps) {
-    const [isLoading, setIsLoading] = useState(false);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false);
+    const [isRevisionDialogOpen, setIsRevisionDialogOpen] = useState(false);
+    const [selectedInitialStatus, setSelectedInitialStatus] = useState<string>("");
     const router = useRouter();
 
-    const form = useForm<StatusUpdateForm>({
-        resolver: zodResolver(statusUpdateSchema),
-        defaultValues: {
-            status: quote.status,
-            quotedPrice: quote.quotedPrice?.toString() || "",
-            rejectionReason: quote.rejectionReason || "",
-            adminNotes: quote.adminNotes || "",
-        },
-    });
+    const createResponseMutation = useCreateAdminResponse();
+    const createRevisionMutation = useCreateRevision();
 
-    const currentStatus = form.watch("status");
-    const currentStatusConfig = getStatusConfig(currentStatus);
+    const currentStatusConfig = getStatusConfig(quote.status);
     const StatusIcon = currentStatusConfig.icon;
 
-    const updateStatusMutation = useUpdateRequestQuoteStatusMutation();
-
-    const onSubmit = async (data: StatusUpdateForm) => {
-        setIsLoading(true);
-        try {
-            const result = await updateStatusMutation.mutateAsync({
-                id: quote.id,
-                status,
-            });
-
-            if (result.success) {
-                toast.success("Request quote status updated successfully")
-                router.refresh();
-                setIsDialogOpen(false);
-            } else {
-                toast.error("Failed to update status");
-            }
-        } catch (error) {
-            console.error("Error updating status:", error)
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
+    // ✅ UPDATED: Enhanced next steps logic
     const getNextSteps = (status: string) => {
         switch (status) {
             case "pending":
-                return ["reviewing", "quoted", "rejected"];
+                return ["reviewing", "rejected"];
             case "reviewing":
                 return ["quoted", "rejected"];
             case "quoted":
+                return ["revised", "approved", "rejected"];
+            case "revised":
                 return ["approved", "rejected"];
             case "approved":
                 return ["completed"];
@@ -224,233 +161,365 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
             case "completed":
                 return [];
             default:
-                return [];
+                return ["reviewing"];
         }
     };
 
     const nextSteps = getNextSteps(quote.status);
 
+    const handleQuickAction = (status: string) => {
+        setSelectedInitialStatus(status);
+        setIsResponseDialogOpen(true);
+    };
+
+    const handleCreateRevision = () => {
+        setSelectedInitialStatus("revised");
+        setIsRevisionDialogOpen(true);
+    };
+
+    const handleResponseSubmit = async (data: any) => {
+        try {
+            const submitData = {
+                status: data.status,
+                quotedPrice: data.quotedPrice ? parseFloat(data.quotedPrice) : undefined,
+                responseMessage: data.responseMessage,
+                rejectionReason: data.rejectionReason,
+                adminNotes: data.adminNotes,
+                priceBreakdown: (data.status === "quoted" || data.status === "revised") ? {
+                    basePrice: parseFloat(data.basePrice || "0") || undefined,
+                    setupFee: parseFloat(data.setupFee || "0") || 0,
+                    designFee: parseFloat(data.designFee || "0") || 0,
+                    rushFee: parseFloat(data.rushFee || "0") || 0,
+                    shippingCost: parseFloat(data.shippingCost || "0") || 0,
+                    tax: parseFloat(data.tax || "0") || 0,
+                    totalPrice: parseFloat(data.quotedPrice || "0"),
+                } : undefined,
+                productionDetails: (data.status === "quoted" || data.status === "revised") ? {
+                    estimatedDays: data.estimatedDays ? parseInt(data.estimatedDays) : undefined,
+                    printingMethod: data.printingMethod,
+                    materialSpecs: data.materialSpecs,
+                    colorLimitations: data.colorLimitations,
+                } : undefined,
+                validUntil: data.validUntil,
+            };
+
+            await createResponseMutation.mutateAsync({
+                quoteId: quote.id,
+                responseData: submitData,
+            });
+
+            setIsResponseDialogOpen(false);
+            router.refresh();
+        } catch (error) {
+            console.error("Error creating response:", error);
+        }
+    };
+
+    const handleRevisionSubmit = async (data: any) => {
+        try {
+            const submitData = {
+                ...data,
+                status: "revised",
+                quotedPrice: data.quotedPrice ? parseFloat(data.quotedPrice) : undefined,
+                priceBreakdown: {
+                    basePrice: parseFloat(data.basePrice || "0") || undefined,
+                    setupFee: parseFloat(data.setupFee || "0") || 0,
+                    designFee: parseFloat(data.designFee || "0") || 0,
+                    rushFee: parseFloat(data.rushFee || "0") || 0,
+                    shippingCost: parseFloat(data.shippingCost || "0") || 0,
+                    tax: parseFloat(data.tax || "0") || 0,
+                    totalPrice: parseFloat(data.quotedPrice || "0"),
+                },
+                productionDetails: {
+                    estimatedDays: data.estimatedDays ? parseInt(data.estimatedDays) : undefined,
+                    printingMethod: data.printingMethod,
+                    materialSpecs: data.materialSpecs,
+                    colorLimitations: data.colorLimitations,
+                },
+                validUntil: data.validUntil,
+                revisionReason: data.revisionReason,
+            };
+
+            await createRevisionMutation.mutateAsync({
+                quoteId: quote.id,
+                responseData: submitData,
+            });
+
+            setIsRevisionDialogOpen(false);
+            router.refresh();
+        } catch (error) {
+            console.error("Error creating revision:", error);
+        }
+    };
+
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <CardTitle className="flex items-center gap-2">
-                            <StatusIcon className="h-5 w-5" />
-                            Status Management
-                        </CardTitle>
-                        <CardDescription>
-                            Update the status and manage this quote request
-                        </CardDescription>
+        <>
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <StatusIcon className="h-5 w-5" />
+                                Status Management
+                            </CardTitle>
+                            <CardDescription>
+                                Update the status and manage this quote request
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {/* ✅ NEW: Show version info */}
+                            {quote.currentVersion && (
+                                <Badge variant="secondary">
+                                    v{quote.currentVersion}
+                                    {quote.totalRevisions && quote.totalRevisions > 0 &&
+                                        ` (${quote.totalRevisions} revisions)`
+                                    }
+                                </Badge>
+                            )}
+                            <Badge variant="outline" className={currentStatusConfig.color}>
+                                {currentStatusConfig.label}
+                            </Badge>
+                        </div>
                     </div>
-                    <Badge variant="outline" className={currentStatusConfig.color}>
-                        {currentStatusConfig.label}
-                    </Badge>
-                </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                {/* Current Status Information */}
-                <div className="space-y-4">
-                    <div>
-                        <h4 className="font-medium mb-2">Current Status</h4>
-                        <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-                            <StatusIcon className="h-5 w-5" />
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    {/* Current Status Information */}
+                    <div className="space-y-4">
+                        <div>
+                            <h4 className="font-medium mb-2">Current Status</h4>
+                            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                                <StatusIcon className="h-5 w-5" />
+                                <div>
+                                    <p className="font-medium">{currentStatusConfig.label}</p>
+                                    <p className="text-sm text-muted-foreground">
+                                        {currentStatusConfig.description}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ✅ NEW: Current Response Message */}
+                        {quote.responseMessage && (
                             <div>
-                                <p className="font-medium">{currentStatusConfig.label}</p>
-                                <p className="text-sm text-muted-foreground">
-                                    {currentStatusConfig.description}
-                                </p>
+                                <h4 className="font-medium mb-2 flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4" />
+                                    Response Message
+                                </h4>
+                                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                                        {quote.responseMessage}
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {/* ✅ ENHANCED: Price breakdown display */}
+                        {quote.quotedPrice && (
+                            <div>
+                                <h4 className="font-medium mb-2">Current Quote Price</h4>
+                                <p className="text-2xl font-bold text-green-600">
+                                    {formatPrice(quote.quotedPrice)}
+                                </p>
+
+                                {/* ✅ NEW: Show price breakdown if available */}
+                                {quote.priceBreakdown && (
+                                    <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <div className="space-y-1 text-sm">
+                                            {quote.priceBreakdown.basePrice && (
+                                                <div className="flex justify-between">
+                                                    <span>Base Price:</span>
+                                                    <span>{formatPrice(quote.priceBreakdown.basePrice)}</span>
+                                                </div>
+                                            )}
+                                            {(quote.priceBreakdown.setupFee ?? 0) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Setup Fee:</span>
+                                                    <span>{formatPrice(quote.priceBreakdown.setupFee!)}</span>
+                                                </div>
+                                            )}
+                                            {(quote.priceBreakdown.designFee ?? 0) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Design Fee:</span>
+                                                    <span>{formatPrice(quote.priceBreakdown.designFee!)}</span>
+                                                </div>
+                                            )}
+                                            {(quote.priceBreakdown.rushFee ?? 0) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Rush Fee:</span>
+                                                    <span>{formatPrice(quote.priceBreakdown.rushFee!)}</span>
+                                                </div>
+                                            )}
+                                            {(quote.priceBreakdown.shippingCost ?? 0) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Shipping:</span>
+                                                    <span>{formatPrice(quote.priceBreakdown.shippingCost!)}</span>
+                                                </div>
+                                            )}
+                                            {(quote.priceBreakdown.tax ?? 0) > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span>Tax:</span>
+                                                    <span>{formatPrice(quote.priceBreakdown.tax!)}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ✅ NEW: Production Details Display */}
+                        {quote.productionDetails && (
+                            <div>
+                                <h4 className="font-medium mb-2 flex items-center gap-2">
+                                    <Package className="h-4 w-4" />
+                                    Production Details
+                                </h4>
+                                <div className="p-3 bg-muted/50 rounded-lg space-y-2 text-sm">
+                                    {quote.productionDetails.estimatedDays && (
+                                        <div className="flex items-center gap-2">
+                                            <Calendar className="h-4 w-4" />
+                                            <span>Production Time: {quote.productionDetails.estimatedDays} days</span>
+                                        </div>
+                                    )}
+                                    {quote.productionDetails.printingMethod && (
+                                        <div className="flex items-center gap-2">
+                                            <Package className="h-4 w-4" />
+                                            <span>Method: {quote.productionDetails.printingMethod}</span>
+                                        </div>
+                                    )}
+                                    {quote.productionDetails.materialSpecs && (
+                                        <div>
+                                            <strong>Materials:</strong> {quote.productionDetails.materialSpecs}
+                                        </div>
+                                    )}
+                                    {quote.productionDetails.colorLimitations && (
+                                        <div className="flex items-center gap-2">
+                                            <Palette className="h-4 w-4" />
+                                            <span>Color Limits: {quote.productionDetails.colorLimitations}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ✅ NEW: Valid Until Display */}
+                        {quote.validUntil && (
+                            <div>
+                                <h4 className="font-medium mb-2">Quote Valid Until</h4>
+                                <div className="flex items-center gap-2 text-sm text-orange-600">
+                                    <Calendar className="h-4 w-4" />
+                                    <span>{new Date(quote.validUntil).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Current Admin Notes */}
+                        {quote.adminNotes && (
+                            <div>
+                                <h4 className="font-medium mb-2">Admin Notes</h4>
+                                <div className="p-3 bg-muted/50 rounded-lg">
+                                    <p className="text-sm whitespace-pre-wrap">{quote.adminNotes}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Current Rejection Reason */}
+                        {quote.rejectionReason && (
+                            <div>
+                                <h4 className="font-medium mb-2 text-red-600">Rejection Reason</h4>
+                                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                    <p className="text-sm text-red-800 whitespace-pre-wrap">
+                                        {quote.rejectionReason}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
-                    {/* Current Quote Price */}
-                    {quote.quotedPrice && (
+                    <Separator />
+
+                    {/* Quick Actions */}
+                    {nextSteps.length > 0 && (
                         <div>
-                            <h4 className="font-medium mb-2">Current Quote Price</h4>
-                            <p className="text-2xl font-bold text-green-600">
-                                {formatPrice(quote.quotedPrice)}
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Current Admin Notes */}
-                    {quote.adminNotes && (
-                        <div>
-                            <h4 className="font-medium mb-2">Admin Notes</h4>
-                            <div className="p-3 bg-muted/50 rounded-lg">
-                                <p className="text-sm whitespace-pre-wrap">{quote.adminNotes}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Current Rejection Reason */}
-                    {quote.rejectionReason && (
-                        <div>
-                            <h4 className="font-medium mb-2 text-red-600">Rejection Reason</h4>
-                            <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                <p className="text-sm text-red-800 whitespace-pre-wrap">
-                                    {quote.rejectionReason}
-                                </p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <Separator />
-
-                {/* Quick Actions */}
-                {nextSteps.length > 0 && (
-                    <div>
-                        <h4 className="font-medium mb-3">Quick Actions</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {nextSteps.map((status) => {
-                                const config = getStatusConfig(status);
-                                const Icon = config.icon;
-                                return (
+                            <h4 className="font-medium mb-3">Quick Actions</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {nextSteps.map((status) => {
+                                    const config = getStatusConfig(status);
+                                    const Icon = config.icon;
+                                    return (
+                                        <Button
+                                            key={status}
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handleQuickAction(status)}
+                                            className="flex items-center gap-2"
+                                        >
+                                            <Icon className="h-4 w-4" />
+                                            {config.label}
+                                        </Button>
+                                    );
+                                })}
+                                {/* ✅ NEW: Revision button for quoted status */}
+                                {quote.status === "quoted" && (
                                     <Button
-                                        key={status}
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => {
-                                            form.setValue("status", status as any);
-                                            setIsDialogOpen(true);
-                                        }}
-                                        className="flex items-center gap-2"
+                                        onClick={handleCreateRevision}
+                                        className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
                                     >
-                                        <Icon className="h-4 w-4" />
-                                        {config.label}
+                                        <FileCheck className="h-4 w-4" />
+                                        Create Revision
                                     </Button>
-                                );
-                            })}
+                                )}
+                            </div>
                         </div>
+                    )}
+
+                    {/* Main Action Buttons */}
+                    <div className="flex gap-2">
+                        <Button
+                            className="flex-1"
+                            onClick={() => {
+                                setSelectedInitialStatus("");
+                                setIsResponseDialogOpen(true);
+                            }}
+                        >
+                            Create Response
+                        </Button>
+                        {(quote.status === "quoted" || quote.status === "revised") && (
+                            <Button
+                                variant="outline"
+                                className="flex-1"
+                                onClick={handleCreateRevision}
+                            >
+                                Create Revision
+                            </Button>
+                        )}
                     </div>
-                )}
+                </CardContent>
+            </Card>
 
-                {/* Update Form Dialog */}
-                <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <AlertDialogTrigger asChild>
-                        <Button className="w-full">Update Status</Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-2xl">
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Update Request Quote Status</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Update the status and provide additional information for this quote request.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
+            {/* Response Form Dialog */}
+            <RequestQuoteResponseForm
+                open={isResponseDialogOpen}
+                onOpenChange={setIsResponseDialogOpen}
+                quote={quote}
+                initialStatus={selectedInitialStatus}
+                onSubmit={handleResponseSubmit}
+                isLoading={createResponseMutation.isPending}
+                mode="respond"
+            />
 
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                {/* Status Selection */}
-                                <FormField
-                                    control={form.control}
-                                    name="status"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Status</FormLabel>
-                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select status" />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>
-                                                    <SelectItem value="pending">Pending</SelectItem>
-                                                    <SelectItem value="reviewing">Reviewing</SelectItem>
-                                                    <SelectItem value="quoted">Quoted</SelectItem>
-                                                    <SelectItem value="approved">Approved</SelectItem>
-                                                    <SelectItem value="rejected">Rejected</SelectItem>
-                                                    <SelectItem value="completed">Completed</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                {/* Quote Price (if status is quoted) */}
-                                {currentStatus === "quoted" && (
-                                    <FormField
-                                        control={form.control}
-                                        name="quotedPrice"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Quote Price ($)</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min="0"
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    Enter the quoted price for this request
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
-
-                                {/* Rejection Reason (if status is rejected) */}
-                                {currentStatus === "rejected" && (
-                                    <FormField
-                                        control={form.control}
-                                        name="rejectionReason"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Rejection Reason</FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        placeholder="Please provide a reason for rejection..."
-                                                        {...field}
-                                                    />
-                                                </FormControl>
-                                                <FormDescription>
-                                                    Explain why this request is being rejected
-                                                </FormDescription>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
-
-                                {/* Admin Notes */}
-                                <FormField
-                                    control={form.control}
-                                    name="adminNotes"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Admin Notes (Optional)</FormLabel>
-                                            <FormControl>
-                                                <Textarea
-                                                    placeholder="Add any internal notes or comments..."
-                                                    {...field}
-                                                />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Internal notes for administrative reference
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
-                                    <AlertDialogAction type="submit" disabled={isLoading}>
-                                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Update Status
-                                    </AlertDialogAction>
-                                </AlertDialogFooter>
-                            </form>
-                        </Form>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </CardContent>
-        </Card>
+            {/* Revision Form Dialog */}
+            <RequestQuoteResponseForm
+                open={isRevisionDialogOpen}
+                onOpenChange={setIsRevisionDialogOpen}
+                quote={quote}
+                initialStatus="revised"
+                onSubmit={handleRevisionSubmit}
+                isLoading={createRevisionMutation.isPending}
+                mode="revise"
+            />
+        </>
     );
 }

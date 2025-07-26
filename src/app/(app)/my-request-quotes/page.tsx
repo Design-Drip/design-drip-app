@@ -389,12 +389,6 @@ export default function MyRequestQuotesPage() {
                           </div>
                         )}
                       </div>
-
-                      {quote.status === "quoted" && (
-                        <Badge className="text-center bg-green-100 text-green-800">
-                          Quote Ready!
-                        </Badge>
-                      )}
                     </div>
                   </CardContent>
                   <CardFooter className="flex justify-end">

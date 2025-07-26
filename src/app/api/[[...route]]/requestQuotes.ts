@@ -59,6 +59,50 @@ const updateRequestQuoteSchema = z.object({
     adminNotes: z.string().optional(),
 });
 
+const adminResponseSchema = z.object({
+    status: z.enum(["reviewing", "quoted", "revised", "rejected"]),
+    quotedPrice: z.number().min(0).optional(),
+    responseMessage: z.string().trim().optional(),
+    rejectionReason: z.string().trim().optional(),
+    adminNotes: z.string().trim().optional(),
+
+    // Price breakdown
+    priceBreakdown: z.object({
+        basePrice: z.number().min(0).optional(),
+        setupFee: z.number().min(0).default(0),
+        designFee: z.number().min(0).default(0),
+        rushFee: z.number().min(0).default(0),
+        shippingCost: z.number().min(0).default(0),
+        tax: z.number().min(0).default(0),
+        totalPrice: z.number().min(0),
+    }).optional(),
+
+    // Production details
+    productionDetails: z.object({
+        estimatedDays: z.number().min(1).optional(),
+        printingMethod: z.enum(["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"]).optional(),
+        materialSpecs: z.string().trim().optional(),
+        colorLimitations: z.string().trim().optional(),
+        sizeAvailability: z.array(z.object({
+            size: z.string(),
+            available: z.boolean(),
+        })).optional(),
+    }).optional(),
+
+    validUntil: z.string().optional(), // ISO date string
+});
+
+const revisionSchema = adminResponseSchema.extend({
+    revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]),
+});
+
+const customerFeedbackSchema = z.object({
+    requestedChanges: z.array(z.object({
+        aspect: z.enum(["price", "timeline", "materials", "design", "other"]),
+        description: z.string().trim().min(1, "Description is required"),
+    })).min(1, "At least one change must be requested"),
+});
+
 const app = new Hono()
     .use(verifyAuth)
     //Get all request quotes
@@ -329,6 +373,7 @@ const app = new Hono()
                         rejectedAt: requestQuote.rejectedAt,
                         rejectionReason: requestQuote.rejectionReason,
                         adminNotes: requestQuote.adminNotes,
+                        adminResponses: requestQuote.adminResponses,
                         createdAt: requestQuote.createdAt,
                         updatedAt: requestQuote.updatedAt,
                     },
@@ -358,7 +403,7 @@ const app = new Hono()
             try {
                 const user = c.get("user")!;
                 const isAdmin = await checkRole("admin");
-                
+
                 if (!isAdmin) {
                     throw new HTTPException(403, { message: "Admin access required" });
                 }
@@ -411,7 +456,7 @@ const app = new Hono()
 
             } catch (error) {
                 console.error("Error updating request quote:", error);
-                
+
                 if (error instanceof HTTPException) {
                     throw error;
                 }
@@ -420,6 +465,234 @@ const app = new Hono()
             }
         }
     )
+
+    // Create admin response
+    .post("/:id/respond", zValidator("json", adminResponseSchema), async (c) => {
+        try {
+            const user = c.get("user")!;
+            const isAdmin = await checkRole("admin");
+
+            if (!isAdmin) {
+                throw new HTTPException(403, { message: "Admin access required" });
+            }
+
+            const { id } = c.req.param();
+            const responseData = c.req.valid("json");
+
+            // Validate totalPrice matches breakdown if provided
+            if (responseData.priceBreakdown) {
+                const breakdown = responseData.priceBreakdown;
+                const calculatedTotal = (breakdown.basePrice || 0) +
+                    (breakdown.setupFee || 0) +
+                    (breakdown.designFee || 0) +
+                    (breakdown.rushFee || 0) +
+                    (breakdown.shippingCost || 0) +
+                    (breakdown.tax || 0);
+
+                if (Math.abs(calculatedTotal - breakdown.totalPrice) > 0.01) {
+                    throw new HTTPException(400, {
+                        message: "Total price doesn't match breakdown calculation"
+                    });
+                }
+
+                responseData.quotedPrice = breakdown.totalPrice;
+            }
+
+            const preparedData = {
+                ...responseData,
+                validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
+            };
+
+            const updatedQuote = await RequestQuote.addAdminResponse(
+                id,
+                preparedData,
+                user.id,
+                false
+            );
+
+            return c.json({
+                success: true,
+                data: updatedQuote,
+                message: "Response submitted successfully"
+            });
+
+        } catch (error) {
+            console.error("Error submitting admin response:", error);
+            if (error instanceof HTTPException) throw error;
+            throw new HTTPException(500, { message: "Failed to submit response" });
+        }
+    })
+
+    // Create revision
+    .post("/:id/revise", zValidator("json", revisionSchema), async (c) => {
+        try {
+            const user = c.get("user")!;
+            const isAdmin = await checkRole("admin");
+
+            if (!isAdmin) {
+                throw new HTTPException(403, { message: "Admin access required" });
+            }
+
+            const { id } = c.req.param();
+            const responseData = c.req.valid("json");
+
+            const preparedData = {
+                ...responseData,
+                validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
+                status: "revised", // Force status to revised for revisions
+            };
+
+            const updatedQuote = await RequestQuote.addAdminResponse(
+                id,
+                preparedData,
+                user.id,
+                true
+            );
+
+            return c.json({
+                success: true,
+                data: updatedQuote,
+                message: "Revision submitted successfully"
+            });
+
+        } catch (error) {
+            console.error("Error submitting revision:", error);
+            if (error instanceof HTTPException) throw error;
+            throw new HTTPException(500, { message: "Failed to submit revision" });
+        }
+    })
+
+    .post("/:id/request-changes", zValidator("json", customerFeedbackSchema), async (c) => {
+        try {
+            const user = c.get("user")!;
+            const { id } = c.req.param();
+            const feedbackData = c.req.valid("json");
+
+            const quote = await RequestQuote.findOne({ _id: id, userId: user.id });
+            if (!quote) {
+                throw new HTTPException(404, { message: "Quote not found" });
+            }
+
+            const currentResponse = quote.adminResponses.find(r => r.isCurrentVersion);
+            if (!currentResponse) {
+                throw new HTTPException(400, { message: "No active response to request changes on" });
+            }
+
+            if (currentResponse.status !== "quoted" && currentResponse.status !== "revised") {
+                throw new HTTPException(400, { message: "Changes can only be requested on quoted responses" });
+            }
+
+            // Update customer feedback with requested changes
+            if (!currentResponse.customerFeedback) {
+                currentResponse.customerFeedback = {};
+            }
+
+            currentResponse.customerFeedback.requestedChanges = feedbackData.requestedChanges;
+
+            // Mark as viewed if not already
+            if (!currentResponse.customerViewed) {
+                currentResponse.customerViewed = true;
+                currentResponse.customerViewedAt = new Date();
+            }
+
+            await quote.save();
+
+            return c.json({
+                success: true,
+                message: "Change requests submitted successfully"
+            });
+
+        } catch (error) {
+            console.error("Error submitting change requests:", error);
+            if (error instanceof HTTPException) throw error;
+            throw new HTTPException(500, { message: "Failed to submit change requests" });
+        }
+    })
+
+    // Mark quote response as viewed
+    .patch("/:id/mark-viewed", async (c) => {
+        try {
+            const user = c.get("user")!;
+            const { id } = c.req.param();
+
+            const result = await RequestQuote.findOneAndUpdate(
+                {
+                    _id: id,
+                    userId: user.id,
+                    "adminResponses.isCurrentVersion": true,
+                    "adminResponses.customerViewed": { $ne: true }
+                },
+                {
+                    "adminResponses.$[elem].customerViewed": true,
+                    "adminResponses.$[elem].customerViewedAt": new Date(),
+                },
+                {
+                    arrayFilters: [{ "elem.isCurrentVersion": true }],
+                    new: true,
+                }
+            );
+
+            return c.json({
+                success: true,
+                message: "Quote marked as viewed"
+            });
+
+        } catch (error) {
+            console.error("Error marking quote as viewed:", error);
+            throw new HTTPException(500, { message: "Failed to mark as viewed" });
+        }
+    })
+
+    // Approve/Reject quote (customer action)
+    .post("/:id/approve", zValidator("json", z.object({
+        action: z.enum(["approve", "reject"]),
+        reason: z.string().optional(),
+    })), async (c) => {
+        try {
+            const user = c.get("user")!;
+            const { id } = c.req.param();
+            const { action, reason } = c.req.valid("json");
+
+            const quote = await RequestQuote.findOne({ _id: id, userId: user.id });
+            if (!quote) {
+                throw new HTTPException(404, { message: "Quote not found" });
+            }
+
+            const currentResponse = quote.adminResponses.find(r => r.isCurrentVersion);
+            if (!currentResponse) {
+                throw new HTTPException(400, { message: "No active response found" });
+            }
+
+            if (currentResponse.status !== "quoted" && currentResponse.status !== "revised") {
+                throw new HTTPException(400, { message: "Quote is not in a state that can be approved/rejected" });
+            }
+
+            // Update quote status
+            quote.status = action === "approve" ? "approved" : "rejected";
+
+            if (action === "approve") {
+                quote.approvedAt = new Date();
+                currentResponse.status = "approved";
+            } else {
+                quote.rejectedAt = new Date();
+                quote.rejectionReason = reason;
+                currentResponse.status = "rejected";
+                currentResponse.rejectionReason = reason;
+            }
+
+            await quote.save();
+
+            return c.json({
+                success: true,
+                message: `Quote ${action}d successfully`
+            });
+
+        } catch (error) {
+            console.error(`Error ${action}ing quote:`, error);
+            if (error instanceof HTTPException) throw error;
+            throw new HTTPException(500, { message: `Failed to ${action} quote` });
+        }
+    })
 
 
 export default app;
