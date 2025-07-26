@@ -59,7 +59,7 @@ export default function ProductDetailPage({
   const currentColor =
     data?.colors && data.colors.length > 0
       ? data.colors.find((c) => c.color_value === selectedColor) ||
-        data.colors[0]
+      data.colors[0]
       : undefined;
 
   // Filter images for the current view
@@ -143,6 +143,7 @@ export default function ProductDetailPage({
       </div>
     );
   }
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -173,11 +174,10 @@ export default function ProductDetailPage({
                   {productViews.map((view) => (
                     <div
                       key={view.id}
-                      className={`relative cursor-pointer border-2 ${
-                        selectedView === view.id
-                          ? "border-red-600"
-                          : "border-gray-200"
-                      } rounded overflow-hidden`}
+                      className={`relative cursor-pointer border-2 ${selectedView === view.id
+                        ? "border-red-600"
+                        : "border-gray-200"
+                        } rounded overflow-hidden`}
                       onClick={() => setSelectedView(view.id)}
                     >
                       <div className="relative h-24 w-full">
@@ -210,23 +210,21 @@ export default function ProductDetailPage({
                   {data.colors.map((color) => (
                     <button
                       key={color.id}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        selectedColor === color.color_value
-                          ? "ring-2 ring-red-600 ring-offset-2"
-                          : "border border-gray-200"
-                      }`}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center ${selectedColor === color.color_value
+                        ? "ring-2 ring-red-600 ring-offset-2"
+                        : "border border-gray-200"
+                        }`}
                       style={{ backgroundColor: color.color_value }}
                       onClick={() => setSelectedColor(color.color_value)}
                       title={color.color}
                     >
                       {selectedColor === color.color_value && (
                         <Check
-                          className={`h-4 w-4 ${
-                            color.color_value === "#FFFFFF" ||
+                          className={`h-4 w-4 ${color.color_value === "#FFFFFF" ||
                             color.color_value.toLowerCase() === "#fff"
-                              ? "text-black"
-                              : "text-white"
-                          }`}
+                            ? "text-black"
+                            : "text-white"
+                            }`}
                         />
                       )}
                     </button>
@@ -252,13 +250,12 @@ export default function ProductDetailPage({
                     return (
                       <button
                         key={size}
-                        className={`px-4 py-2 ${
-                          selectedSize === size
+                        className={`px-4 py-2 ${selectedSize === size
                             ? "bg-red-600 text-white"
                             : isOutOfStock
-                            ? "border border-gray-300 text-gray-400 bg-gray-100"
-                            : "border border-gray-300 hover:border-gray-400"
-                        } rounded-md text-sm font-medium min-w-[50px] relative`}
+                              ? "border border-gray-300 text-gray-400 bg-gray-100"
+                              : "border border-gray-300 hover:border-gray-400"
+                          } rounded-md text-sm font-medium min-w-[50px] relative`}
                         onClick={() => !isOutOfStock && setSelectedSize(size)}
                         disabled={isOutOfStock}
                       >
@@ -433,37 +430,13 @@ export default function ProductDetailPage({
                     </div>
                   )}
                 </div>
-
-                {/* Request a Quote Section */}
-                <div className="border border-gray-200 rounded">
-                  <button
-                    onClick={() => toggleSection("request-quote")}
-                    className="w-full flex items-center justify-between px-4 py-3 text-left"
-                  >
-                    <h3 className="text-lg font-medium">Request a quote</h3>
-                    {expandedSection === "request-quote" ? (
-                      <Minus className="h-5 w-5 text-gray-500" />
-                    ) : (
-                      <Plus className="h-5 w-5 text-gray-500" />
-                    )}
-                  </button>
-
-                  {expandedSection === "request-quote" && (
-                    <div className="px-4 py-3 border-t border-gray-200 text-sm text-gray-600">
-                      <p>
-                        For bulk orders or custom designs, please{" "}
-                        <a
-                          href="/contact"
-                          className="text-red-600 hover:underline"
-                        >
-                          request a quote
-                        </a>
-                        .
-                      </p>
-                    </div>
-                  )}
-                </div>
               </div>
+            </div>
+            {/* Request Quote Button */}
+            <div className="mt-4">
+              <Button variant="outline" className="w-full py-3 h-auto" onClick={() => router.push('/request-quote')}>
+                Request a quote
+              </Button>
             </div>
           </div>
         </div>

@@ -12,6 +12,7 @@ export interface ProductColor {
     url: string;
     view_side: string;
   } | null;
+  sizes?: string[]
 }
 
 interface ColorPanelProps {
