@@ -178,8 +178,18 @@ export default async function Header() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
+                  <DropdownMenuItem className="w-full" asChild>
+                    <Link
+                      href="/my-request-quotes"
+                      className="flex cursor-pointer items-center"
+                    >
+                      <ClipboardList className="mr-2 h-4 w-4" />
+                      <span>Request quotes</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground w-full"
+                    className="text-destructive focus:bg-destructive focus:text-destructive-foreground w-full cursor-pointer"
                     asChild
                   >
                     <SignOutButton>

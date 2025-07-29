@@ -16,6 +16,7 @@ import {
   Tickets,
   Users,
   Palette,
+  MessageSquare,
 } from "lucide-react";
 import type React from "react";
 import { usePathname } from "next/navigation";
@@ -52,6 +53,14 @@ export default function DesignerManagementLayout({
       {
         title: "Design Management",
         items: [
+          {
+            title: "Assigned Quotes",
+            url: "/designer_management/assigned-quotes",
+            icon: MessageSquare,
+            isActive:
+              pathname === "/designer_management/assigned-quotes" ||
+              pathname?.startsWith("/designer_management/assigned-quotes/"),
+          },
           {
             title: "Design Templates",
             url: "/designer_management/design-templates",
