@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,10 +16,23 @@ export default function DesignerQuoteDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [product, setProduct] = useState<any>(null);
   const [loadingProduct, setLoadingProduct] = useState(false);
+  const [hasFetchedProduct, setHasFetchedProduct] = useState(false);
+  const isFetchingProduct = useRef(false);
 
   useEffect(() => {
-    if (id) fetchQuote();
+    if (id) {
+      setHasFetchedProduct(false);
+      isFetchingProduct.current = false;
+      fetchQuote();
+    }
   }, [id]);
+
+  // Debug effect to track product state changes
+  useEffect(() => {
+    if (product) {
+      console.log("Product state updated:", product);
+    }
+  }, [product]);
 
   const fetchQuote = async () => {
     try {
@@ -33,7 +46,8 @@ export default function DesignerQuoteDetailPage() {
       let productId = typeof productIdRaw === "string"
         ? productIdRaw
         : productIdRaw?._id || productIdRaw?.id;
-      if (productId) {
+      if (productId && !hasFetchedProduct && !isFetchingProduct.current) {
+        console.log("Fetching product for ID:", productId);
         fetchProduct(productId);
       }
     } catch (err: any) {
@@ -44,17 +58,27 @@ export default function DesignerQuoteDetailPage() {
   };
 
   const fetchProduct = async (productId: string) => {
+    if (isFetchingProduct.current) {
+      console.log("Already fetching product, skipping...");
+      return;
+    }
+    
     try {
+      isFetchingProduct.current = true;
       setLoadingProduct(true);
+      setHasFetchedProduct(true);
+      console.log("Starting product fetch for:", productId);
       const res = await fetch(`/api/products/${productId}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch product");
-      setProduct(data.colors);
-      console.log("Fetched product:", data);
+      console.log("Product fetch completed:", data);
+      setProduct(data);
     } catch (err: any) {
+      console.error("Product fetch error:", err);
       setProduct(null);
     } finally {
       setLoadingProduct(false);
+      isFetchingProduct.current = false;
     }
   };
 
@@ -93,20 +117,28 @@ export default function DesignerQuoteDetailPage() {
 
   // Lấy selectedColorId từ quote
   const selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || quote.productDetails?.selectedColorId;
+  
   // Tìm color object trong product.colors
   const selectedColor = product?.colors?.find((c: any) => c.id === selectedColorId);
-  // Lấy ảnh đầu tiên (hoặc theo view_side: 'front')
-  const productImageUrl =
-    selectedColor?.images?.find((img: any) => img.view_side === 'front')?.url ||
-    selectedColor?.images?.[0]?.url;
+  
+  // Lấy tất cả ảnh của color được chọn hoặc color đầu tiên
+  const colorToUse = selectedColor || product?.colors?.[0];
+  const productImages = colorToUse?.images || [];
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="container space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Quote Detail</h1>
+          <p className="text-muted-foreground">
+            Manage request quote detail
+          </p>
+        </div>
+      </div>
       <Card>
-        <CardHeader>
-          <CardTitle>Quote Detail</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+
+        <CardContent className="space-y-4 py-6">
           <div>
             <div className="font-bold text-lg">Customer: {quote.firstName} {quote.lastName}</div>
             <div className="text-muted-foreground text-sm">{quote.emailAddress}</div>
@@ -116,23 +148,44 @@ export default function DesignerQuoteDetailPage() {
             </div>
           </div>
           <div className="mt-4">
-            <div className="font-semibold">Product:</div>
-            {loadingProduct ? (
+            {loadingProduct && !product ? (
               <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin h-4 w-4" /> Loading product...</div>
             ) : product ? (
               <div className="border rounded p-4 mt-2">
-                {productImageUrl ? (
-                  <img
-                    src={productImageUrl}
-                    alt={product.name}
-                    className="w-32 h-32 object-contain border rounded mb-2"
-                  />
-                ) : (
-                  <div className="text-muted-foreground">No product image</div>
+                <div className="font-medium">{product.product?.name || "Product"}</div>
+                {/* <div className="text-sm text-muted-foreground">Price: {product.product?.base_price ? product.product.base_price + "₫" : "N/A"}</div> */}
+                {colorToUse && (
+                  <div className="text-sm text-muted-foreground">Color: {colorToUse.color}</div>
                 )}
-                <div className="font-medium">{product.name}</div>
-                <div className="text-sm text-muted-foreground">Price: {product.default_price ? product.default_price + "₫" : "N/A"}</div>
-                {/* Hiển thị thêm thông tin sản phẩm nếu muốn */}
+                {!selectedColor && selectedColorId && (
+                  <div className="text-sm text-red-500">Selected color not found (ID: {selectedColorId}), showing first available color</div>
+                )}
+                {(!product.colors || product.colors.length === 0) && (
+                  <div className="text-sm text-red-500">No colors available for this product</div>
+                )}
+                
+                {/* Hiển thị tất cả 4 ảnh của 4 mặt áo */}
+                {productImages.length > 0 ? (
+                  <div className="mt-4">
+                    <div className="text-sm font-medium mb-3">Product Images:</div>
+                    <div className="flex gap-3 overflow-x-auto pb-2">
+                      {productImages.map((image: any, index: number) => (
+                        <div key={image.id || index} className="flex flex-col items-center flex-shrink-0">
+                          <img
+                            src={image.url}
+                            alt={`${product.product?.name || "Product"} - ${image.view_side}`}
+                            className="w-20 h-20 object-contain border rounded-lg shadow-sm"
+                          />
+                          <div className="text-xs text-muted-foreground mt-1 font-medium capitalize">
+                            {image.view_side}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-muted-foreground mt-4">No product images available</div>
+                )}
               </div>
             ) : (
               <div className="text-muted-foreground">No product info</div>
@@ -145,7 +198,9 @@ export default function DesignerQuoteDetailPage() {
                 let productId = typeof productIdRaw === "string"
                   ? productIdRaw
                   : productIdRaw?._id || productIdRaw?.id;
-                router.push(`/designer_management/editor?productId=${productId}&quoteId=${quote.id}`);
+                let selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || quote.productDetails?.selectedColorId;
+                // Navigate directly to designer editor
+                router.push(`/designer_management/designer-editor/${productId}?colorId=${selectedColorId}&quoteId=${quote.id}&fromQuote=true`);
               }}
               disabled={!product}
             >

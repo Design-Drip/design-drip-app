@@ -62,33 +62,12 @@ export default function DesignerManagementLayout({
               pathname?.startsWith("/designer_management/assigned-quotes/"),
           },
           {
-            title: "Design Templates",
-            url: "/designer_management/design-templates",
-            icon: Images,
-            isActive:
-              pathname === "/designer_management/design-templates" ||
-              pathname?.startsWith("/designer_management/design-templates/"),
-          },
-          {
-            title: "My Designs",
+            title: "Saved Designs",
             url: "/designer_management/my-designs",
             icon: Palette,
             isActive:
               pathname === "/designer_management/my-designs" ||
               pathname?.startsWith("/designer_management/my-designs/"),
-          },
-        ],
-      },
-      {
-        title: "Design Tools",
-        items: [
-          {
-            title: "Design Editor",
-            url: "/designer_management/editor",
-            icon: Settings,
-            isActive:
-              pathname === "/designer_management/editor" ||
-              pathname?.startsWith("/designer_management/editor/"),
           },
         ],
       },
