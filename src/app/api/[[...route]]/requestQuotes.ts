@@ -30,8 +30,6 @@ const createRequestQuoteSchema = z.object({
         quantity: z.number().min(0),
     })).optional(),
 
-    //Design service fields
-    needDesignService: z.boolean().default(false),
     designDescription: z.string().min(10, "Design description must be at least 10 characters").optional(),
 
     //Artwork and design dimensions
@@ -42,14 +40,6 @@ const createRequestQuoteSchema = z.object({
     //Delivery and additional information
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
-}).refine((data) => {
-    if (data.needDesignService) {
-        return data.designDescription && data.designDescription.trim().length >= 10;
-    }
-    return true;
-}, {
-    message: "Design description is required when requesting design service",
-    path: ["designDescription"]
 });
 
 const updateRequestQuoteSchema = z.object({
@@ -80,12 +70,6 @@ const adminResponseSchema = z.object({
     productionDetails: z.object({
         estimatedDays: z.number().min(1).optional(),
         printingMethod: z.enum(["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"]).optional(),
-        materialSpecs: z.string().trim().optional(),
-        colorLimitations: z.string().trim().optional(),
-        sizeAvailability: z.array(z.object({
-            size: z.string(),
-            available: z.boolean(),
-        })).optional(),
     }).optional(),
 
     validUntil: z.string().optional(),
@@ -175,7 +159,6 @@ const app = new Hono()
                     productDetails: quote.productDetails,
                     needDeliveryBy: quote.needDeliveryBy,
                     extraInformation: quote.extraInformation,
-                    needDesignService: quote.needDesignService,
                     designDescription: quote.designDescription,
                     artwork: quote.artwork,
                     desiredWidth: quote.desiredWidth,
@@ -233,7 +216,6 @@ const app = new Hono()
                     artwork: data.artwork,
                     desiredWidth: data.desiredWidth,
                     desiredHeight: data.desiredHeight,
-                    needDesignService: data.needDesignService,
                     designDescription: data.designDescription,
                 };
 
@@ -349,7 +331,6 @@ const app = new Hono()
                         productDetails: requestQuote.productDetails,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
-                        needDesignService: requestQuote.needDesignService,
                         designDescription: requestQuote.designDescription,
                         artwork: requestQuote.artwork,
                         desiredWidth: requestQuote.desiredWidth,
@@ -518,57 +499,6 @@ const app = new Hono()
             console.error("Error submitting admin response:", error);
             if (error instanceof HTTPException) throw error;
             throw new HTTPException(500, { message: "Failed to submit response" });
-        }
-    })
-
-    // Approve/Reject quote (customer action)
-    .post("/:id/approve", zValidator("json", z.object({
-        action: z.enum(["approve", "reject"]),
-        reason: z.string().optional(),
-    })), async (c) => {
-        try {
-            const user = c.get("user")!;
-            const { id } = c.req.param();
-            const { action, reason } = c.req.valid("json");
-
-            const quote = await RequestQuote.findOne({ _id: id, userId: user.id });
-            if (!quote) {
-                throw new HTTPException(404, { message: "Quote not found" });
-            }
-
-            if (quote.status !== "quoted") {
-                throw new HTTPException(400, { message: "Quote is not in a state that can be approved/rejected" });
-            }
-
-            // Update quote status
-            const updateData: any = {
-                status: action === "approve" ? "approved" : "rejected",
-                updatedAt: new Date(),
-            };
-
-            if (action === "approve") {
-                updateData.approvedAt = new Date();
-            } else {
-                updateData.rejectedAt = new Date();
-                updateData.rejectionReason = reason;
-            }
-
-            const updatedQuote = await RequestQuote.findByIdAndUpdate(
-                id,
-                updateData,
-                { new: true }
-            );
-
-            return c.json({
-                success: true,
-                data: updatedQuote,
-                message: `Quote ${action}d successfully`
-            });
-
-        } catch (error) {
-            console.error(`Error ${action}ing quote:`, error);
-            if (error instanceof HTTPException) throw error;
-            throw new HTTPException(500, { message: `Failed to ${action} quote` });
         }
     })
 

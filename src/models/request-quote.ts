@@ -29,7 +29,6 @@ interface RequestQuoteDoc extends mongoose.Document {
 
     needDeliveryBy?: Date;
     extraInformation?: string;
-    needDesignService?: boolean;
     designDescription?: string;
     artwork?: string;
     desiredWidth?: number;
@@ -61,6 +60,10 @@ interface RequestQuoteDoc extends mongoose.Document {
         colorLimitations?: string;
         sizeAvailability?: { size: string; available: boolean }[];
     };
+
+    designerId?: mongoose.Types.ObjectId;
+    designId?: mongoose.Types.ObjectId;
+    designStatus?: string;
 
     validUntil?: Date;
 
@@ -157,16 +160,9 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
             trim: true,
         },
 
-        needDesignService: {
-            type: Boolean,
-            default: false,
-        },
         designDescription: {
             type: String,
             trim: true,
-            required: function (this: RequestQuoteDoc) {
-                return this.needDesignService === true;
-            },
             minLength: [10, "Design description must be at least 10 characters"],
         },
         artwork: {
@@ -268,6 +264,19 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
                 type: String,
                 enum: PRINTING_METHODS,
             },
+        },
+
+        designerId: {
+            type: mongoose.Schema.Types.ObjectId,
+        },
+
+        designId: {
+            type: mongoose.Schema.Types.ObjectId,
+        },
+
+        designStatus: {
+            type: String,
+            default: 'pending',
         },
 
         validUntil: {
