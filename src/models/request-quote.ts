@@ -1,5 +1,16 @@
-import { ADMIN_RESPONSE_STATUSES, PRINTING_METHODS, QUOTE_STATUSES, QuoteStatus, REQUESTED_CHANGE_ASPECTS, REVISION_REASONS } from "@/constants/quoteStatus";
 import mongoose, { Model } from "mongoose";
+import {
+    QUOTE_STATUSES,
+    ADMIN_RESPONSE_STATUSES,
+    REVISION_REASONS,
+    REQUESTED_CHANGE_ASPECTS,
+    PRINTING_METHODS,
+    type QuoteStatus,
+    type AdminResponseStatus,
+    type RevisionReason,
+    type RequestedChangeAspect,
+    type PrintingMethod
+} from "@/constants/quoteStatus";
 
 const adminResponseVersionSchema = new mongoose.Schema({
     version: {
@@ -120,6 +131,17 @@ const adminResponseVersionSchema = new mongoose.Schema({
         }],
     },
 
+    // ✅ NEW: Admin uploaded images for custom quotes
+    adminImages: [{
+        type: String,
+        trim: true,
+        validate: {
+            validator: function (value: string) {
+                return /^https?:\/\/.+/.test(value);
+            },
+            message: "Admin image must be a valid URL"
+        }
+    }],
 
     isCurrentVersion: {
         type: Boolean,
@@ -181,7 +203,6 @@ interface RequestQuoteDoc extends mongoose.Document {
     state: string,
     postcode: string,
     agreeTerms: boolean,
-
     type: "product" | "custom";
     productDetails?: {
         productId: mongoose.Types.ObjectId,
@@ -195,14 +216,13 @@ interface RequestQuoteDoc extends mongoose.Document {
     customRequest?: {
         customNeed: string,
     },
-
     needDeliveryBy?: Date,
     extraInformation?: string,
-
+    needDesignService?: boolean,
+    designDescription?: string,
     artwork?: string,
     desiredWidth?: number,
     desiredHeight?: number,
-
     status: QuoteStatus,
     quotedPrice?: number,
     quotedAt?: Date,
@@ -213,7 +233,7 @@ interface RequestQuoteDoc extends mongoose.Document {
 
     adminResponses: {
         version: number,
-        status: string,
+        status: AdminResponseStatus,
         quotedPrice?: number,
         responseMessage?: string,
         rejectionReason?: string,
@@ -229,7 +249,7 @@ interface RequestQuoteDoc extends mongoose.Document {
         },
         productionDetails?: {
             estimatedDays?: number,
-            printingMethod?: string,
+            printingMethod?: PrintingMethod,
             materialSpecs?: string,
             colorLimitations?: string,
             sizeAvailability?: { size: string, available: boolean }[],
@@ -242,10 +262,11 @@ interface RequestQuoteDoc extends mongoose.Document {
         customerFeedback?: {
             rating?: number,
             comments?: string,
-            requestedChanges?: { aspect: string, description: string }[],
+            requestedChanges?: { aspect: RequestedChangeAspect, description: string }[],
         },
+        adminImages?: string[],
         isCurrentVersion?: boolean,
-        revisionReason?: string,
+        revisionReason?: RevisionReason,
     }[],
 
     currentVersion: number,
@@ -345,6 +366,42 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
             trim: true,
         },
 
+        needDesignService: {
+            type: Boolean,
+            default: false,
+        },
+        designDescription: {
+            type: String,
+            trim: true,
+            required: function (this: RequestQuoteDoc) {
+                return this.needDesignService === true;
+            },
+            minLength: [10, "Design description must be at least 10 characters"],
+        },
+
+        //Artwork and design dimensions
+        artwork: {
+            type: String,
+            trim: true,
+            validate: {
+                validator: function (value: string) {
+                    if (!value) return true;
+                    return /^https?:\/\/.+/.test(value);
+                },
+                message: "Artwork must be a valid URL"
+            }
+        },
+        desiredWidth: {
+            type: Number,
+            min: [0.5, "Minimum width is 0.5 inches"],
+            max: [50, "Maximum width is 50 inches"],
+        },
+        desiredHeight: {
+            type: Number,
+            min: [0.5, "Minimum height is 0.5 inches"],
+            max: [50, "Maximum height is 50 inches"],
+        },
+
         //Status and tracking
         status: {
             type: String,
@@ -399,107 +456,34 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
     }
 );
 
-//Indexes for better query performance
-requestQuoteSchema.index({ emailAddress: 1 }),
-    requestQuoteSchema.index({ status: 1, createAt: -1 }),
-    requestQuoteSchema.index({ createdAt: -1 }),
-    requestQuoteSchema.index({ type: 1 })
-// ✅ NEW: Additional indexes for admin responses
-requestQuoteSchema.index({ currentVersion: 1 }),
-    requestQuoteSchema.index({ "adminResponses.isCurrentVersion": 1 }),
-    requestQuoteSchema.index({ "adminResponses.respondedBy": 1 }),
+// Compound indexes for better query performance
+requestQuoteSchema.index({ userId: 1, status: 1 });
+requestQuoteSchema.index({ status: 1, createdAt: -1 });
+requestQuoteSchema.index({ type: 1, status: 1 });
 
-    //Validation: Ensure either productDetails or customRequest is provided based on type
-    requestQuoteSchema.pre("validate", function (this: RequestQuoteDoc) {
-        if (this.type === "product" && !this.productDetails) {
-            this.invalidate("productDetails", "Product details are required for product type requests");
-        }
-        if (this.type === "custom" && !this.customRequest) {
-            this.invalidate("customRequest", "Custom request details are required for custom type requests");
-        }
-    });
+// Pre-save middleware to update version numbers
+requestQuoteSchema.pre('save', function (next) {
+    if (this.isModified('adminResponses')) {
+        // Set isCurrentVersion to false for all existing responses
+        this.adminResponses.forEach((response: any, index: number) => {
+            if (index < this.adminResponses.length - 1) {
+                response.isCurrentVersion = false;
+            }
+        });
 
-// ✅ NEW: Pre-save middleware for version tracking
-requestQuoteSchema.pre("save", function (this: RequestQuoteDoc) {
-    // Update legacy fields from current response version for backward compatibility
-    if (this.adminResponses && this.adminResponses.length > 0) {
-        const currentResponse = this.adminResponses.find(r => r.isCurrentVersion);
-        if (currentResponse) {
-            this.status = currentResponse.status as any;
-            this.quotedPrice = currentResponse.quotedPrice;
-            this.quotedAt = currentResponse.respondedAt;
-            this.adminNotes = currentResponse.adminNotes;
-            this.rejectionReason = currentResponse.rejectionReason;
+        // Update version numbers
+        if (this.adminResponses.length > 0) {
+            this.currentVersion = this.adminResponses.length;
+            this.totalRevisions = this.adminResponses.length - 1;
         }
     }
 
-    // Update revision count
-    this.totalRevisions = Math.max(0, this.adminResponses.length - 1);
+    next();
 });
 
-// ✅ NEW: Static methods for version management
-interface RequestQuoteModel extends Model<RequestQuoteDoc> {
-    addAdminResponse(quoteId: string, responseData: any, adminId: string, isRevision?: boolean): Promise<RequestQuoteDoc>;
-    getCurrentResponse(quoteId: string): Promise<any>;
-    getResponseHistory(quoteId: string): Promise<any[]>;
-}
-
-// Add admin response with versioning
-requestQuoteSchema.statics.addAdminResponse = function (
-    quoteId: string,
-    responseData: any,
-    adminId: string,
-    isRevision: boolean = false
-) {
-    return this.findById(quoteId).then((quote: RequestQuoteDoc) => {
-        if (!quote) throw new Error("Quote not found");
-
-        // Mark all previous responses as not current
-        quote.adminResponses.forEach(response => {
-            response.isCurrentVersion = false;
-        });
-
-        // Create new version
-        const newVersion = quote.currentVersion + 1;
-        const newResponse = {
-            version: newVersion,
-            ...responseData,
-            respondedBy: adminId,
-            respondedAt: new Date(),
-            isCurrentVersion: true,
-            revisionReason: isRevision ? responseData.revisionReason : undefined,
-        };
-
-        quote.adminResponses.push(newResponse);
-        quote.currentVersion = newVersion;
-
-        if (isRevision) {
-            quote.totalRevisions += 1;
-        }
-
-        return quote.save();
-    });
-};
-
-// Get current active response
-requestQuoteSchema.statics.getCurrentResponse = function (quoteId: string) {
-    return this.findById(quoteId).then((quote: RequestQuoteDoc) => {
-        if (!quote) return null;
-        return quote.adminResponses.find(r => r.isCurrentVersion);
-    });
-};
-
-// Get full response history
-requestQuoteSchema.statics.getResponseHistory = function (quoteId: string) {
-    return this.findById(quoteId).then((quote: RequestQuoteDoc) => {
-        if (!quote) return [];
-        return quote.adminResponses.sort((a, b) => a.version - b.version);
-    });
-};
-
 const RequestQuote =
-    (mongoose.models.RequestQuote as RequestQuoteModel) ||
-    mongoose.model<RequestQuoteDoc, RequestQuoteModel>("RequestQuote", requestQuoteSchema);
+    (mongoose.models.RequestQuote as Model<RequestQuoteDoc>) ||
+    mongoose.model<RequestQuoteDoc>("RequestQuote", requestQuoteSchema);
 
 export type { RequestQuoteDoc };
 export { RequestQuote };

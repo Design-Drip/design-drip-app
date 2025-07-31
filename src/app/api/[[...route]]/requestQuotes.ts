@@ -36,6 +36,15 @@ const createRequestQuoteSchema = z.object({
     //Custom request details (conditional)
     customNeed: z.string().min(5, "Describe what you need").optional(),
 
+    //Design service fields
+    needDesignService: z.boolean().default(false),
+    designDescription: z.string().min(10, "Design description must be at least 10 characters").optional(),
+
+    //Artwork and design dimensions
+    artwork: z.string().url().optional(),
+    desiredWidth: z.coerce.number().min(0.5, "Minimum width is 0.5 inches").max(50, "Maximum width is 50 inches").optional(),
+    desiredHeight: z.coerce.number().min(0.5, "Minimum height is 0.5 inches").max(50, "Maximum height is 50 inches").optional(),
+
     //Delivery and additional information
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
@@ -50,6 +59,14 @@ const createRequestQuoteSchema = z.object({
     return false;
 }, {
     message: "Invalid request data based on type",
+}).refine((data) => {
+    if (data.needDesignService) {
+        return data.designDescription && data.designDescription.trim().length >= 10;
+    }
+    return true;
+}, {
+    message: "Design description is required when requesting design service",
+    path: ["designDescription"]
 });
 
 const updateRequestQuoteSchema = z.object({
@@ -65,6 +82,7 @@ const adminResponseSchema = z.object({
     responseMessage: z.string().trim().optional(),
     rejectionReason: z.string().trim().optional(),
     adminNotes: z.string().trim().optional(),
+    adminImages: z.array(z.string().url()).max(5, "Maximum 5 images allowed").optional(),
 
     // Price breakdown
     priceBreakdown: z.object({
@@ -89,7 +107,7 @@ const adminResponseSchema = z.object({
         })).optional(),
     }).optional(),
 
-    validUntil: z.string().optional(), // ISO date string
+    validUntil: z.string().optional(),
 });
 
 const revisionSchema = adminResponseSchema.extend({
@@ -194,6 +212,11 @@ const app = new Hono()
                     customRequest: quote.customRequest,
                     needDeliveryBy: quote.needDeliveryBy,
                     extraInformation: quote.extraInformation,
+                    needDesignService: quote.needDesignService,
+                    designDescription: quote.designDescription,
+                    artwork: quote.artwork,
+                    desiredWidth: quote.desiredWidth,
+                    desiredHeight: quote.desiredHeight,
                     status: quote.status,
                     quotedPrice: quote.quotedPrice,
                     quotedAt: quote.quotedAt,
@@ -201,6 +224,9 @@ const app = new Hono()
                     rejectedAt: quote.rejectedAt,
                     rejectionReason: quote.rejectionReason,
                     adminNotes: quote.adminNotes,
+                    adminResponses: quote.adminResponses,
+                    currentVersion: quote.currentVersion,
+                    totalRevisions: quote.totalRevisions,
                     createdAt: quote.createdAt,
                     updatedAt: quote.updatedAt,
                 }));
@@ -245,6 +271,11 @@ const app = new Hono()
                     needDeliveryBy: data.needDeliveryBy ? new Date(data.needDeliveryBy) : undefined,
                     extraInformation: data.extraInformation,
                     status: "pending",
+                    artwork: data.artwork,
+                    desiredWidth: data.desiredWidth,
+                    desiredHeight: data.desiredHeight,
+                    needDesignService: data.needDesignService,
+                    designDescription: data.designDescription,
                 };
 
                 //Add type-specific details
@@ -252,7 +283,7 @@ const app = new Hono()
                     requestQuoteData.productDetails = {
                         productId: new mongoose.Types.ObjectId(data.productId!),
                         quantity: data.quantity!,
-                        selectedColorId: new mongoose.Types.ObjectId(data.selectedColorId),
+                        selectedColorId: data.selectedColorId ? new mongoose.Types.ObjectId(data.selectedColorId) : undefined,
                         quantityBySize: data.quantityBySize,
                     };
                 } else if (data.type === "custom") {
@@ -281,6 +312,7 @@ const app = new Hono()
                         success: true,
                         message: "Request quote created successfully",
                         data: {
+                            id: populateQuote?._id?.toString(),
                             status: populateQuote?.status,
                             type: populateQuote?.type,
                             createdAt: populateQuote?.createdAt,
@@ -366,6 +398,11 @@ const app = new Hono()
                         customRequest: requestQuote.customRequest,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
+                        needDesignService: requestQuote.needDesignService,
+                        designDescription: requestQuote.designDescription,
+                        artwork: requestQuote.artwork,
+                        desiredWidth: requestQuote.desiredWidth,
+                        desiredHeight: requestQuote.desiredHeight,
                         status: requestQuote.status,
                         quotedPrice: requestQuote.quotedPrice,
                         quotedAt: requestQuote.quotedAt,
@@ -374,6 +411,8 @@ const app = new Hono()
                         rejectionReason: requestQuote.rejectionReason,
                         adminNotes: requestQuote.adminNotes,
                         adminResponses: requestQuote.adminResponses,
+                        currentVersion: requestQuote.currentVersion,
+                        totalRevisions: requestQuote.totalRevisions,
                         createdAt: requestQuote.createdAt,
                         updatedAt: requestQuote.updatedAt,
                     },
@@ -467,6 +506,7 @@ const app = new Hono()
     )
 
     // Create admin response
+    // Create admin response
     .post("/:id/respond", zValidator("json", adminResponseSchema), async (c) => {
         try {
             const user = c.get("user")!;
@@ -501,6 +541,8 @@ const app = new Hono()
             const preparedData = {
                 ...responseData,
                 validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
+                // ✅ NEW: Include admin images if provided
+                adminImages: responseData.adminImages,
             };
 
             const updatedQuote = await RequestQuote.addAdminResponse(

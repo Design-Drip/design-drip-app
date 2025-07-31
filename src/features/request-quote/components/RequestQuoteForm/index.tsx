@@ -45,16 +45,19 @@ const fullSchema = z.object({
     agreeTerms: z.boolean().refine(v => v, { message: 'You must agree to terms' }),
     type: z.enum(['product', 'custom']),
 
-    // Optional fields cho cả hai type
     product: z.object({
         productId: z.string().optional(),
         quantity: z.coerce.number().optional(),
+        selectedColorId: z.string().optional(),
         quantityBySize: z.record(z.record(z.number().min(0))).optional()
     }).optional(),
 
     custom: z.object({
         customNeed: z.string().optional(),
     }).optional(),
+
+    needDesignService: z.boolean().default(false),
+    designDescription: z.string().optional(),
 
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
@@ -74,6 +77,15 @@ const fullSchema = z.object({
 }, {
     message: "Please complete the required fields for your selection",
     path: ["type"]
+}).refine((data) => {
+    //Validate design description when design service is needed
+    if (data.needDesignService) {
+        return data.designDescription && data.designDescription.trim().length >= 10;
+    }
+    return true;
+}, {
+    message: "Please provide a detailed description of your design needs (minimum 10 characters)",
+    path: ["designDescription"]
 });
 
 type FormData = z.infer<typeof fullSchema>;
@@ -81,12 +93,13 @@ type FormData = z.infer<typeof fullSchema>;
 // --- Main component ---
 export default function RequestQuotePage() {
     const [type, setType] = React.useState<'product' | 'custom'>('product');
+    const [needDesignService, setNeedDesignService] = React.useState(false);
 
     const { selectedProduct, clearSelectedProduct } = useSelectedProductStore();
     const createRequestQuoteMutation = useCreateRequestQuoteMutation();
 
     const form = useForm<FormData>({
-        resolver: zodResolver(fullSchema),
+        resolver: zodResolver(fullSchema) as any,
         defaultValues: {
             firstName: '',
             lastName: '',
@@ -103,11 +116,14 @@ export default function RequestQuotePage() {
             product: {
                 productId: '',
                 quantity: 0,
+                selectedColorId: '',
                 quantityBySize: {},
             },
             custom: {
                 customNeed: '',
             },
+            needDesignService: false,
+            designDescription: '',
             needDeliveryBy: '',
             extraInformation: '',
             desiredWidth: undefined,
@@ -144,11 +160,14 @@ export default function RequestQuotePage() {
                 desiredWidth: data.desiredWidth,
                 desiredHeight: data.desiredHeight,
                 artwork: data.artwork,
+                needDesignService: data.needDesignService,
+                designDescription: data.designDescription,
             };
 
             if (data.type === 'product' && data.product) {
                 requestData.productId = data.product.productId;
                 requestData.quantity = data.product.quantity;
+                requestData.selectedColorId = data.product.selectedColorId;
                 if (data.product.quantityBySize) {
                     const colorIds = Object.keys(data.product.quantityBySize);
                     const sizeObj = data.product.quantityBySize[colorIds[0]] || {};
@@ -170,17 +189,13 @@ export default function RequestQuotePage() {
             // Reset form
             form.reset();
             setType('product');
+            setNeedDesignService(false);
             clearSelectedProduct()
         } catch (error) {
             console.error("Error submitting request:", error);
             toast.error(error instanceof Error ? error.message : "Failed to submit request");
         }
     };
-
-    const handleProductSelect = (product: any) => {
-        form.setValue('product.productId', product._id);
-        form.trigger('product.productId')
-    }
 
     return (
         <Form {...form}>
@@ -408,9 +423,7 @@ export default function RequestQuotePage() {
                                     <FormItem>
                                         <FormLabel className='mr-2'>Select Product</FormLabel>
                                         <FormControl>
-                                            <SelectShirtDialog
-                                                onProductSelect={handleProductSelect}
-                                            />
+                                            <SelectShirtDialog />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -442,15 +455,95 @@ export default function RequestQuotePage() {
                         </div>
                     )}
                 </div>
+                {/* Design Service Section */}
+                <div className="mb-6">
+                    <h3 className="text-md font-medium mb-4">Design Service</h3>
+                    <FormField
+                        control={form.control}
+                        name="needDesignService"
+                        render={({ field }) => (
+                            <FormItem className="flex items-center gap-3 space-y-0">
+                                <FormControl>
+                                    <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={(checked) => {
+                                            field.onChange(checked);
+                                            setNeedDesignService(!!checked);
+                                            if (!checked) {
+                                                form.setValue('designDescription', '');
+                                            }
+                                        }}
+                                        id="needDesignService"
+                                    />
+                                </FormControl>
+                                <div className="space-y-1">
+                                    <FormLabel htmlFor="needDesignService" className="cursor-pointer text-sm font-medium">
+                                        I need design service
+                                    </FormLabel>
+                                    <FormDescription className="text-xs">
+                                        Our design team will create custom artwork based on your requirements
+                                    </FormDescription>
+                                </div>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {/* Design Description (conditional) */}
+                    {needDesignService && (
+                        <div className="mt-4 p-4 border border-blue-200 rounded-lg bg-blue-50">
+                            <FormField
+                                control={form.control}
+                                name="designDescription"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Describe your design ideas <span className="text-red-500">*</span></FormLabel>
+                                        <FormControl>
+                                            <Textarea
+                                                placeholder="Tell us about your design ideas, style preferences, colors, themes, text, images you'd like to include, or any specific requirements..."
+                                                className="resize-none min-h-[120px]"
+                                                {...field}
+                                            />
+                                        </FormControl>
+                                        <FormDescription>
+                                            Please provide as much detail as possible about your design vision. This helps our design team create exactly what you're looking for.
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
+                                <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Design Service Information:</h4>
+                                <ul className="text-xs text-blue-700 space-y-1">
+                                    <li>• Our professional designers will create custom artwork for you</li>
+                                    <li>• Design service fees will be included in the quote</li>
+                                    <li>• You'll receive design proofs for approval before production</li>
+                                    <li>• Includes up to 3 rounds of revisions</li>
+                                    <li>• Design turnaround: 2-3 business days</li>
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Artwork Upload Section */}
                 <div className="mb-6">
-                    <h3 className="text-md font-medium mb-3">Upload Your Design (Optional)</h3>
+                    <h3 className="text-md font-medium mb-3">
+                        Upload Your Design
+                        {needDesignService ? ' (Reference/Inspiration)' : ' (Optional)'}
+                    </h3>
                     <FormField
                         control={form.control}
                         name="artwork"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Upload Artwork/Design</FormLabel>
+                                <FormLabel>
+                                    {needDesignService
+                                        ? 'Upload Reference Images or Inspiration'
+                                        : 'Upload Artwork/Design'
+                                    }
+                                </FormLabel>
                                 <FormControl>
                                     <div className="w-full">
                                         {field.value ? (
@@ -464,7 +557,10 @@ export default function RequestQuotePage() {
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-medium text-green-800">
-                                                                Artwork uploaded successfully
+                                                                {needDesignService
+                                                                    ? 'Reference uploaded successfully'
+                                                                    : 'Artwork uploaded successfully'
+                                                                }
                                                             </p>
                                                             <p className="text-xs text-green-600">
                                                                 Click to view or replace
@@ -497,7 +593,10 @@ export default function RequestQuotePage() {
                                                 onClientUploadComplete={(res) => {
                                                     if (res && res[0]) {
                                                         field.onChange(res[0].url);
-                                                        toast.success("Artwork uploaded successfully!");
+                                                        toast.success(needDesignService
+                                                            ? "Reference uploaded successfully!"
+                                                            : "Artwork uploaded successfully!"
+                                                        );
                                                     }
                                                 }}
                                                 onUploadError={(error: Error) => {
@@ -514,7 +613,10 @@ export default function RequestQuotePage() {
                                     </div>
                                 </FormControl>
                                 <FormDescription>
-                                    Upload your design file (PNG, JPG, SVG, PDF, AI). Max file size: 8MB
+                                    {needDesignService
+                                        ? 'Upload reference images, logos, or inspiration for our design team (PNG, JPG, SVG, PDF, AI). Max file size: 8MB'
+                                        : 'Upload your design file (PNG, JPG, SVG, PDF, AI). Max file size: 8MB'
+                                    }
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>

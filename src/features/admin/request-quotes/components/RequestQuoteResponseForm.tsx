@@ -35,7 +35,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Calendar, Package, Palette } from "lucide-react";
+import { 
+    Loader2, 
+    Calendar, 
+    Package, 
+    Palette, 
+    Edit, 
+    ImageIcon, 
+    Ruler, 
+    AlertTriangle,
+    Upload,
+    X
+} from "lucide-react";
+import { PrintingMethod } from "@/constants/quoteStatus";
+import { UploadDropzone } from "@/lib/uploadthing";
+import { toast } from 'sonner';
 
 const responseFormSchema = z
     .object({
@@ -58,8 +72,10 @@ const responseFormSchema = z
         colorLimitations: z.string().optional(),
 
         validUntil: z.string().optional(),
-
         revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]).optional(),
+        
+        // ✅ NEW: Admin images for custom quotes
+        adminImages: z.array(z.string().url()).optional(),
     })
     .refine(
         (data) => {
@@ -98,6 +114,16 @@ interface RequestQuoteResponseFormProps {
         responseMessage?: string;
         rejectionReason?: string;
         adminNotes?: string;
+        type: "product" | "custom";
+        customRequest?: {
+            customNeed: string;
+        };
+        artwork?: string;
+        artworkInstructions?: string;
+        desiredWidth?: number;
+        desiredHeight?: number;
+        // ✅ NEW: Admin response images for custom quotes
+        adminImages?: string[];
         priceBreakdown?: {
             basePrice?: number;
             setupFee?: number;
@@ -109,7 +135,7 @@ interface RequestQuoteResponseFormProps {
         };
         productionDetails?: {
             estimatedDays?: number;
-            printingMethod?: "DTG" | "DTF" | "Screen Print" | "Vinyl" | "Embroidery";
+            printingMethod?: PrintingMethod;
             materialSpecs?: string;
             colorLimitations?: string;
         };
@@ -133,9 +159,11 @@ export default function RequestQuoteResponseForm({
     mode = "respond"
 }: RequestQuoteResponseFormProps) {
     const [showPriceBreakdown, setShowPriceBreakdown] = React.useState(false);
+    // ✅ NEW: State for admin uploaded images
+    const [adminImages, setAdminImages] = React.useState<string[]>(quote.adminImages || []);
 
     const form = useForm<ResponseFormData>({
-        // resolver: zodResolver(responseFormSchema),
+        resolver: zodResolver(responseFormSchema),
         defaultValues: {
             status: (initialStatus as any) || "reviewing",
             quotedPrice: quote.quotedPrice?.toString() || "",
@@ -153,8 +181,14 @@ export default function RequestQuoteResponseForm({
             materialSpecs: quote.productionDetails?.materialSpecs || "",
             colorLimitations: quote.productionDetails?.colorLimitations || "",
             validUntil: quote.validUntil || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            adminImages: quote.adminImages || [],
         },
     });
+
+    // ✅ NEW: Update form when adminImages change
+    React.useEffect(() => {
+        form.setValue("adminImages", adminImages);
+    }, [adminImages, form]);
 
     useEffect(() => {
         if (open && initialStatus) {
@@ -179,7 +213,13 @@ export default function RequestQuoteResponseForm({
     }, [calculatedTotal, form]);
 
     const handleSubmit = async (data: ResponseFormData) => {
-        await onSubmit(data);
+        // ✅ NEW: Include admin images in submission data for custom quotes
+        const submissionData = {
+            ...data,
+            ...(quote.type === "custom" && { adminImages })
+        };
+        
+        await onSubmit(submissionData);
     };
 
     return (
@@ -200,10 +240,147 @@ export default function RequestQuoteResponseForm({
                     <AlertDialogDescription>
                         {mode === "revise"
                             ? "Create a new revision of your response with updated information."
-                            : "Provide a detailed response to the customer's quote request."
+                            : `Provide a detailed response to this ${quote.type} quote request.`
                         }
                     </AlertDialogDescription>
                 </AlertDialogHeader>
+
+                {/* ✅ NEW: Custom Request Summary with Image Upload */}
+                {quote.type === "custom" && quote.customRequest && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                        <div className="flex items-start gap-3">
+                            <div className="p-2 bg-blue-100 rounded-full">
+                                <Edit className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-semibold text-blue-900 mb-2">Custom Request Details</h4>
+                                <div className="bg-white p-3 rounded border border-blue-200">
+                                    <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                                        {quote.customRequest.customNeed}
+                                    </p>
+                                </div>
+
+                                {/* Customer provided artwork and dimensions */}
+                                {(quote.artwork || quote.desiredWidth || quote.desiredHeight) && (
+                                    <div className="mt-3 space-y-2">
+                                        {quote.artwork && (
+                                            <div className="flex items-center gap-2 text-sm text-blue-700">
+                                                <ImageIcon className="h-4 w-4" />
+                                                <span>Customer provided artwork</span>
+                                                <Button
+                                                    type="button"
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => window.open(quote.artwork, '_blank')}
+                                                    className="h-6 px-2 text-xs"
+                                                >
+                                                    View
+                                                </Button>
+                                            </div>
+                                        )}
+                                        
+                                        {(quote.desiredWidth || quote.desiredHeight) && (
+                                            <div className="flex items-center gap-2 text-sm text-blue-700">
+                                                <Ruler className="h-4 w-4" />
+                                                <span>
+                                                    Desired size: {quote.desiredWidth ? `${quote.desiredWidth}"W` : ''} 
+                                                    {quote.desiredWidth && quote.desiredHeight ? ' × ' : ''}
+                                                    {quote.desiredHeight ? `${quote.desiredHeight}"H` : ''}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {quote.artworkInstructions && (
+                                            <div className="text-sm text-blue-700">
+                                                <span className="font-medium">Instructions: </span>
+                                                {quote.artworkInstructions}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* ✅ NEW: Admin Image Upload Section */}
+                                <Separator className="my-4" />
+                                <div className="space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h5 className="font-medium text-blue-900 flex items-center gap-2">
+                                            <Upload className="h-4 w-4" />
+                                            Admin Response Images
+                                        </h5>
+                                        <span className="text-xs text-blue-600">
+                                            {adminImages.length}/5 images
+                                        </span>
+                                    </div>
+                                    
+                                    <p className="text-xs text-blue-700">
+                                        Upload images showing proposed products, mockups, or design concepts based on the customer's request
+                                    </p>
+
+                                    {/* Image Grid */}
+                                    {adminImages.length > 0 && (
+                                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+                                            {adminImages.map((imageUrl, index) => (
+                                                <div key={index} className="relative group">
+                                                    <div className="aspect-square rounded-lg overflow-hidden border-2 border-blue-200">
+                                                        <img
+                                                            src={imageUrl}
+                                                            alt={`Admin response ${index + 1}`}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="destructive"
+                                                        size="sm"
+                                                        className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        onClick={() => {
+                                                            const newImages = adminImages.filter((_, i) => i !== index);
+                                                            setAdminImages(newImages);
+                                                            toast.success("Image removed");
+                                                        }}
+                                                    >
+                                                        <X className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Upload Area */}
+                                    {adminImages.length < 5 && (
+                                        <div className="border-2 border-dashed border-blue-300 rounded-lg p-3">
+                                            <UploadDropzone
+                                                endpoint="designCanvas"
+                                                onClientUploadComplete={(res) => {
+                                                    if (res && res[0]) {
+                                                        const newImages = [...adminImages, res[0].url];
+                                                        setAdminImages(newImages);
+                                                        toast.success("Image uploaded successfully!");
+                                                    }
+                                                }}
+                                                onUploadError={(error: Error) => {
+                                                    toast.error("Upload failed: " + error.message);
+                                                }}
+                                                appearance={{
+                                                    container: "p-2",
+                                                    uploadIcon: "text-blue-400 h-6 w-6",
+                                                    label: "text-blue-600 text-xs",
+                                                    allowedContent: "text-xs text-blue-500"
+                                                }}
+                                            />
+                                        </div>
+                                    )}
+
+                                    {adminImages.length >= 5 && (
+                                        <div className="text-xs text-amber-600 bg-amber-50 p-2 rounded border border-amber-200">
+                                            Maximum 5 images allowed. Remove some images to upload more.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -234,7 +411,7 @@ export default function RequestQuoteResponseForm({
                             )}
                         />
 
-                        {/* ✅ NEW: Response Message */}
+                        {/* ✅ ENHANCED: Response Message for Custom Quotes */}
                         <FormField
                             control={form.control}
                             name="responseMessage"
@@ -243,13 +420,19 @@ export default function RequestQuoteResponseForm({
                                     <FormLabel>Response Message</FormLabel>
                                     <FormControl>
                                         <Textarea
-                                            placeholder="Provide a message to the customer..."
-                                            className="min-h-[100px]"
+                                            placeholder={quote.type === "custom" 
+                                                ? "Explain how you can fulfill this custom request, any clarifications needed, or alternative suggestions..."
+                                                : "Provide a message to the customer..."
+                                            }
+                                            className="min-h-[120px]"
                                             {...field}
                                         />
                                     </FormControl>
                                     <FormDescription>
-                                        This message will be visible to the customer
+                                        {quote.type === "custom" 
+                                            ? "For custom requests, be specific about what you can deliver and any requirements"
+                                            : "This message will be visible to the customer"
+                                        }
                                     </FormDescription>
                                     <FormMessage />
                                 </FormItem>
@@ -285,6 +468,24 @@ export default function RequestQuoteResponseForm({
                                     </FormItem>
                                 )}
                             />
+                        )}
+
+                        {/* ✅ NEW: Custom Quote Specific Guidelines */}
+                        {quote.type === "custom" && (currentStatus === "quoted" || currentStatus === "revised") && (
+                            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <AlertTriangle className="h-4 w-4 text-amber-600" />
+                                    <span className="font-medium text-amber-800">Custom Quote Guidelines</span>
+                                </div>
+                                <ul className="text-sm text-amber-700 space-y-1">
+                                    <li>• Upload reference images showing proposed products or concepts</li>
+                                    <li>• Clearly specify what products/services are included</li>
+                                    <li>• Include any design or setup requirements</li>
+                                    <li>• Mention if customer artwork needs modifications</li>
+                                    <li>• Set realistic production timelines for custom work</li>
+                                    <li>• Include any limitations or special requirements</li>
+                                </ul>
+                            </div>
                         )}
 
                         {/* Pricing Section */}
@@ -456,7 +657,7 @@ export default function RequestQuoteResponseForm({
                                         )}
                                     />
 
-                                    {/* ✅ NEW: Production Details */}
+                                    {/* ✅ ENHANCED: Production Details with Custom-specific fields */}
                                     <Separator />
                                     <div className="space-y-4">
                                         <h4 className="font-medium text-lg flex items-center gap-2">
@@ -475,12 +676,15 @@ export default function RequestQuoteResponseForm({
                                                             <Input
                                                                 type="number"
                                                                 min="1"
-                                                                placeholder="7"
+                                                                placeholder={quote.type === "custom" ? "14" : "7"}
                                                                 {...field}
                                                             />
                                                         </FormControl>
                                                         <FormDescription>
-                                                            Business days needed for production
+                                                            {quote.type === "custom" 
+                                                                ? "Custom orders typically take longer (recommended: 10-21 days)"
+                                                                : "Business days needed for production"
+                                                            }
                                                         </FormDescription>
                                                         <FormMessage />
                                                     </FormItem>
@@ -492,7 +696,9 @@ export default function RequestQuoteResponseForm({
                                                 name="printingMethod"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Printing Method</FormLabel>
+                                                        <FormLabel>
+                                                            {quote.type === "custom" ? "Recommended Method" : "Printing Method"}
+                                                        </FormLabel>
                                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                             <FormControl>
                                                                 <SelectTrigger>
@@ -518,15 +724,23 @@ export default function RequestQuoteResponseForm({
                                             name="materialSpecs"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Material Specifications</FormLabel>
+                                                    <FormLabel>
+                                                        {quote.type === "custom" ? "Proposed Materials & Specifications" : "Material Specifications"}
+                                                    </FormLabel>
                                                     <FormControl>
                                                         <Textarea
-                                                            placeholder="Describe materials, fabric type, quality, etc..."
+                                                            placeholder={quote.type === "custom" 
+                                                                ? "Describe the materials, products, and specifications you recommend for this custom request..."
+                                                                : "Describe materials, fabric type, quality, etc..."
+                                                            }
                                                             {...field}
                                                         />
                                                     </FormControl>
                                                     <FormDescription>
-                                                        Details about materials and fabric specifications
+                                                        {quote.type === "custom" 
+                                                            ? "Be detailed about what products and materials will be used"
+                                                            : "Details about materials and fabric specifications"
+                                                        }
                                                     </FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
@@ -538,10 +752,13 @@ export default function RequestQuoteResponseForm({
                                             name="colorLimitations"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Color Limitations</FormLabel>
+                                                    <FormLabel>Color Limitations & Requirements</FormLabel>
                                                     <FormControl>
                                                         <Textarea
-                                                            placeholder="Any color restrictions, limitations, or requirements..."
+                                                            placeholder={quote.type === "custom" 
+                                                                ? "Any color limitations, artwork modifications needed, or color matching requirements..."
+                                                                : "Any color restrictions, limitations, or requirements..."
+                                                            }
                                                             {...field}
                                                         />
                                                     </FormControl>
