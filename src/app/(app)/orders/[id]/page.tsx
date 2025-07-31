@@ -47,11 +47,18 @@ export default function OrderDetailPage() {
   } = useQuery(getOrderDetailQuery(orderId));
   const submitFeedback = useCreateFeedbackMutation();
   const productId = order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?.id;
+
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
   const queryClient = useQueryClient();
+
+  const { data: feedbacks } = getFeedbackQuery(productId ?? "");
+
+  const existingFeedback = feedbacks?.data?.find(
+    (feedback: { orderId: string }) => feedback?.orderId === orderId
+  );
 
   if (isLoading) {
     return (
@@ -61,7 +68,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (isError || !order) {
+  if (isError || !order || !productId) {
     return (
       <div className="container mx-auto max-w-4xl py-10 px-4">
         <Button
@@ -332,7 +339,7 @@ export default function OrderDetailPage() {
         </Card>
 
         {/* Feedback Card - Only show when delivered */}
-        {order.status === "delivered" && (
+        {order.status === "delivered" && !existingFeedback && (
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
