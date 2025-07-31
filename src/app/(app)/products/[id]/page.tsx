@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getProductDetailQuery } from "@/features/products/services/queries";
-import { Heart, Plus, Minus, Check, Loader2 } from "lucide-react";
+import { Heart, Plus, Minus, Check, Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/price";
@@ -13,6 +13,7 @@ import { FIXED_SIZES } from "@/constants/size";
 import { useWishlist } from "@/hooks/useWishlist";
 import { cn } from "@/lib/utils";
 import { SignInButton } from "@clerk/nextjs";
+import { getFeedbackQuery } from "@/features/feedback/services/queries";
 
 interface ProductDetailPageProps {
   params: { id: string; slug: string };
@@ -30,7 +31,7 @@ export default function ProductDetailPage({
     isLoading: isWishlistLoading,
     isSignedIn,
   } = useWishlist();
-
+  const { data: feedbacks } = getFeedbackQuery(id);
   const uniqueSizes = Array.from(new Set(data?.sizes.map((size) => size.size)));
 
   const [selectedColor, setSelectedColor] = useState<string | undefined>();
@@ -143,6 +144,32 @@ export default function ProductDetailPage({
       </div>
     );
   }
+
+  const renderStars = (rating: number) => {
+    return (
+      <div className="flex items-center">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`h-4 w-4 ${
+              star <= rating
+                ? "fill-yellow-400 text-yellow-400"
+                : "text-gray-300"
+            }`}
+          />
+        ))}
+      </div>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
   return (
     <main className="min-h-screen bg-gray-50 py-8">
       <div className="container mx-auto px-4">
@@ -465,8 +492,95 @@ export default function ProductDetailPage({
                 </div>
               </div>
             </div>
+
+            {/* Request Quote Button */}
+            <div className="mt-4">
+              <Button variant="outline" className="w-full py-3 h-auto">
+                Request a quote
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* Customer Reviews Section */}
+        {feedbacks?.data && feedbacks.data.length > 0 && (
+          <div className="mt-12">
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-2xl font-bold mb-6">Customer Reviews</h2>
+
+              {/* Reviews Summary */}
+              <div className="mb-6 pb-6 border-b border-gray-200">
+                <div className="flex items-center gap-4">
+                  <div className="text-3xl font-bold">
+                    {(
+                      feedbacks.data.reduce(
+                        (sum, feedback: { rating: number }) =>
+                          sum + feedback.rating,
+                        0
+                      ) / feedbacks.data.length
+                    ).toFixed(1)}
+                  </div>
+                  <div>
+                    {renderStars(
+                      Math.round(
+                        feedbacks.data.reduce(
+                          (sum, feedback: { rating: number }) =>
+                            sum + feedback.rating,
+                          0
+                        ) / feedbacks.data.length
+                      )
+                    )}
+                    <p className="text-sm text-gray-600 mt-1">
+                      Based on {feedbacks.data.length} review
+                      {feedbacks.data.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Individual Reviews */}
+              <div className="space-y-6">
+                {feedbacks.data.map(
+                  (feedback: {
+                    id: string;
+                    rating: number;
+                    user: {
+                      fullName: string;
+                      imageUrl?: string;
+                    };
+                    createdAt: string;
+                    comment?: string;
+                  }) => (
+                    <div
+                      key={feedback.id}
+                      className="border-b border-gray-100 pb-6 last:border-b-0"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          {feedback.user?.fullName && (
+                            <span className="font-semibold">
+                              {feedback.user.fullName}
+                            </span>
+                          )}
+                          {renderStars(feedback.rating)}
+                          <span className="text-sm text-gray-600">
+                            {formatDate(feedback.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {feedback.comment && (
+                        <p className="text-gray-700 leading-relaxed">
+                          {feedback.comment}
+                        </p>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
