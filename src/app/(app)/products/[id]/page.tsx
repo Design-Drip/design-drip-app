@@ -271,7 +271,7 @@ export default function ProductDetailPage({
                               Only {stockQuantity} left
                             </span>
                           ) : (
-                            <span className="text-green-600">In stock</span>
+                            <span className="font-bold">In stock</span>
                           )}
                         </div>
                       </button>
