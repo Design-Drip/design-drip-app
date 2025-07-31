@@ -268,7 +268,7 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                                         {quote.firstName[0]}{quote.lastName[0]}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div>
+                                                <div className="ml-4">
                                                     <div className="font-medium">
                                                         {quote.firstName} {quote.lastName}
                                                     </div>
