@@ -34,8 +34,8 @@ const routes = app
   .route("/design-templates", designTemplate)
   .route("/cart", cart)
   .route("/orders", orders)
-  .route("/feedback", feedback);
-  .route("/request-quotes", requestQuotes);
+  .route("/feedback", feedback)
+  .route("/request-quotes", requestQuotes)
 
 export const GET = handle(app);
 export const POST = handle(app);
