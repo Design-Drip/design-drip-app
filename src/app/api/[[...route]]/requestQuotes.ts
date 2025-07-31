@@ -889,6 +889,11 @@ const app = new Hono()
                         model: "ShirtColor",
                         select: "color hex_code",
                     })
+                    .populate({
+                        path: "design_id",
+                        model: "Design",
+                        select: "id name design_images",
+                    })
                     .sort({ createdAt: -1 })
                     .lean();
 
@@ -908,6 +913,7 @@ const app = new Hono()
                     status: quote.status,
                     quotedPrice: quote.quotedPrice,
                     designerId: quote.designerId,
+                    design_id: quote.design_id,
                     createdAt: quote.createdAt,
                     updatedAt: quote.updatedAt,
                 }));
@@ -921,6 +927,89 @@ const app = new Hono()
                 console.error("Error fetching assigned quotes:", error);
                 if (error instanceof HTTPException) throw error;
                 throw new HTTPException(500, { message: "Failed to fetch assigned quotes" });
+            }
+        }
+    )
+
+    .patch(
+        "/:id/set-primary-design",
+        zValidator(
+            "param",
+            z.object({
+                id: z.string().trim(),
+            })
+        ),
+        zValidator("json", z.object({
+            design_id: z.string().refine((val) => {
+                console.log("[API PATCH set-primary-design] JSON validation - design_id:", val);
+                return true;
+            }),
+        })),
+        async (c) => {
+            try {
+                // Log raw request body first
+                const rawBody = await c.req.json();
+                console.log("[API PATCH set-primary-design] Raw request body:", rawBody);
+                
+                const { id } = c.req.valid("param");
+                const { design_id } = c.req.valid("json");
+                const user = c.get("user");
+
+                console.log("[API PATCH set-primary-design] Request:", { id, design_id, userId: user?.id });
+                console.log("[API PATCH set-primary-design] Design ID type:", typeof design_id);
+                console.log("[API PATCH set-primary-design] Design ID value:", design_id);
+
+                if (!user) {
+                    throw new HTTPException(401, { message: "Unauthorized" });
+                }
+
+                // Check if quote exists
+                const quote = await RequestQuote.findById(id);
+                if (!quote) {
+                    throw new HTTPException(404, { message: "Quote not found" });
+                }
+
+                // Handle case where quote doesn't have designerId (old quotes)
+                if (!quote.designerId) {
+                    quote.designerId = user.id;
+                    await quote.save();
+                } else if (quote.designerId !== user.id) {
+                    throw new HTTPException(403, { message: "You can only set primary design for your assigned quotes" });
+                }
+
+                // Check if design exists and belongs to the user
+                const { Design } = await import("@/models/design");
+                const design = await Design.findById(design_id);
+                if (!design) {
+                    throw new HTTPException(404, { message: "Design not found" });
+                }
+
+                if (design.user_id !== user.id) {
+                    throw new HTTPException(403, { message: "You can only set your own designs as primary" });
+                }
+
+                // Update quote with primary design
+                console.log("[API PATCH set-primary-design] Before update - quote.design_id:", quote.design_id);
+                quote.design_id = new mongoose.Types.ObjectId(design_id);
+                await quote.save();
+                console.log("[API PATCH set-primary-design] After update - quote.design_id:", quote.design_id);
+
+                return c.json({
+                    success: true,
+                    message: "Primary design set successfully",
+                    data: {
+                        quote_id: id,
+                        design_id: design_id,
+                    },
+                });
+            } catch (error) {
+                console.error("Error setting primary design:", error);
+                if (error instanceof HTTPException) {
+                    throw error;
+                }
+                throw new HTTPException(500, {
+                    message: "Failed to set primary design",
+                });
             }
         }
     )

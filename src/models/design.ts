@@ -13,6 +13,7 @@ interface DesignDoc extends mongoose.Document {
   design_images: Record<string, string>; // Store design images as a map
   parent_design_id?: mongoose.Types.ObjectId; // Reference to parent design for versioning
   version: string; // Version identifier: "original", "v1", "v2", etc.
+  quote_id?: mongoose.Types.ObjectId; // Reference to quote for designs created from quotes
 }
 const designSchema = new mongoose.Schema(
   {
@@ -62,9 +63,15 @@ const designSchema = new mongoose.Schema(
       },
       default: new Map(),
     },
+    quote_id: {
+      type: mongoose.Types.ObjectId,
+      ref: "RequestQuote",
+      required: false, // Optional - only for designs created from quotes
+    },
   },
   {
     timestamps: true, // Add createdAt and updatedAt fields
+    strict: false, // Allow fields not in schema
     toJSON: {
       transform(_, ret) {
         ret.id = ret._id;

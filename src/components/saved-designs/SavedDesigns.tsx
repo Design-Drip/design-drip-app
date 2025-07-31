@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { TableSavedDesign } from "./components/table-saved-design";
+import { TableSavedDesign } from "./TableSavedDesign";
 import useGetDesign from "@/features/design/use-get-design";
 import { useDeleteDesign } from "@/features/design/use-delete-design";
 import { Loader2 } from "lucide-react";
@@ -19,14 +19,6 @@ function SavedDesigns({ displayActionMenu = false }: SavedDesignsProps) {
   const designsData = data?.data || [];
   const queryClient = useQueryClient();
   const formatData = designsData.map((item: any) => {
-    console.log("Design item:", item); // Debug log
-    console.log("Design createdAt fields:", {
-      created_at: item.created_at,
-      createdAt: item.createdAt,
-      updatedAt: item.updatedAt,
-      _id: item._id,
-      version: item.version,
-    }); // Debug log for timestamp fields
 
     const previewImages = item.design_images
       ? Object.entries(item.design_images).map(([key, url]) => ({
@@ -34,18 +26,19 @@ function SavedDesigns({ displayActionMenu = false }: SavedDesignsProps) {
           url: url as string,
         }))
       : [];
-    const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Product";
-    const colorId = item.shirt_color_id?.id || "Unknown Color";
+    const productId = item.shirt_color_id?.shirt_id?.id || item.shirt_color_id?.shirt_id?._id || "";
+    const colorId = item.shirt_color_id?.id || item.shirt_color_id?._id || "";
 
     // Check if this design has a parent (is a version)
     const isVersion = !!item.parent_design_id;
 
     const parentDesign: any = isVersion
-      ? designsData.find((d: any) => d.id === item.parent_design_id)
+      ? designsData.find((d: any) => (d._id || d.id) === item.parent_design_id)
       : null;
 
+
     return {
-      id: item.id,
+      id: item._id || item.id,
       colorId: colorId,
       productId: productId,
       previewImages: [previewImages],

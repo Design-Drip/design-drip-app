@@ -85,10 +85,6 @@ export default function AssignedQuotesPage() {
   const { user } = useUser();
 
   useEffect(() => {
-    console.log("useEffect - user:", user);
-    console.log("useEffect - user?.id:", user?.id);
-    console.log("useEffect - user loading state:", !user);
-    
     // Chỉ gọi API khi user đã load xong
     if (user?.id) {
       fetchAssignedQuotes();
@@ -99,8 +95,6 @@ export default function AssignedQuotesPage() {
     try {
       setLoading(true);
       
-      console.log("fetchAssignedQuotes - user?.id:", user?.id);
-      
       if (!user?.id) {
         throw new Error("User not found");
       }
@@ -109,22 +103,16 @@ export default function AssignedQuotesPage() {
       const response = await fetch("/api/request-quotes");
       const data = await response.json();
       
-      console.log("API response:", data);
-      
       if (!response.ok) {
         throw new Error(data.message || "Failed to fetch assigned quotes");
       }
       
       // Lọc chỉ lấy quote được assign cho designer (designerId = user.id)
       const allQuotes = data.items || [];
-      console.log("All quotes:", allQuotes.length);
       
       const assignedQuotes = allQuotes.filter((quote: any) => {
-        console.log(`Quote ${quote.id}: designerId=${quote.designerId}, user.id=${user.id}, match=${quote.designerId === user.id}`);
         return quote.designerId === user.id;
       });
-      
-      console.log("Assigned quotes:", assignedQuotes.length);
       
       setQuotes(assignedQuotes);
     } catch (err: any) {

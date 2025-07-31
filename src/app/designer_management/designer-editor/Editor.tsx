@@ -48,7 +48,7 @@ export const DesignerEditor = ({
   designDetail,
   quoteId,
 }: DesignerEditorProps) => {
-  console.log("DesignerEditor props:", { images, productColorId, designDetail, quoteId });
+
   //State management
   const [activeTool, setActiveTool] = useState<ActiveTool>("select");
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -72,7 +72,7 @@ export const DesignerEditor = ({
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   // Debug logging after all states are initialized
-  console.log("DesignerEditor state:", { hasUnsavedChanges, isSaving, saveError });
+
 
   // Refs to prevent infinite loops
   const isUpdatingCanvas = useRef(false);
@@ -419,13 +419,7 @@ export const DesignerEditor = ({
 
       // Save to database if there's design data
       if (Object.keys(elementDesign).length > 0) {
-        console.log("Saving design with template ID:", selectedTemplateId);
-        console.log(
-          "Design detail full object:",
-          JSON.stringify(designDetail, null, 2)
-        );
-        console.log("Design detail ID:", designDetail?.id);
-        console.log("Design detail _id:", designDetail?._id);
+
 
         // Determine if this is a new version of an existing design
         const isEditingExistingDesign = !!(
@@ -437,6 +431,21 @@ export const DesignerEditor = ({
         let newDesignName = designName || "Designer Design";
         // Don't modify the name even if it's a new version
 
+        let finalQuoteId = quoteId;
+        if (!finalQuoteId && designDetail?.quote_id) {
+          if (typeof designDetail.quote_id === "object" && designDetail.quote_id._id) {
+            finalQuoteId = designDetail.quote_id._id.toString();
+          } else {
+            finalQuoteId = designDetail.quote_id.toString();
+          }
+        }
+
+        // Debug logs
+        console.log("Editor - designDetail:", designDetail);
+        console.log("Editor - designDetail?.quote_id:", designDetail?.quote_id);
+        console.log("Editor - quoteId from URL:", quoteId);
+        console.log("Editor - finalQuoteId:", finalQuoteId);
+        
         const designData = {
           shirt_color_id: productColorId,
           element_design: elementDesign,
@@ -447,10 +456,10 @@ export const DesignerEditor = ({
             template_applied_at: new Date().toISOString(),
           }),
           ...(isEditingExistingDesign && { parent_design_id: parentDesignId }), // Add parent_design_id if editing existing design
-          ...(quoteId && { quote_id: quoteId }), // Add quote_id if design is from assigned quotes
+          ...(finalQuoteId && { quote_id: finalQuoteId }), // Add quote_id if design is from assigned quotes
         };
 
-        console.log("Final design data:", JSON.stringify(designData, null, 2));
+        console.log("Editor - designData:", designData);
 
         // ALWAYS create a new design (Save as New behavior)
         // This allows users to keep multiple versions of their designs
@@ -470,7 +479,23 @@ export const DesignerEditor = ({
       }
     } catch (error) {
       setSaveError(error as Error);
-      toast.error("Failed to save design.");
+      
+      // Display specific error message from server if available
+      if (error instanceof Error) {
+        toast.error(error.message);
+        
+        // If the error is about duplicate name, extract the suggested name and update the design name
+        if (error.message.includes("already exists") && error.message.includes("Suggested name:")) {
+          const suggestedNameMatch = error.message.match(/Suggested name: "([^"]+)"/);
+          if (suggestedNameMatch) {
+            const suggestedName = suggestedNameMatch[1];
+            setDesignName(suggestedName);
+            toast.info(`Design name updated to: "${suggestedName}"`);
+          }
+        }
+      } else {
+        toast.error("Failed to save design.");
+      }
     } finally {
       setIsSaving(false);
     }

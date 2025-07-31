@@ -2,13 +2,13 @@
 import { getProductColors } from "@/app/admin/products/images/_actions";
 import { Editor } from "@/components/editor/Editor";
 import { Button } from "@/components/ui/button";
-import { useGetDetailDesign } from "@/features/design/use-get-detail-design";
 import { getProductDetailQuery } from "@/features/products/services/queries";
 import { products } from "@/lib/data/products";
 import { auth } from "@clerk/nextjs/server";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 function EditDesignPage({
   params,
@@ -17,14 +17,43 @@ function EditDesignPage({
   params: { id: string };
   searchParams: { colorId: string; designId?: string };
 }) {
+
+  
   const { id } = params;
   const { colorId, designId } = searchParams;
   const isEditDesign = designId !== undefined && designId !== "";
-  const { data: designDetailData, isLoading: isLoadingDesignDetail } =
-    useGetDetailDesign(isEditDesign ? designId : "");
-  const designDetail = designDetailData?.data[0] || {};
+  const [designDetail, setDesignDetail] = useState<any>({});
+  const [isLoadingDesignDetail, setIsLoadingDesignDetail] = useState(false);
+  
+  // Debug log to check designDetail
+
+  
   const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
   const router = useRouter();
+
+  // Fetch design detail using fetch directly like designer editor
+  useEffect(() => {
+    if (isEditDesign && designId) {
+      fetchDesignDetail(designId);
+    }
+  }, [isEditDesign, designId]);
+
+  const fetchDesignDetail = async (designId: string) => {
+    try {
+      setIsLoadingDesignDetail(true);
+      console.log("Fetching design detail for ID:", designId);
+      const res = await fetch(`/api/design/${designId}`);
+      const data = await res.json();
+      console.log("Design detail response:", data);
+      if (data.success) {
+        setDesignDetail(data.data || {});
+      }
+    } catch (error) {
+      console.error("Error fetching design detail:", error);
+    } finally {
+      setIsLoadingDesignDetail(false);
+    }
+  };
 
   const colors = data?.colors || [];
 

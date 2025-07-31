@@ -253,6 +253,7 @@ interface RequestQuoteDoc extends mongoose.Document {
     createdAt: Date,
     updatedAt: Date,
     designerId?: string,
+    design_id?: mongoose.Types.ObjectId, // Reference to primary design for this quote
 }
 
 const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
@@ -378,6 +379,13 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
         designerId: {
             type: String,
             ref: "Users", // hoặc "Designers" nếu có collection riêng
+            default: null,
+        },
+
+        // ✅ NEW: Primary design for this quote
+        design_id: {
+            type: mongoose.Types.ObjectId,
+            ref: "Design",
             default: null,
         },
 

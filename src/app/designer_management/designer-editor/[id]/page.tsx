@@ -64,6 +64,7 @@ export default function DesignerEditorPage() {
     productId,
     colorId,
     designId,
+    quoteId,
     colors: colors.length,
     selectedColor: productColor?.color,
     imagesCount: images.length,

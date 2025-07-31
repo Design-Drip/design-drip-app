@@ -39,17 +39,17 @@ export default function DesignerManagementLayout({
       role: (user?.publicMetadata?.role as string) || "User",
     },
     menuGroups: [
-      {
-        title: "Overview",
-        items: [
-          {
-            title: "Dashboard",
-            url: "/designer_management",
-            icon: BarChart3,
-            isActive: pathname === "/designer_management",
-          },
-        ],
-      },
+      // {
+      //   title: "Overview",
+      //   items: [
+      //     {
+      //       title: "Dashboard",
+      //       url: "/designer_management",
+      //       icon: BarChart3,
+      //       isActive: pathname === "/designer_management",
+      //     },
+      //   ],
+      // },
       {
         title: "Design Management",
         items: [

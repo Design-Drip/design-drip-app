@@ -28,6 +28,7 @@ const createDesignSchema = z.object({
   name: z.string().default("Shirt Design"),
   design_images: z.record(z.string(), z.string()).optional(),
   parent_design_id: z.string().optional(), // For versioning - ID of the design being edited
+  quote_id: z.string().optional(), // For designs from assigned quotes
 });
 
 const app = new Hono()
@@ -38,10 +39,10 @@ const app = new Hono()
       if (!user) {
         throw new HTTPException(401, { message: "Unauthorized" });
       }
-      const { shirt_color_id, element_design, name, design_images, parent_design_id } =
+      const { shirt_color_id, element_design, name, design_images, parent_design_id, quote_id } =
         c.req.valid("json");
 
-      console.log("[API POST] Request payload:", { parent_design_id });
+      console.log("[API POST] Request payload:", { parent_design_id, quote_id });
 
 
       // Convert string IDs to ObjectIds for the database
@@ -68,6 +69,11 @@ const app = new Hono()
         name: name,
         design_images: design_images || {},
       };
+
+      // Add quote_id if provided
+      if (quote_id && mongoose.Types.ObjectId.isValid(quote_id)) {
+        designData.quote_id = new mongoose.Types.ObjectId(quote_id);
+      }
 
       // Handle versioning logic
       if (parent_design_id && mongoose.Types.ObjectId.isValid(parent_design_id)) {
@@ -144,7 +150,26 @@ const app = new Hono()
           },
         })
         .populate("element_design.images_id")
-        .sort({ createdAt: -1 }); // Sort by newest first
+        .populate({
+          path: "quote_id",
+          model: "RequestQuote",
+          select: "_id firstName lastName company status type quotedPrice createdAt design_id",
+        })
+        .sort({ createdAt: -1 })
+        .lean(); // Convert to plain objects
+
+      // Debug: Log designs to see if quote_id is populated
+      console.log("[API GET /] Found designs:", designs.length);
+             designs.forEach((design, index) => {
+         console.log(`Design ${index}:`, {
+           id: design.id,
+           _id: design._id,
+           name: design.name,
+           hasQuoteId: !!design.quote_id,
+           quoteId: design.quote_id?._id,
+           quoteData: design.quote_id
+         });
+       });
 
       return c.json({
         success: true,
@@ -188,7 +213,13 @@ const app = new Hono()
               select: "_id name",
             },
           })
-          .populate("element_design.images_id");
+          .populate("element_design.images_id")
+          .populate({
+            path: "quote_id",
+            model: "RequestQuote",
+            select: "_id firstName lastName company status type quotedPrice createdAt design_id",
+          })
+          .lean();
         
         if (!design) {
           console.log("[API GET /:id] Design not found for ID:", id);
@@ -198,7 +229,10 @@ const app = new Hono()
         console.log("[API GET /:id] Found design:", { 
           id: design.id, 
           name: design.name,
-          version: design.version 
+          version: design.version,
+          hasQuoteId: !!design.quote_id,
+          quoteId: design.quote_id?._id,
+          quoteData: design.quote_id
         });
         
         return c.json({
@@ -239,7 +273,7 @@ const app = new Hono()
           throw new HTTPException(401, { message: "Unauthorized" });
         }
         const id = c.req.valid("param").id;
-        const { shirt_color_id, element_design, name, design_images, parent_design_id } =
+        const { shirt_color_id, element_design, name, design_images, parent_design_id, quote_id } =
           c.req.valid("json");
 
         console.log("[API PUT] Request payload template info:", { parent_design_id });
@@ -277,6 +311,11 @@ const app = new Hono()
         // Only update design_images if provided
         if (design_images) {
           existingDesign.design_images = design_images;
+        }
+
+        // Update quote_id if provided
+        if (quote_id && mongoose.Types.ObjectId.isValid(quote_id)) {
+          existingDesign.quote_id = new mongoose.Types.ObjectId(quote_id);
         }
 
         // Save the updated design

@@ -4,7 +4,7 @@ import { ActiveTool, selectionDependentTools } from "@/features/editor/types";
 import { fabric } from "fabric";
 import debounce from "lodash.debounce";
 import Image from "next/image";
-import React, { use, useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Navbar } from "./components/navbar";
 import { Sidebar } from "./components/sidebar";
 import { Toolbar } from "./components/toolbar";
@@ -428,14 +428,19 @@ export const Editor = ({
 
         console.log("Final design data:", JSON.stringify(designData, null, 2));
 
-        // ALWAYS create a new design (Save as New behavior)
-        // This allows users to keep multiple versions of their designs
-        await createDesignMutation.mutateAsync(designData);
-
-        const successMessage = isEditingExistingDesign
-          ? `Design saved as new version of "${designDetail.name}" (${designDetail.version})!`
-          : "Design saved successfully!";
-        toast.success(successMessage);
+        if (isEditingExistingDesign) {
+          // Update existing design
+          const designId = designDetail?.id || designDetail?._id;
+          await updateDesignMutation.mutateAsync({
+            id: designId,
+            ...designData
+          });
+          toast.success(`Design "${designDetail.name}" updated successfully!`);
+        } else {
+          // Create new design
+          await createDesignMutation.mutateAsync(designData);
+          toast.success("Design saved successfully!");
+        }
 
         // Update canvasStates without triggering effects
         setCanvasStates(allStates);
@@ -788,6 +793,10 @@ export const Editor = ({
       didAttemptLocalStorageLoad.current = true;
 
       try {
+        console.log("Processing design detail:", designDetail);
+        console.log("designDetail.element_design:", designDetail.element_design);
+        console.log("typeof designDetail.element_design:", typeof designDetail.element_design);
+        
         // Extract and process the element_design data
         const savedCanvasStates: { [key: number]: string } = {};
 
@@ -795,16 +804,18 @@ export const Editor = ({
         setDesignName(designDetail.name || "Shirt Design");
 
         // Process each element design (different views)
-        Object.entries(designDetail.element_design).forEach(
-          ([viewIndex, design]: [string, any]) => {
-            const index = parseInt(viewIndex);
+        if (designDetail.element_design && typeof designDetail.element_design === 'object') {
+          Object.entries(designDetail.element_design).forEach(
+            ([viewIndex, design]: [string, any]) => {
+              const index = parseInt(viewIndex);
 
-            // Store the JSON data in our canvas states
-            if (design && design.element_Json) {
-              savedCanvasStates[index] = design.element_Json;
+              // Store the JSON data in our canvas states
+              if (design && design.element_Json) {
+                savedCanvasStates[index] = design.element_Json;
+              }
             }
-          }
-        );
+          );
+        }
 
         // Update canvas states
         setCanvasStates(savedCanvasStates);

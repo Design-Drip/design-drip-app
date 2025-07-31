@@ -25,13 +25,12 @@ import {
 import { DialogClose } from "@radix-ui/react-dialog";
 import { ChevronUp, ChevronDown } from "lucide-react";
 
-export const TableSavedDesign = ({
+export const TableSavedDesignDesigner = ({
   data,
   onDelete,
   onConfirmDelete,
   deleteLoading,
   onConfirmModalOpen,
-
   confirmModalOpen,
 }: {
   data: Array<{
@@ -61,12 +60,21 @@ export const TableSavedDesign = ({
     designName: string;
     colorId: string;
   } | null>(null);
+  const [sortField, setSortField] = useState<"productName" | "designName">(
+    "designName"
+  );
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-  // Sort state
-  const [sortField, setSortField] = useState<
-    "productName" | "designName" | null
-  >(null);
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const sortedData = [...data].sort((a, b) => {
+    const aValue = a[sortField].toLowerCase();
+    const bValue = b[sortField].toLowerCase();
+
+    if (sortDirection === "asc") {
+      return aValue.localeCompare(bValue);
+    } else {
+      return bValue.localeCompare(aValue);
+    }
+  });
 
   const handleSort = (field: "productName" | "designName") => {
     if (sortField === field) {
@@ -77,25 +85,13 @@ export const TableSavedDesign = ({
     }
   };
 
-  // Sort data
-  const sortedData = [...data].sort((a, b) => {
-    if (!sortField) return 0;
-
-    const aValue = sortField === "productName" ? a.productName : a.designName;
-    const bValue = sortField === "productName" ? b.productName : b.designName;
-
-    const comparison = aValue.localeCompare(bValue);
-    return sortDirection === "asc" ? comparison : -comparison;
-  });
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return "";
     try {
-      const date = new Date(dateString);
-      return date.toLocaleString("vi-VN", {
+      return new Date(dateString).toLocaleDateString("en-US", {
         year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
+        month: "short",
+        day: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       });
@@ -219,16 +215,7 @@ export const TableSavedDesign = ({
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" asChild>
                       <Link
-                        href={`/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`}
-                        onClick={() => {
-                          console.log("Edit button clicked for design:", {
-                            designId: item.id,
-                            designName: item.designName,
-                            productId: item.productId,
-                            colorId: item.colorId,
-                            fullURL: `/designer/${item.productId}?colorId=${item.colorId}&designId=${item.id}`,
-                          });
-                        }}
+                        href={`/designer_management/designer-editor/${item.productId}?colorId=${item.colorId}&designId=${item.id}`}
                       >
                         Edit
                       </Link>
@@ -304,9 +291,8 @@ export const TableSavedDesign = ({
           designId={selectedDesign.id}
           designName={selectedDesign.designName}
           colorId={selectedDesign.colorId}
-          mode="add"
         />
       )}
     </>
   );
-};
+}; 

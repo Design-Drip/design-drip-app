@@ -47,7 +47,6 @@ export default function DesignerQuoteDetailPage() {
         ? productIdRaw
         : productIdRaw?._id || productIdRaw?.id;
       if (productId && !hasFetchedProduct && !isFetchingProduct.current) {
-        console.log("Fetching product for ID:", productId);
         fetchProduct(productId);
       }
     } catch (err: any) {
@@ -59,7 +58,6 @@ export default function DesignerQuoteDetailPage() {
 
   const fetchProduct = async (productId: string) => {
     if (isFetchingProduct.current) {
-      console.log("Already fetching product, skipping...");
       return;
     }
     
@@ -67,11 +65,9 @@ export default function DesignerQuoteDetailPage() {
       isFetchingProduct.current = true;
       setLoadingProduct(true);
       setHasFetchedProduct(true);
-      console.log("Starting product fetch for:", productId);
       const res = await fetch(`/api/products/${productId}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to fetch product");
-      console.log("Product fetch completed:", data);
       setProduct(data);
     } catch (err: any) {
       console.error("Product fetch error:", err);

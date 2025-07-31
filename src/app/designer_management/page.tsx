@@ -5,17 +5,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Palette, Image, TrendingUp, Users, Plus, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
-import SavedDesigns from "@/components/saved-designs/SavedDesigns";
+import { SavedDesignsByQuote } from "@/app/designer_management/my-designs/SavedDesignsByQuote";
+import useGetDesign from "@/features/design/use-get-design";
+import { useGetMyAssignedQuotes } from "@/features/request-quote/hooks/use-get-quote";
 
 export default function DesignerManagementPage() {
   const router = useRouter();
+  const { data: designsData } = useGetDesign();
+  const { data: assignedQuotesData } = useGetMyAssignedQuotes();
   
-  // Mock data for designer dashboard
+  const designs = (designsData?.data || []) as any[];
+  const assignedQuotes = (assignedQuotesData?.data || []) as any[];
+  
+  // Real data for designer dashboard
   const stats = {
-    totalDesigns: 24,
-    publishedDesigns: 18,
-    totalViews: 1250,
-    totalLikes: 89,
+    totalDesigns: designs.length,
+    publishedDesigns: designs.filter(d => !d.quote_id).length, // Personal designs
+    totalViews: assignedQuotes.length,
+    totalLikes: designs.filter(d => d.quote_id).length, // Quote-based designs
   };
 
   return (
@@ -153,22 +160,22 @@ export default function DesignerManagementPage() {
         </CardContent>
       </Card>
 
-      {/* Recent Saved Designs */}
+      {/* Saved Designs by Quote */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Recent Saved Designs</CardTitle>
+            <CardTitle>Saved Designs by Quote</CardTitle>
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => router.push("/designer_management/editor?saved=true")}
+              onClick={() => router.push("/designer_management/my-designs")}
             >
               View All
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <SavedDesigns displayActionMenu={false} />
+          <SavedDesignsByQuote designs={designs} />
         </CardContent>
       </Card>
     </div>

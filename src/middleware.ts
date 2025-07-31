@@ -8,7 +8,6 @@ const isProtectedRoute = createRouteMatcher(["/settings(.*)", "wishlist(.*)"]);
 export default clerkMiddleware(async (auth, req) => {
   const { sessionClaims, getToken } = await auth();
   const token = await getToken();
-  console.log("Token:", token);
 
   if (isAdminRoute(req) && sessionClaims?.metadata?.role !== "admin" && sessionClaims?.metadata?.role !== "designer") {
     const url = new URL("/", req.url);
