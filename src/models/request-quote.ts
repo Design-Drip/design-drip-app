@@ -1,3 +1,4 @@
+import { ADMIN_RESPONSE_STATUSES, PRINTING_METHODS, QUOTE_STATUSES, QuoteStatus, REQUESTED_CHANGE_ASPECTS, REVISION_REASONS } from "@/constants/quoteStatus";
 import mongoose, { Model } from "mongoose";
 
 const adminResponseVersionSchema = new mongoose.Schema({
@@ -7,7 +8,7 @@ const adminResponseVersionSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ["reviewing", "quoted", "revised", "approved", "rejected"],
+        enum: ADMIN_RESPONSE_STATUSES,
         required: true,
     },
     quotedPrice: {
@@ -59,13 +60,10 @@ const adminResponseVersionSchema = new mongoose.Schema({
         },
         totalPrice: {
             type: Number,
-            required: function() {
-                return this.status === "quoted" || this.status === "revised";
-            },
             min: 0,
         },
     },
-    
+
     productionDetails: {
         estimatedDays: {
             type: Number,
@@ -73,7 +71,7 @@ const adminResponseVersionSchema = new mongoose.Schema({
         },
         printingMethod: {
             type: String,
-            enum: ["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"],
+            enum: PRINTING_METHODS,
         },
         materialSpecs: {
             type: String,
@@ -88,7 +86,7 @@ const adminResponseVersionSchema = new mongoose.Schema({
             available: Boolean,
         }],
     },
-    
+
     respondedBy: {
         type: String,
         ref: "Users",
@@ -108,12 +106,12 @@ const adminResponseVersionSchema = new mongoose.Schema({
     customerViewedAt: {
         type: Date,
     },
-    
+
     customerFeedback: {
         requestedChanges: [{
             aspect: {
                 type: String,
-                enum: ["price", "timeline", "materials", "design", "other"],
+                enum: REQUESTED_CHANGE_ASPECTS,
             },
             description: {
                 type: String,
@@ -121,14 +119,15 @@ const adminResponseVersionSchema = new mongoose.Schema({
             },
         }],
     },
-    
+
+
     isCurrentVersion: {
         type: Boolean,
         default: true,
     },
     revisionReason: {
         type: String,
-        enum: ["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"],
+        enum: REVISION_REASONS,
     },
 }, { timestamps: true, _id: true });
 
@@ -200,7 +199,11 @@ interface RequestQuoteDoc extends mongoose.Document {
     needDeliveryBy?: Date,
     extraInformation?: string,
 
-    status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed",
+    artwork?: string,
+    desiredWidth?: number,
+    desiredHeight?: number,
+
+    status: QuoteStatus,
     quotedPrice?: number,
     quotedAt?: Date,
     approvedAt?: Date,
@@ -208,7 +211,6 @@ interface RequestQuoteDoc extends mongoose.Document {
     rejectionReason?: string,
     adminNotes?: string,
 
-    // ✅ NEW: Versioned admin responses
     adminResponses: {
         version: number,
         status: string,
@@ -246,7 +248,6 @@ interface RequestQuoteDoc extends mongoose.Document {
         revisionReason?: string,
     }[],
 
-    // ✅ NEW: Version tracking
     currentVersion: number,
     totalRevisions: number,
 
@@ -347,7 +348,7 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
         //Status and tracking
         status: {
             type: String,
-            enum: ["pending", "reviewing", "quoted", "approved", "rejected", "completed"],
+            enum: QUOTE_STATUSES,
             default: "pending",
             index: true,
         },
@@ -403,20 +404,20 @@ requestQuoteSchema.index({ emailAddress: 1 }),
     requestQuoteSchema.index({ status: 1, createAt: -1 }),
     requestQuoteSchema.index({ createdAt: -1 }),
     requestQuoteSchema.index({ type: 1 })
-    // ✅ NEW: Additional indexes for admin responses
-    requestQuoteSchema.index({ currentVersion: 1 }),
+// ✅ NEW: Additional indexes for admin responses
+requestQuoteSchema.index({ currentVersion: 1 }),
     requestQuoteSchema.index({ "adminResponses.isCurrentVersion": 1 }),
     requestQuoteSchema.index({ "adminResponses.respondedBy": 1 }),
 
-//Validation: Ensure either productDetails or customRequest is provided based on type
-requestQuoteSchema.pre("validate", function (this: RequestQuoteDoc) {
-    if (this.type === "product" && !this.productDetails) {
-        this.invalidate("productDetails", "Product details are required for product type requests");
-    }
-    if (this.type === "custom" && !this.customRequest) {
-        this.invalidate("customRequest", "Custom request details are required for custom type requests");
-    }
-});
+    //Validation: Ensure either productDetails or customRequest is provided based on type
+    requestQuoteSchema.pre("validate", function (this: RequestQuoteDoc) {
+        if (this.type === "product" && !this.productDetails) {
+            this.invalidate("productDetails", "Product details are required for product type requests");
+        }
+        if (this.type === "custom" && !this.customRequest) {
+            this.invalidate("customRequest", "Custom request details are required for custom type requests");
+        }
+    });
 
 // ✅ NEW: Pre-save middleware for version tracking
 requestQuoteSchema.pre("save", function (this: RequestQuoteDoc) {
@@ -444,7 +445,7 @@ interface RequestQuoteModel extends Model<RequestQuoteDoc> {
 }
 
 // Add admin response with versioning
-requestQuoteSchema.statics.addAdminResponse = function(
+requestQuoteSchema.statics.addAdminResponse = function (
     quoteId: string,
     responseData: any,
     adminId: string,
@@ -471,7 +472,7 @@ requestQuoteSchema.statics.addAdminResponse = function(
 
         quote.adminResponses.push(newResponse);
         quote.currentVersion = newVersion;
-        
+
         if (isRevision) {
             quote.totalRevisions += 1;
         }
@@ -481,7 +482,7 @@ requestQuoteSchema.statics.addAdminResponse = function(
 };
 
 // Get current active response
-requestQuoteSchema.statics.getCurrentResponse = function(quoteId: string) {
+requestQuoteSchema.statics.getCurrentResponse = function (quoteId: string) {
     return this.findById(quoteId).then((quote: RequestQuoteDoc) => {
         if (!quote) return null;
         return quote.adminResponses.find(r => r.isCurrentVersion);
@@ -489,7 +490,7 @@ requestQuoteSchema.statics.getCurrentResponse = function(quoteId: string) {
 };
 
 // Get full response history
-requestQuoteSchema.statics.getResponseHistory = function(quoteId: string) {
+requestQuoteSchema.statics.getResponseHistory = function (quoteId: string) {
     return this.findById(quoteId).then((quote: RequestQuoteDoc) => {
         if (!quote) return [];
         return quote.adminResponses.sort((a, b) => a.version - b.version);

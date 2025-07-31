@@ -28,19 +28,9 @@ import SelectedProductInfo from '../SelectedProductInfo';
 import { useSelectedProductStore } from '../../store/useSelectedProductStore';
 import { useCreateRequestQuoteMutation } from '../../services/mutations';
 import { toast } from 'sonner';
+import { UploadDropzone } from '@/lib/uploadthing';
 
 // --- Zod schemas ---
-const productSchema = z.object({
-    productId: z.string().min(1, 'Choose a product'),
-    quantity: z.coerce.number().min(1, 'At least 1'),
-    productsQuantities: z.record(z.record(z.number().min(0))).optional(),
-    quantityBySize: z.record(z.record(z.number().min(0))).optional()
-});
-
-const customSchema = z.object({
-    customNeed: z.string().min(5, 'Describe what you need'),
-});
-
 const fullSchema = z.object({
     firstName: z.string().min(1, 'Required'),
     lastName: z.string().min(1, 'Required'),
@@ -54,10 +44,36 @@ const fullSchema = z.object({
     company: z.string().optional(),
     agreeTerms: z.boolean().refine(v => v, { message: 'You must agree to terms' }),
     type: z.enum(['product', 'custom']),
-    product: productSchema.optional(),
-    custom: customSchema.optional(),
+
+    // Optional fields cho cả hai type
+    product: z.object({
+        productId: z.string().optional(),
+        quantity: z.coerce.number().optional(),
+        quantityBySize: z.record(z.record(z.number().min(0))).optional()
+    }).optional(),
+
+    custom: z.object({
+        customNeed: z.string().optional(),
+    }).optional(),
+
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
+    desiredWidth: z.coerce.number().min(0.5, 'Minimum width is 0.5 inches').optional(),
+    desiredHeight: z.coerce.number().min(0.5, 'Minimum height is 0.5 inches').optional(),
+    artwork: z.string().optional(),
+}).refine((data) => {
+    if (data.type === 'product') {
+        return data.product?.productId && data.product.productId.length > 0;
+    }
+
+    if (data.type === 'custom') {
+        return data.custom?.customNeed && data.custom.customNeed.length >= 5;
+    }
+
+    return true;
+}, {
+    message: "Please complete the required fields for your selection",
+    path: ["type"]
 });
 
 type FormData = z.infer<typeof fullSchema>;
@@ -70,7 +86,7 @@ export default function RequestQuotePage() {
     const createRequestQuoteMutation = useCreateRequestQuoteMutation();
 
     const form = useForm<FormData>({
-        // resolver: zodResolver(fullSchema),
+        resolver: zodResolver(fullSchema),
         defaultValues: {
             firstName: '',
             lastName: '',
@@ -87,7 +103,6 @@ export default function RequestQuotePage() {
             product: {
                 productId: '',
                 quantity: 0,
-                productsQuantities: {},
                 quantityBySize: {},
             },
             custom: {
@@ -95,6 +110,9 @@ export default function RequestQuotePage() {
             },
             needDeliveryBy: '',
             extraInformation: '',
+            desiredWidth: undefined,
+            desiredHeight: undefined,
+            artwork: '',
         },
         mode: 'onTouched',
     });
@@ -123,6 +141,9 @@ export default function RequestQuotePage() {
                 type: data.type,
                 needDeliveryBy: data.needDeliveryBy,
                 extraInformation: data.extraInformation,
+                desiredWidth: data.desiredWidth,
+                desiredHeight: data.desiredHeight,
+                artwork: data.artwork,
             };
 
             if (data.type === 'product' && data.product) {
@@ -334,8 +355,26 @@ export default function RequestQuotePage() {
                                         className="flex space-x-4 mb-4"
                                         value={type}
                                         onValueChange={val => {
-                                            setType(val as 'product' | 'custom');
-                                            field.onChange(val);
+                                            const newType = val as 'product' | 'custom';
+                                            setType(newType);
+                                            field.onChange(newType);
+
+                                            // ✅ Reset conditional fields when type changes
+                                            if (newType === 'product') {
+                                                form.setValue('product', {
+                                                    productId: '',
+                                                    quantity: 1, // Set valid default
+                                                    quantityBySize: {},
+                                                });
+                                                form.setValue('custom', { customNeed: '' });
+                                            } else {
+                                                form.setValue('custom', { customNeed: '' });
+                                                form.setValue('product', {
+                                                    productId: '',
+                                                    quantity: 1, // Keep valid default
+                                                    quantityBySize: {},
+                                                });
+                                            }
                                         }}
                                     >
                                         <FormItem className="flex items-center space-x-2">
@@ -388,7 +427,13 @@ export default function RequestQuotePage() {
                                     <FormItem>
                                         <FormLabel>Describe what you need</FormLabel>
                                         <FormControl>
-                                            <Textarea placeholder="Tell us in detail..." {...field} />
+                                            <Textarea
+                                                placeholder="Tell us in detail..."
+                                                className="resize-none"
+                                                cols={30}
+                                                rows={6}
+                                                {...field}
+                                            />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -397,6 +442,140 @@ export default function RequestQuotePage() {
                         </div>
                     )}
                 </div>
+                {/* Artwork Upload Section */}
+                <div className="mb-6">
+                    <h3 className="text-md font-medium mb-3">Upload Your Design (Optional)</h3>
+                    <FormField
+                        control={form.control}
+                        name="artwork"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Upload Artwork/Design</FormLabel>
+                                <FormControl>
+                                    <div className="w-full">
+                                        {field.value ? (
+                                            <div className="border-2 border-dashed border-green-300 rounded-lg p-4 bg-green-50">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-12 h-12 bg-green-100 rounded flex items-center justify-center">
+                                                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-green-800">
+                                                                Artwork uploaded successfully
+                                                            </p>
+                                                            <p className="text-xs text-green-600">
+                                                                Click to view or replace
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex space-x-2">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => window.open(field.value, '_blank')}
+                                                        >
+                                                            View
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => field.onChange('')}
+                                                        >
+                                                            Remove
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <UploadDropzone
+                                                endpoint="designCanvas"
+                                                onClientUploadComplete={(res) => {
+                                                    if (res && res[0]) {
+                                                        field.onChange(res[0].url);
+                                                        toast.success("Artwork uploaded successfully!");
+                                                    }
+                                                }}
+                                                onUploadError={(error: Error) => {
+                                                    toast.error("Upload failed: " + error.message);
+                                                }}
+                                                appearance={{
+                                                    container: "border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors",
+                                                    uploadIcon: "text-gray-400",
+                                                    label: "text-gray-600 text-sm",
+                                                    allowedContent: "text-xs text-gray-500"
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                </FormControl>
+                                <FormDescription>
+                                    Upload your design file (PNG, JPG, SVG, PDF, AI). Max file size: 8MB
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                {/* Desired Dimensions Section */}
+                <div className="mb-6">
+                    <h3 className="text-md font-medium mb-3">Design Dimensions (Optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="desiredWidth"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Desired Width</FormLabel>
+                                    <div className="flex items-center space-x-2">
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                min="0.5"
+                                                placeholder="e.g. 5.5"
+                                                {...field}
+                                                value={field.value || ''}
+                                            />
+                                        </FormControl>
+                                        <span className="text-sm text-muted-foreground min-w-[2rem]">inches</span>
+                                    </div>
+                                    <FormDescription>Width of your design in inches</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="desiredHeight"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Desired Height</FormLabel>
+                                    <div className="flex items-center space-x-2">
+                                        <FormControl>
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                min="0.5"
+                                                placeholder="e.g. 3.2"
+                                                {...field}
+                                                value={field.value || ''}
+                                            />
+                                        </FormControl>
+                                        <span className="text-sm text-muted-foreground min-w-[2rem]">inches</span>
+                                    </div>
+                                    <FormDescription>Height of your design in inches</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </div>
+
                 <div>
                     <h2 className="text-lg font-semibold mb-4">3. Delivery & Extra Information</h2>
                     <FormField
@@ -423,10 +602,20 @@ export default function RequestQuotePage() {
                                     <PopoverContent className="w-auto p-0">
                                         <Calendar
                                             mode="single"
-                                            selected={field.value ? new Date(field.value) : undefined}
+                                            selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
                                             onSelect={date => {
-                                                field.onChange(date ? date.toISOString().slice(0, 10) : "");
+                                                if (date) {
+                                                    // Sử dụng local date string thay vì ISO để tránh timezone issue
+                                                    const year = date.getFullYear();
+                                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                    const day = String(date.getDate()).padStart(2, '0');
+                                                    const localDateString = `${year}-${month}-${day}`;
+                                                    field.onChange(localDateString);
+                                                } else {
+                                                    field.onChange("");
+                                                }
                                             }}
+                                            disabled={(date) => date < new Date()}
                                         />
                                     </PopoverContent>
                                 </Popover>
@@ -442,7 +631,13 @@ export default function RequestQuotePage() {
                             <FormItem>
                                 <FormLabel>Extra information</FormLabel>
                                 <FormControl>
-                                    <Textarea className="resize-none" placeholder="Any other details or requirements?" {...field} />
+                                    <Textarea
+                                        className="resize-none"
+                                        cols={30}
+                                        rows={6}
+                                        placeholder="Any other details or requirements?"
+                                        {...field}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
