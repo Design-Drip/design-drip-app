@@ -25,7 +25,7 @@ import {
     MessageSquare,
 } from "lucide-react";
 import { formatPrice } from "@/lib/price";
-import { useCreateAdminResponse, useCreateRevision } from "../services/mutations";
+import { useCreateAdminResponse, useUpdateRequestQuoteStatusMutation } from "../services/mutations";
 import { toast } from "sonner";
 import RequestQuoteResponseForm from "./RequestQuoteResponseForm";
 
@@ -69,7 +69,6 @@ interface RequestQuoteStatusUpdateProps {
     quote: RequestQuote;
 }
 
-// ✅ UPDATED: Add revised status
 const getStatusConfig = (status: string) => {
     switch (status) {
         case "pending":
@@ -133,12 +132,11 @@ const getStatusConfig = (status: string) => {
 
 export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProps) {
     const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false);
-    const [isRevisionDialogOpen, setIsRevisionDialogOpen] = useState(false);
     const [selectedInitialStatus, setSelectedInitialStatus] = useState<string>("");
     const router = useRouter();
 
     const createResponseMutation = useCreateAdminResponse();
-    const createRevisionMutation = useCreateRevision();
+    const updateStatusMutation = useUpdateRequestQuoteStatusMutation();
 
     const currentStatusConfig = getStatusConfig(quote.status);
     const StatusIcon = currentStatusConfig.icon;
@@ -167,14 +165,17 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
 
     const nextSteps = getNextSteps(quote.status);
 
-    const handleQuickAction = (status: string) => {
+    const handleQuickAction = async (status: string) => {
         setSelectedInitialStatus(status);
+        if (status === "reviewing") {
+            await updateStatusMutation.mutateAsync({
+                id: quote.id,
+                status,
+            });
+            toast.success(`Status updated to ${status}`);
+            return
+        }
         setIsResponseDialogOpen(true);
-    };
-
-    const handleCreateRevision = () => {
-        setSelectedInitialStatus("revised");
-        setIsRevisionDialogOpen(true);
     };
 
     const handleResponseSubmit = async (data: any) => {
@@ -215,43 +216,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
         }
     };
 
-    const handleRevisionSubmit = async (data: any) => {
-        try {
-            const submitData = {
-                ...data,
-                status: "revised",
-                quotedPrice: data.quotedPrice ? parseFloat(data.quotedPrice) : undefined,
-                priceBreakdown: {
-                    basePrice: parseFloat(data.basePrice || "0") || undefined,
-                    setupFee: parseFloat(data.setupFee || "0") || 0,
-                    designFee: parseFloat(data.designFee || "0") || 0,
-                    rushFee: parseFloat(data.rushFee || "0") || 0,
-                    shippingCost: parseFloat(data.shippingCost || "0") || 0,
-                    tax: parseFloat(data.tax || "0") || 0,
-                    totalPrice: parseFloat(data.quotedPrice || "0"),
-                },
-                productionDetails: {
-                    estimatedDays: data.estimatedDays ? parseInt(data.estimatedDays) : undefined,
-                    printingMethod: data.printingMethod,
-                    materialSpecs: data.materialSpecs,
-                    colorLimitations: data.colorLimitations,
-                },
-                validUntil: data.validUntil,
-                revisionReason: data.revisionReason,
-            };
-
-            await createRevisionMutation.mutateAsync({
-                quoteId: quote.id,
-                responseData: submitData,
-            });
-
-            setIsRevisionDialogOpen(false);
-            router.refresh();
-        } catch (error) {
-            console.error("Error creating revision:", error);
-        }
-    };
-
     return (
         <>
             <Card>
@@ -267,15 +231,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                             </CardDescription>
                         </div>
                         <div className="flex items-center gap-2">
-                            {/* ✅ NEW: Show version info */}
-                            {quote.currentVersion && (
-                                <Badge variant="secondary">
-                                    v{quote.currentVersion}
-                                    {quote.totalRevisions && quote.totalRevisions > 0 &&
-                                        ` (${quote.totalRevisions} revisions)`
-                                    }
-                                </Badge>
-                            )}
                             <Badge variant="outline" className={currentStatusConfig.color}>
                                 {currentStatusConfig.label}
                             </Badge>
@@ -298,7 +253,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                             </div>
                         </div>
 
-                        {/* ✅ NEW: Current Response Message */}
+                        {/* Current Response Message */}
                         {quote.responseMessage && (
                             <div>
                                 <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -313,7 +268,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                             </div>
                         )}
 
-                        {/* ✅ ENHANCED: Price breakdown display */}
+                        {/* Price breakdown display */}
                         {quote.quotedPrice && (
                             <div>
                                 <h4 className="font-medium mb-2">Current Quote Price</h4>
@@ -321,7 +276,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                                     {formatPrice(quote.quotedPrice)}
                                 </p>
 
-                                {/* ✅ NEW: Show price breakdown if available */}
+                                {/* Show price breakdown if available */}
                                 {quote.priceBreakdown && (
                                     <div className="mt-2 p-3 bg-green-50 border border-green-200 rounded-lg">
                                         <div className="space-y-1 text-sm">
@@ -367,7 +322,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                             </div>
                         )}
 
-                        {/* ✅ NEW: Production Details Display */}
+                        {/*Production Details Display */}
                         {quote.productionDetails && (
                             <div>
                                 <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -402,7 +357,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                             </div>
                         )}
 
-                        {/* ✅ NEW: Valid Until Display */}
+                        {/*Valid Until Display */}
                         {quote.validUntil && (
                             <div>
                                 <h4 className="font-medium mb-2">Quote Valid Until</h4>
@@ -459,18 +414,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                                         </Button>
                                     );
                                 })}
-                                {/* ✅ NEW: Revision button for quoted status */}
-                                {quote.status === "quoted" && (
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={handleCreateRevision}
-                                        className="flex items-center gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
-                                    >
-                                        <FileCheck className="h-4 w-4" />
-                                        Create Revision
-                                    </Button>
-                                )}
                             </div>
                         </div>
                     )}
@@ -486,15 +429,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                         >
                             Create Response
                         </Button>
-                        {(quote.status === "quoted" || quote.status === "revised") && (
-                            <Button
-                                variant="outline"
-                                className="flex-1"
-                                onClick={handleCreateRevision}
-                            >
-                                Create Revision
-                            </Button>
-                        )}
                     </div>
                 </CardContent>
             </Card>
@@ -508,17 +442,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                 onSubmit={handleResponseSubmit}
                 isLoading={createResponseMutation.isPending}
                 mode="respond"
-            />
-
-            {/* Revision Form Dialog */}
-            <RequestQuoteResponseForm
-                open={isRevisionDialogOpen}
-                onOpenChange={setIsRevisionDialogOpen}
-                quote={quote}
-                initialStatus="revised"
-                onSubmit={handleRevisionSubmit}
-                isLoading={createRevisionMutation.isPending}
-                mode="revise"
             />
         </>
     );

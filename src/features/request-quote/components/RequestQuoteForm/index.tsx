@@ -29,8 +29,8 @@ import { useSelectedProductStore } from '../../store/useSelectedProductStore';
 import { useCreateRequestQuoteMutation } from '../../services/mutations';
 import { toast } from 'sonner';
 import { UploadDropzone } from '@/lib/uploadthing';
+import { useRouter } from 'next/navigation';
 
-// --- Zod schemas ---
 const fullSchema = z.object({
     firstName: z.string().min(1, 'Required'),
     lastName: z.string().min(1, 'Required'),
@@ -43,7 +43,6 @@ const fullSchema = z.object({
     phone: z.string().min(1, 'Required'),
     company: z.string().optional(),
     agreeTerms: z.boolean().refine(v => v, { message: 'You must agree to terms' }),
-    type: z.enum(['product', 'custom']),
 
     product: z.object({
         productId: z.string().optional(),
@@ -52,11 +51,6 @@ const fullSchema = z.object({
         quantityBySize: z.record(z.record(z.number().min(0))).optional()
     }).optional(),
 
-    custom: z.object({
-        customNeed: z.string().optional(),
-    }).optional(),
-
-    needDesignService: z.boolean().default(false),
     designDescription: z.string().optional(),
 
     needDeliveryBy: z.string().optional(),
@@ -64,36 +58,16 @@ const fullSchema = z.object({
     desiredWidth: z.coerce.number().min(0.5, 'Minimum width is 0.5 inches').optional(),
     desiredHeight: z.coerce.number().min(0.5, 'Minimum height is 0.5 inches').optional(),
     artwork: z.string().optional(),
-}).refine((data) => {
-    if (data.type === 'product') {
-        return data.product?.productId && data.product.productId.length > 0;
-    }
-
-    if (data.type === 'custom') {
-        return data.custom?.customNeed && data.custom.customNeed.length >= 5;
-    }
-
-    return true;
-}, {
-    message: "Please complete the required fields for your selection",
-    path: ["type"]
-}).refine((data) => {
-    //Validate design description when design service is needed
-    if (data.needDesignService) {
-        return data.designDescription && data.designDescription.trim().length >= 10;
-    }
-    return true;
-}, {
-    message: "Please provide a detailed description of your design needs (minimum 10 characters)",
-    path: ["designDescription"]
 });
+
+// ✅ REMOVED: Design description validation refinement
 
 type FormData = z.infer<typeof fullSchema>;
 
 // --- Main component ---
 export default function RequestQuotePage() {
-    const [type, setType] = React.useState<'product' | 'custom'>('product');
-    const [needDesignService, setNeedDesignService] = React.useState(false);
+    const router = useRouter();
+    // ✅ REMOVED: needDesignService state
 
     const { selectedProduct, clearSelectedProduct } = useSelectedProductStore();
     const createRequestQuoteMutation = useCreateRequestQuoteMutation();
@@ -112,17 +86,13 @@ export default function RequestQuotePage() {
             state: '',
             postcode: '',
             agreeTerms: false,
-            type: 'product',
             product: {
                 productId: '',
                 quantity: 0,
                 selectedColorId: '',
                 quantityBySize: {},
             },
-            custom: {
-                customNeed: '',
-            },
-            needDesignService: false,
+            // ✅ REMOVED: needDesignService: false,
             designDescription: '',
             needDeliveryBy: '',
             extraInformation: '',
@@ -154,17 +124,16 @@ export default function RequestQuotePage() {
                 state: data.state,
                 postcode: data.postcode,
                 agreeTerms: data.agreeTerms,
-                type: data.type,
                 needDeliveryBy: data.needDeliveryBy,
                 extraInformation: data.extraInformation,
                 desiredWidth: data.desiredWidth,
                 desiredHeight: data.desiredHeight,
                 artwork: data.artwork,
-                needDesignService: data.needDesignService,
+                needDesignService: !!(data.designDescription && data.designDescription.trim().length > 0),
                 designDescription: data.designDescription,
             };
 
-            if (data.type === 'product' && data.product) {
+            if (data.product) {
                 requestData.productId = data.product.productId;
                 requestData.quantity = data.product.quantity;
                 requestData.selectedColorId = data.product.selectedColorId;
@@ -178,19 +147,19 @@ export default function RequestQuotePage() {
                 }
             }
 
-            if (data.type === 'custom' && data.custom) {
-                requestData.customNeed = data.custom.customNeed;
-            }
-
             await createRequestQuoteMutation.mutateAsync(requestData);
 
             toast.success("Request quote submitted successfully!");
 
             // Reset form
             form.reset();
-            setType('product');
-            setNeedDesignService(false);
-            clearSelectedProduct()
+            // ✅ REMOVED: setNeedDesignService(false);
+            clearSelectedProduct();
+
+            // ✅ FIXED: Add router ready check
+            if (typeof window !== 'undefined') {
+                router.push('/my-request-quotes');
+            }
         } catch (error) {
             console.error("Error submitting request:", error);
             toast.error(error instanceof Error ? error.message : "Failed to submit request");
@@ -264,7 +233,7 @@ export default function RequestQuotePage() {
                             name="company"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Company <span className="text-red-500">*</span></FormLabel>
+                                    <FormLabel>Company</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Company (optional)" {...field} />
                                     </FormControl>
@@ -357,193 +326,75 @@ export default function RequestQuotePage() {
                         )}
                     />
                 </div>
+
                 <div className='mb-8'>
                     <h2 className="text-lg font-semibold mb-4">2. What do you need?</h2>
-                    <FormField
-                        control={form.control}
-                        name="type"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Choose an option</FormLabel>
-                                <FormControl>
-                                    <RadioGroup
-                                        className="flex space-x-4 mb-4"
-                                        value={type}
-                                        onValueChange={val => {
-                                            const newType = val as 'product' | 'custom';
-                                            setType(newType);
-                                            field.onChange(newType);
-
-                                            // ✅ Reset conditional fields when type changes
-                                            if (newType === 'product') {
-                                                form.setValue('product', {
-                                                    productId: '',
-                                                    quantity: 1, // Set valid default
-                                                    quantityBySize: {},
-                                                });
-                                                form.setValue('custom', { customNeed: '' });
-                                            } else {
-                                                form.setValue('custom', { customNeed: '' });
-                                                form.setValue('product', {
-                                                    productId: '',
-                                                    quantity: 1, // Keep valid default
-                                                    quantityBySize: {},
-                                                });
-                                            }
-                                        }}
-                                    >
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <RadioGroupItem value="product" id="type-product" className='mt-2 mr-2' />
-                                            </FormControl>
-                                            <FormLabel htmlFor="type-product" className="cursor-pointer">
-                                                Choose one of our products
-                                            </FormLabel>
-                                        </FormItem>
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <RadioGroupItem value="custom" id="type-custom" className='mt-2 mr-2' />
-                                            </FormControl>
-                                            <FormLabel htmlFor="type-custom" className="cursor-pointer">
-                                                Tell us what you need
-                                            </FormLabel>
-                                        </FormItem>
-                                    </RadioGroup>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    {type === 'product' ? (
-                        <div className='mt-4'>
-                            <FormField
-                                control={form.control}
-                                name="product.productId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className='mr-2'>Select Product</FormLabel>
-                                        <FormControl>
-                                            <SelectShirtDialog />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            {selectedProduct && <SelectedProductInfo product={selectedProduct} className='mt-4' />}
-                        </div>
-                    ) : (
-                        <div className='mt-4'>
-                            <FormField
-                                control={form.control}
-                                name="custom.customNeed"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Describe what you need</FormLabel>
-                                        <FormControl>
-                                            <Textarea
-                                                placeholder="Tell us in detail..."
-                                                className="resize-none"
-                                                cols={30}
-                                                rows={6}
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    )}
+                    <div className='mt-4'>
+                        <FormField
+                            control={form.control}
+                            name="product.productId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className='mr-2'>Select Product</FormLabel>
+                                    <FormControl>
+                                        <SelectShirtDialog />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        {selectedProduct && <SelectedProductInfo product={selectedProduct} className='mt-4' />}
+                    </div>
                 </div>
-                {/* Design Service Section */}
+
+                {/* ✅ SIMPLIFIED: Always show design service section without toggle */}
                 <div className="mb-6">
-                    <h3 className="text-md font-medium mb-4">Design Service</h3>
-                    <FormField
-                        control={form.control}
-                        name="needDesignService"
-                        render={({ field }) => (
-                            <FormItem className="flex items-center gap-3 space-y-0">
-                                <FormControl>
-                                    <Checkbox
-                                        checked={field.value}
-                                        onCheckedChange={(checked) => {
-                                            field.onChange(checked);
-                                            setNeedDesignService(!!checked);
-                                            if (!checked) {
-                                                form.setValue('designDescription', '');
-                                            }
-                                        }}
-                                        id="needDesignService"
-                                    />
-                                </FormControl>
-                                <div className="space-y-1">
-                                    <FormLabel htmlFor="needDesignService" className="cursor-pointer text-sm font-medium">
-                                        I need design service
-                                    </FormLabel>
-                                    <FormDescription className="text-xs">
-                                        Our design team will create custom artwork based on your requirements
+                    <h3 className="text-md font-medium mb-4">Design Requirements (Optional)</h3>
+
+                    <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                        <FormField
+                            control={form.control}
+                            name="designDescription"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Describe your design ideas</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Tell us about your design ideas, style preferences, colors, themes, text, images you'd like to include, or any specific requirements..."
+                                            className="resize-none min-h-[120px] bg-white"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Describe your design needs and our team will help create the perfect design for you. Leave blank if you already have your design ready.
                                     </FormDescription>
-                                </div>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                    {/* Design Description (conditional) */}
-                    {needDesignService && (
-                        <div className="mt-4 p-4 border border-blue-200 rounded-lg bg-blue-50">
-                            <FormField
-                                control={form.control}
-                                name="designDescription"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Describe your design ideas <span className="text-red-500">*</span></FormLabel>
-                                        <FormControl>
-                                            <Textarea
-                                                placeholder="Tell us about your design ideas, style preferences, colors, themes, text, images you'd like to include, or any specific requirements..."
-                                                className="resize-none min-h-[120px]"
-                                                {...field}
-                                            />
-                                        </FormControl>
-                                        <FormDescription>
-                                            Please provide as much detail as possible about your design vision. This helps our design team create exactly what you're looking for.
-                                        </FormDescription>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
-                                <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Design Service Information:</h4>
-                                <ul className="text-xs text-blue-700 space-y-1">
-                                    <li>• Our professional designers will create custom artwork for you</li>
-                                    <li>• Design service fees will be included in the quote</li>
-                                    <li>• You'll receive design proofs for approval before production</li>
-                                    <li>• Includes up to 3 rounds of revisions</li>
-                                    <li>• Design turnaround: 2-3 business days</li>
-                                </ul>
-                            </div>
+                        <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
+                            <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Design Service Information:</h4>
+                            <ul className="text-xs text-blue-700 space-y-1">
+                                <li>• Our professional designers will create custom artwork for you (if design description is provided)</li>
+                                <li>• Design service fees will be included in the quote</li>
+                                <li>• You'll receive design proofs for approval before production</li>
+                                <li>• Includes up to 3 rounds of revisions</li>
+                                <li>• Design turnaround: 2-3 business days</li>
+                            </ul>
                         </div>
-                    )}
+                    </div>
                 </div>
 
-                {/* Artwork Upload Section */}
+                {/* ✅ UPDATED: Always show artwork upload section */}
                 <div className="mb-6">
-                    <h3 className="text-md font-medium mb-3">
-                        Upload Your Design
-                        {needDesignService ? ' (Reference/Inspiration)' : ' (Optional)'}
-                    </h3>
+                    <h3 className="text-md font-medium mb-3">Upload Your Design or Reference</h3>
                     <FormField
                         control={form.control}
                         name="artwork"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>
-                                    {needDesignService
-                                        ? 'Upload Reference Images or Inspiration'
-                                        : 'Upload Artwork/Design'
-                                    }
-                                </FormLabel>
+                                <FormLabel>Upload Artwork, Logo, or Reference Images</FormLabel>
                                 <FormControl>
                                     <div className="w-full">
                                         {field.value ? (
@@ -557,10 +408,7 @@ export default function RequestQuotePage() {
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-medium text-green-800">
-                                                                {needDesignService
-                                                                    ? 'Reference uploaded successfully'
-                                                                    : 'Artwork uploaded successfully'
-                                                                }
+                                                                File uploaded successfully
                                                             </p>
                                                             <p className="text-xs text-green-600">
                                                                 Click to view or replace
@@ -593,10 +441,7 @@ export default function RequestQuotePage() {
                                                 onClientUploadComplete={(res) => {
                                                     if (res && res[0]) {
                                                         field.onChange(res[0].url);
-                                                        toast.success(needDesignService
-                                                            ? "Reference uploaded successfully!"
-                                                            : "Artwork uploaded successfully!"
-                                                        );
+                                                        toast.success("File uploaded successfully!");
                                                     }
                                                 }}
                                                 onUploadError={(error: Error) => {
@@ -613,16 +458,14 @@ export default function RequestQuotePage() {
                                     </div>
                                 </FormControl>
                                 <FormDescription>
-                                    {needDesignService
-                                        ? 'Upload reference images, logos, or inspiration for our design team (PNG, JPG, SVG, PDF, AI). Max file size: 8MB'
-                                        : 'Upload your design file (PNG, JPG, SVG, PDF, AI). Max file size: 8MB'
-                                    }
+                                    Upload your design file, logo, or reference images (PNG, JPG, SVG, PDF, AI). Max file size: 8MB
                                 </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
+
                 {/* Desired Dimensions Section */}
                 <div className="mb-6">
                     <h3 className="text-md font-medium mb-3">Design Dimensions (Optional)</h3>
@@ -707,7 +550,6 @@ export default function RequestQuotePage() {
                                             selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
                                             onSelect={date => {
                                                 if (date) {
-                                                    // Sử dụng local date string thay vì ISO để tránh timezone issue
                                                     const year = date.getFullYear();
                                                     const month = String(date.getMonth() + 1).padStart(2, '0');
                                                     const day = String(date.getDate()).padStart(2, '0');
@@ -746,7 +588,9 @@ export default function RequestQuotePage() {
                         )}
                     />
                     <div className="flex justify-end mt-6">
-                        <Button type="submit">Submit Request</Button>
+                        <Button type="submit" disabled={createRequestQuoteMutation.isPending}>
+                            {createRequestQuoteMutation.isPending ? "Submitting..." : "Submit Request"}
+                        </Button>
                     </div>
                 </div>
             </form>

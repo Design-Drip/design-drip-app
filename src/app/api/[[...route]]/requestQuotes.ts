@@ -21,9 +21,6 @@ const createRequestQuoteSchema = z.object({
     postcode: z.string().min(1, "Postcode is required"),
     agreeTerms: z.boolean().refine(v => v, { message: "You must agree to terms" }),
 
-    //Request type and details
-    type: z.enum(["product", "custom"]),
-
     //Product details (conditional)
     productId: z.string().optional(),
     quantity: z.coerce.number().min(1).optional(),
@@ -32,9 +29,6 @@ const createRequestQuoteSchema = z.object({
         size: z.string(),
         quantity: z.number().min(0),
     })).optional(),
-
-    //Custom request details (conditional)
-    customNeed: z.string().min(5, "Describe what you need").optional(),
 
     //Design service fields
     needDesignService: z.boolean().default(false),
@@ -48,17 +42,6 @@ const createRequestQuoteSchema = z.object({
     //Delivery and additional information
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
-}).refine((data) => {
-    if (data.type === "product") {
-        return data.productId && data.quantity;
-    }
-    //Validate custom type requirements
-    if (data.type === "custom") {
-        return data.customNeed;
-    }
-    return false;
-}, {
-    message: "Invalid request data based on type",
 }).refine((data) => {
     if (data.needDesignService) {
         return data.designDescription && data.designDescription.trim().length >= 10;
@@ -77,12 +60,10 @@ const updateRequestQuoteSchema = z.object({
 });
 
 const adminResponseSchema = z.object({
-    status: z.enum(["reviewing", "quoted", "revised", "rejected"]),
+    status: z.enum(["reviewing", "quoted", "rejected"]),
     quotedPrice: z.number().min(0).optional(),
     responseMessage: z.string().trim().optional(),
     rejectionReason: z.string().trim().optional(),
-    adminNotes: z.string().trim().optional(),
-    adminImages: z.array(z.string().url()).max(5, "Maximum 5 images allowed").optional(),
 
     // Price breakdown
     priceBreakdown: z.object({
@@ -110,17 +91,6 @@ const adminResponseSchema = z.object({
     validUntil: z.string().optional(),
 });
 
-const revisionSchema = adminResponseSchema.extend({
-    revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]),
-});
-
-const customerFeedbackSchema = z.object({
-    requestedChanges: z.array(z.object({
-        aspect: z.enum(["price", "timeline", "materials", "design", "other"]),
-        description: z.string().trim().min(1, "Description is required"),
-    })).min(1, "At least one change must be requested"),
-});
-
 const app = new Hono()
     .use(verifyAuth)
     //Get all request quotes
@@ -132,7 +102,6 @@ const app = new Hono()
                 page: z.coerce.number().optional().default(1),
                 limit: z.coerce.number().optional().default(10),
                 status: z.enum(["pending", "reviewing", "quote", "approved", "rejected", "completed"]).optional(),
-                type: z.enum(["product", "custom"]).optional(),
                 search: z.string().optional(),
                 sortBy: z.enum(["createdAt", "updatedAt", "status"]).optional().default("createdAt"),
                 sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
@@ -155,10 +124,6 @@ const app = new Hono()
 
                 if (status) {
                     query.status = status;
-                }
-
-                if (type) {
-                    query.type = type;
                 }
 
                 if (search) {
@@ -207,9 +172,7 @@ const app = new Hono()
                     country: quote.country,
                     state: quote.state,
                     postcode: quote.postcode,
-                    type: quote.type,
                     productDetails: quote.productDetails,
-                    customRequest: quote.customRequest,
                     needDeliveryBy: quote.needDeliveryBy,
                     extraInformation: quote.extraInformation,
                     needDesignService: quote.needDesignService,
@@ -224,9 +187,6 @@ const app = new Hono()
                     rejectedAt: quote.rejectedAt,
                     rejectionReason: quote.rejectionReason,
                     adminNotes: quote.adminNotes,
-                    adminResponses: quote.adminResponses,
-                    currentVersion: quote.currentVersion,
-                    totalRevisions: quote.totalRevisions,
                     createdAt: quote.createdAt,
                     updatedAt: quote.updatedAt,
                 }));
@@ -267,7 +227,6 @@ const app = new Hono()
                     state: data.state,
                     postcode: data.postcode,
                     agreeTerms: data.agreeTerms,
-                    type: data.type,
                     needDeliveryBy: data.needDeliveryBy ? new Date(data.needDeliveryBy) : undefined,
                     extraInformation: data.extraInformation,
                     status: "pending",
@@ -279,18 +238,13 @@ const app = new Hono()
                 };
 
                 //Add type-specific details
-                if (data.type === "product") {
-                    requestQuoteData.productDetails = {
-                        productId: new mongoose.Types.ObjectId(data.productId!),
-                        quantity: data.quantity!,
-                        selectedColorId: data.selectedColorId ? new mongoose.Types.ObjectId(data.selectedColorId) : undefined,
-                        quantityBySize: data.quantityBySize,
-                    };
-                } else if (data.type === "custom") {
-                    requestQuoteData.customRequest = {
-                        customNeed: data.customNeed!,
-                    };
-                }
+                requestQuoteData.productDetails = {
+                    productId: new mongoose.Types.ObjectId(data.productId!),
+                    quantity: data.quantity!,
+                    selectedColorId: data.selectedColorId ? new mongoose.Types.ObjectId(data.selectedColorId) : undefined,
+                    quantityBySize: data.quantityBySize,
+                };
+
 
                 const requestQuote = new RequestQuote(requestQuoteData);
                 await requestQuote.save();
@@ -314,7 +268,6 @@ const app = new Hono()
                         data: {
                             id: populateQuote?._id?.toString(),
                             status: populateQuote?.status,
-                            type: populateQuote?.type,
                             createdAt: populateQuote?.createdAt,
                         }
                     },
@@ -393,9 +346,7 @@ const app = new Hono()
                         state: requestQuote.state,
                         postcode: requestQuote.postcode,
                         agreeTerms: requestQuote.agreeTerms,
-                        type: requestQuote.type,
                         productDetails: requestQuote.productDetails,
-                        customRequest: requestQuote.customRequest,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
                         needDesignService: requestQuote.needDesignService,
@@ -410,9 +361,7 @@ const app = new Hono()
                         rejectedAt: requestQuote.rejectedAt,
                         rejectionReason: requestQuote.rejectionReason,
                         adminNotes: requestQuote.adminNotes,
-                        adminResponses: requestQuote.adminResponses,
-                        currentVersion: requestQuote.currentVersion,
-                        totalRevisions: requestQuote.totalRevisions,
+                        priceBreakdown: requestQuote.priceBreakdown,
                         createdAt: requestQuote.createdAt,
                         updatedAt: requestQuote.updatedAt,
                     },
@@ -506,7 +455,6 @@ const app = new Hono()
     )
 
     // Create admin response
-    // Create admin response
     .post("/:id/respond", zValidator("json", adminResponseSchema), async (c) => {
         try {
             const user = c.get("user")!;
@@ -534,23 +482,38 @@ const app = new Hono()
                         message: "Total price doesn't match breakdown calculation"
                     });
                 }
-
-                responseData.quotedPrice = breakdown.totalPrice;
             }
 
-            const preparedData = {
-                ...responseData,
+            const updateData: any = {
+                status: responseData.status,
+                responseMessage: responseData.responseMessage,
+                rejectionReason: responseData.rejectionReason,
+                priceBreakdown: responseData.priceBreakdown,
+                productionDetails: responseData.productionDetails,
                 validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
-                // ✅ NEW: Include admin images if provided
-                adminImages: responseData.adminImages,
+                updatedAt: new Date(),
             };
 
-            const updatedQuote = await RequestQuote.addAdminResponse(
+            // Set specific timestamps based on status
+            switch (responseData.status) {
+                case "quoted":
+                    updateData.quotedPrice = responseData.priceBreakdown?.totalPrice || responseData.quotedPrice;
+                    updateData.quotedAt = new Date();
+                    break;
+                case "rejected":
+                    updateData.rejectedAt = new Date();
+                    break;
+            }
+
+            const updatedQuote = await RequestQuote.findByIdAndUpdate(
                 id,
-                preparedData,
-                user.id,
-                false
+                updateData,
+                { new: true }
             );
+
+            if (!updatedQuote) {
+                throw new HTTPException(404, { message: "Request quote not found" });
+            }
 
             return c.json({
                 success: true,
@@ -562,126 +525,6 @@ const app = new Hono()
             console.error("Error submitting admin response:", error);
             if (error instanceof HTTPException) throw error;
             throw new HTTPException(500, { message: "Failed to submit response" });
-        }
-    })
-
-    // Create revision
-    .post("/:id/revise", zValidator("json", revisionSchema), async (c) => {
-        try {
-            const user = c.get("user")!;
-            const isAdmin = await checkRole("admin");
-
-            if (!isAdmin) {
-                throw new HTTPException(403, { message: "Admin access required" });
-            }
-
-            const { id } = c.req.param();
-            const responseData = c.req.valid("json");
-
-            const preparedData = {
-                ...responseData,
-                validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
-                status: "revised", // Force status to revised for revisions
-            };
-
-            const updatedQuote = await RequestQuote.addAdminResponse(
-                id,
-                preparedData,
-                user.id,
-                true
-            );
-
-            return c.json({
-                success: true,
-                data: updatedQuote,
-                message: "Revision submitted successfully"
-            });
-
-        } catch (error) {
-            console.error("Error submitting revision:", error);
-            if (error instanceof HTTPException) throw error;
-            throw new HTTPException(500, { message: "Failed to submit revision" });
-        }
-    })
-
-    .post("/:id/request-changes", zValidator("json", customerFeedbackSchema), async (c) => {
-        try {
-            const user = c.get("user")!;
-            const { id } = c.req.param();
-            const feedbackData = c.req.valid("json");
-
-            const quote = await RequestQuote.findOne({ _id: id, userId: user.id });
-            if (!quote) {
-                throw new HTTPException(404, { message: "Quote not found" });
-            }
-
-            const currentResponse = quote.adminResponses.find(r => r.isCurrentVersion);
-            if (!currentResponse) {
-                throw new HTTPException(400, { message: "No active response to request changes on" });
-            }
-
-            if (currentResponse.status !== "quoted" && currentResponse.status !== "revised") {
-                throw new HTTPException(400, { message: "Changes can only be requested on quoted responses" });
-            }
-
-            // Update customer feedback with requested changes
-            if (!currentResponse.customerFeedback) {
-                currentResponse.customerFeedback = {};
-            }
-
-            currentResponse.customerFeedback.requestedChanges = feedbackData.requestedChanges;
-
-            // Mark as viewed if not already
-            if (!currentResponse.customerViewed) {
-                currentResponse.customerViewed = true;
-                currentResponse.customerViewedAt = new Date();
-            }
-
-            await quote.save();
-
-            return c.json({
-                success: true,
-                message: "Change requests submitted successfully"
-            });
-
-        } catch (error) {
-            console.error("Error submitting change requests:", error);
-            if (error instanceof HTTPException) throw error;
-            throw new HTTPException(500, { message: "Failed to submit change requests" });
-        }
-    })
-
-    // Mark quote response as viewed
-    .patch("/:id/mark-viewed", async (c) => {
-        try {
-            const user = c.get("user")!;
-            const { id } = c.req.param();
-
-            const result = await RequestQuote.findOneAndUpdate(
-                {
-                    _id: id,
-                    userId: user.id,
-                    "adminResponses.isCurrentVersion": true,
-                    "adminResponses.customerViewed": { $ne: true }
-                },
-                {
-                    "adminResponses.$[elem].customerViewed": true,
-                    "adminResponses.$[elem].customerViewedAt": new Date(),
-                },
-                {
-                    arrayFilters: [{ "elem.isCurrentVersion": true }],
-                    new: true,
-                }
-            );
-
-            return c.json({
-                success: true,
-                message: "Quote marked as viewed"
-            });
-
-        } catch (error) {
-            console.error("Error marking quote as viewed:", error);
-            throw new HTTPException(500, { message: "Failed to mark as viewed" });
         }
     })
 
@@ -700,32 +543,32 @@ const app = new Hono()
                 throw new HTTPException(404, { message: "Quote not found" });
             }
 
-            const currentResponse = quote.adminResponses.find(r => r.isCurrentVersion);
-            if (!currentResponse) {
-                throw new HTTPException(400, { message: "No active response found" });
-            }
-
-            if (currentResponse.status !== "quoted" && currentResponse.status !== "revised") {
+            if (quote.status !== "quoted") {
                 throw new HTTPException(400, { message: "Quote is not in a state that can be approved/rejected" });
             }
 
             // Update quote status
-            quote.status = action === "approve" ? "approved" : "rejected";
+            const updateData: any = {
+                status: action === "approve" ? "approved" : "rejected",
+                updatedAt: new Date(),
+            };
 
             if (action === "approve") {
-                quote.approvedAt = new Date();
-                currentResponse.status = "approved";
+                updateData.approvedAt = new Date();
             } else {
-                quote.rejectedAt = new Date();
-                quote.rejectionReason = reason;
-                currentResponse.status = "rejected";
-                currentResponse.rejectionReason = reason;
+                updateData.rejectedAt = new Date();
+                updateData.rejectionReason = reason;
             }
 
-            await quote.save();
+            const updatedQuote = await RequestQuote.findByIdAndUpdate(
+                id,
+                updateData,
+                { new: true }
+            );
 
             return c.json({
                 success: true,
+                data: updatedQuote,
                 message: `Quote ${action}d successfully`
             });
 

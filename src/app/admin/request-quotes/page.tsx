@@ -35,14 +35,12 @@ export default function RequestQuotesManagementPage() {
   const page = parseInt(searchParams.get("page") || "1");
   const limit = 10;
   const status = searchParams.get("status") || "all";
-  const type = searchParams.get("type") || "all";
   const searchQuery = searchParams.get("search") || "";
 
   const [filters, setFilters] = useState({
     page,
     limit,
     status: status !== "all" ? status : undefined,
-    type: type !== "all" ? type : undefined,
     search: searchQuery || undefined,
     sortBy: "createdAt",
     sortOrder: "desc",
@@ -140,8 +138,6 @@ export default function RequestQuotesManagementPage() {
     quoted: requestQuotes.filter((quote: any) => quote.status === "quoted").length,
     approved: requestQuotes.filter((quote: any) => quote.status === "approved").length,
     rejected: requestQuotes.filter((quote: any) => quote.status === "rejected").length,
-    productQuotes: requestQuotes.filter((quote: any) => quote.type === "product").length,
-    customQuotes: requestQuotes.filter((quote: any) => quote.type === "custom").length,
   };
 
   return (
@@ -165,9 +161,6 @@ export default function RequestQuotesManagementPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.productQuotes} product, {stats.customQuotes} custom
-            </p>
           </CardContent>
         </Card>
 
@@ -219,7 +212,6 @@ export default function RequestQuotesManagementPage() {
         filters={{
           search: filters.search || "",
           status: filters.status || "all",
-          type: filters.type || "all"
         }}
         onFiltersChange={handleFiltersChange}
       />
@@ -233,7 +225,7 @@ export default function RequestQuotesManagementPage() {
               No request quotes found
             </h2>
             <p className="text-muted-foreground">
-              {filters.search || filters.status !== "all" || filters.type !== "all"
+              {filters.search || filters.status !== "all"
                 ? "No quotes match your current filters."
                 : "No quote requests have been submitted yet."}
             </p>

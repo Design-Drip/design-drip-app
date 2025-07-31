@@ -46,7 +46,6 @@ interface RequestQuote {
     emailAddress: string;
     phone: string;
     company?: string;
-    type: "product" | "custom";
     status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
     quotedPrice?: number;
     productDetails?: any;
@@ -134,17 +133,10 @@ const StatusBadge = ({ status }: { status: string }) => {
 export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
 
     const getRequestSummary = (quote: RequestQuote) => {
-        if (quote.type === "product" && quote.productDetails) {
+        if (quote.productDetails) {
             const productName = quote.productDetails.productId?.name || "Product";
             return `${productName} (Qty: ${quote.productDetails.quantity})`;
         }
-
-        if (quote.type === "custom" && quote.customRequest) {
-            const preview = quote.customRequest.customNeed.substring(0, 50);
-            return `${preview}${preview.length < quote.customRequest.customNeed.length ? "..." : ""}`;
-        }
-
-        return `${quote.type === "product" ? "Product" : "Custom"} Quote`;
     };
 
     return (
@@ -162,7 +154,6 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                             <TableRow>
                                 <TableHead>Customer</TableHead>
                                 <TableHead>Request Details</TableHead>
-                                <TableHead>Type</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead>Quote Price</TableHead>
                                 <TableHead>Submitted</TableHead>
@@ -211,22 +202,6 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                                     </div>
                                                 )}
                                             </div>
-                                        </TableCell>
-
-                                        <TableCell>
-                                            <Badge variant="secondary" className="text-xs">
-                                                {quote.type === "product" ? (
-                                                    <>
-                                                        <Package className="w-3 h-3 mr-1" />
-                                                        Product
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <FileText className="w-3 h-3 mr-1" />
-                                                        Custom
-                                                    </>
-                                                )}
-                                            </Badge>
                                         </TableCell>
 
                                         <TableCell>

@@ -15,12 +15,16 @@ import {
   Mail,
   Building,
   FileText,
-  Edit,
+  Calendar,
+  Eye,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 import {
   Card,
   CardContent,
   CardHeader,
+  CardFooter,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,9 +32,8 @@ import { Separator } from "@/components/ui/separator";
 import { formatOrderDateTime, formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
 import { getRequestQuoteQuery } from "@/features/request-quote/services/queries";
-import AdminResponseTimeline from "@/features/my-request-quotes/components/AdminResponseTimeline";
 
-// Types (move to separate types file if needed)
+// Types
 interface ProductDetail {
   productId?: {
     _id: string;
@@ -56,6 +59,7 @@ interface PriceBreakdown {
   rushFee?: number;
   shippingCost?: number;
   tax?: number;
+  totalPrice?: number;
 }
 
 interface ProductionDetails {
@@ -63,21 +67,10 @@ interface ProductionDetails {
   printingMethod?: string;
   materialSpecs?: string;
   colorLimitations?: string;
-}
-
-interface AdminResponse {
-  id: string;
-  status: "pending" | "reviewing" | "quoted" | "revised" | "approved" | "rejected" | "completed";
-  responseMessage?: string;
-  quotedPrice?: number;
-  priceBreakdown?: PriceBreakdown;
-  productionDetails?: ProductionDetails;
-  validUntil?: string;
-  revisionReason?: string;
-  version: number;
-  isCurrentVersion: boolean;
-  customerViewed: boolean;
-  createdAt: string;
+  sizeAvailability?: Array<{
+    size: string;
+    available: boolean;
+  }>;
 }
 
 interface QuoteData {
@@ -93,24 +86,28 @@ interface QuoteData {
   country: string;
   state: string;
   postcode: string;
-  type: "product" | "custom";
   productDetails?: ProductDetail;
-  customRequest?: {
-    customNeed: string;
-  };
   needDeliveryBy?: string;
   extraInformation?: string;
-  status: "pending" | "reviewing" | "quoted" | "revised" | "approved" | "rejected" | "completed";
+  needDesignService?: boolean;
+  designDescription?: string;
+  artwork?: string;
+  desiredWidth?: number;
+  desiredHeight?: number;
+  status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
   quotedPrice?: number;
   quotedAt?: string;
   approvedAt?: string;
   rejectedAt?: string;
   rejectionReason?: string;
   adminNotes?: string;
-  adminResponses?: AdminResponse[];
-  hasUnviewedResponse?: boolean;
-  currentVersion?: number;
-  totalRevisions?: number;
+  responseMessage?: string;
+
+  // ✅ NEW: Direct fields instead of adminResponses
+  priceBreakdown?: PriceBreakdown;
+  productionDetails?: ProductionDetails;
+  validUntil?: string;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -147,11 +144,6 @@ const StatusBadge = ({ status }: { status: string }) => {
         return {
           label: "Quoted",
           className: "bg-purple-100 text-purple-800 border-purple-200",
-        };
-      case "revised":
-        return {
-          label: "Revised",
-          className: "bg-orange-100 text-orange-800 border-orange-200",
         };
       case "approved":
         return {
@@ -199,20 +191,25 @@ export default function RequestQuoteDetailPage() {
     isError,
   } = useQuery(getRequestQuoteQuery(quoteId));
 
-  // Handler functions for admin response actions
-  const handleAcceptQuote = (responseId: string) => {
-    console.log("Accept quote:", responseId);
-    // TODO: Implement accept quote functionality
+  // ✅ NEW: Handler functions for simple quote actions
+  const handleAcceptQuote = async () => {
+    try {
+      // TODO: Implement accept quote API call
+      console.log("Accepting quote:", quoteId);
+      // await acceptQuoteMutation.mutateAsync({ id: quoteId, action: "approve" });
+    } catch (error) {
+      console.error("Error accepting quote:", error);
+    }
   };
 
-  const handleRequestChanges = (responseId: string) => {
-    console.log("Request changes:", responseId);
-    // TODO: Implement request changes functionality
-  };
-
-  const handleAskQuestions = (responseId: string) => {
-    console.log("Ask questions:", responseId);
-    // TODO: Implement ask questions functionality
+  const handleRejectQuote = async () => {
+    try {
+      // TODO: Implement reject quote API call
+      console.log("Rejecting quote:", quoteId);
+      // await acceptQuoteMutation.mutateAsync({ id: quoteId, action: "reject" });
+    } catch (error) {
+      console.error("Error rejecting quote:", error);
+    }
   };
 
   if (isLoading) {
@@ -278,19 +275,10 @@ export default function RequestQuoteDetailPage() {
               </p>
               <div className="h-8 w-px bg-border"></div>
               <p className="text-sm text-muted-foreground">
-                {quoteData.type === "product" ? "Product Quote" : "Custom Quote"}
+                Product Quote
               </p>
               <div className="h-8 w-px bg-border"></div>
               <StatusBadge status={quoteData.status} />
-              {/* Version Badge */}
-              {quoteData.currentVersion && quoteData.currentVersion > 1 && (
-                <Badge variant="secondary" className="text-xs">
-                  v{quoteData.currentVersion}
-                  {quoteData.totalRevisions && quoteData.totalRevisions > 0 &&
-                    ` (${quoteData.totalRevisions} revisions)`
-                  }
-                </Badge>
-              )}
             </div>
           </div>
         </CardHeader>
@@ -331,7 +319,7 @@ export default function RequestQuoteDetailPage() {
           <Separator />
 
           {/* Product/Custom Details */}
-          {quoteData.type === "product" && quoteData.productDetails ? (
+          {quoteData.productDetails && (
             <div>
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Package className="h-5 w-5" />
@@ -377,20 +365,56 @@ export default function RequestQuoteDetailPage() {
                   )}
               </div>
             </div>
-          ) : (
-            quoteData.customRequest && (
+          )}
+
+          {/* ✅ NEW: Design Service Information */}
+          {quoteData.needDesignService && (
+            <>
+              <Separator />
               <div>
                 <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Edit className="h-5 w-5" />
-                  Custom Requirements
+                  <FileText className="h-5 w-5" />
+                  Design Service Request
                 </h3>
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="whitespace-pre-wrap text-sm">
-                    {quoteData.customRequest.customNeed}
-                  </p>
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-3">
+                    <CheckCircle className="h-5 w-5 text-blue-600" />
+                    <span className="font-medium text-blue-800">Design service requested</span>
+                  </div>
+                  {quoteData.designDescription && (
+                    <div>
+                      <h4 className="font-medium text-blue-800 mb-2">Design Requirements:</h4>
+                      <p className="text-sm text-blue-700 whitespace-pre-wrap">
+                        {quoteData.designDescription}
+                      </p>
+                    </div>
+                  )}
+                  {(quoteData.desiredWidth || quoteData.desiredHeight) && (
+                    <div className="mt-3">
+                      <h4 className="font-medium text-blue-800 mb-2">Desired Dimensions:</h4>
+                      <p className="text-sm text-blue-700">
+                        {quoteData.desiredWidth && `Width: ${quoteData.desiredWidth}"`}
+                        {quoteData.desiredWidth && quoteData.desiredHeight && " × "}
+                        {quoteData.desiredHeight && `Height: ${quoteData.desiredHeight}"`}
+                      </p>
+                    </div>
+                  )}
+                  {quoteData.artwork && (
+                    <div className="mt-3">
+                      <h4 className="font-medium text-blue-800 mb-2">Reference Artwork:</h4>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => window.open(quoteData.artwork, '_blank')}
+                      >
+                        <Eye className="h-4 w-4 mr-2" />
+                        View Reference
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
-            )
+            </>
           )}
 
           <Separator />
@@ -455,45 +479,141 @@ export default function RequestQuoteDetailPage() {
             </>
           )}
 
-          {/* Admin Response Timeline - Now using the separate component */}
-          {quoteData.adminResponses && quoteData.adminResponses.length > 0 && (
-            <AdminResponseTimeline
-              adminResponses={quoteData.adminResponses}
-              hasUnviewedResponse={quoteData.hasUnviewedResponse}
-              onAcceptQuote={handleAcceptQuote}
-              onRequestChanges={handleRequestChanges}
-              onAskQuestions={handleAskQuestions}
-            />
-          )}
-
-          {/* Legacy Quote Details (fallback for old data structure) */}
-          {quoteData.quotedPrice && !quoteData.adminResponses?.length && (
+          {/* ✅ NEW: Simple Quote Display (when status is quoted) */}
+          {quoteData.status === "quoted" && (
             <>
               <Separator />
               <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 text-green-800 mb-2">
+                <div className="flex items-center gap-2 text-green-800 mb-4">
                   <DollarSign className="h-5 w-5" />
                   <span className="font-semibold text-lg">
-                    Quoted Price: {formatPrice(quoteData.quotedPrice)}
+                    Quote: {formatPrice(quoteData.quotedPrice!)}
                   </span>
                 </div>
-                {quoteData.quotedAt && (
-                  <p className="text-sm text-green-600">
-                    Quoted on {formatOrderDateTime(quoteData.quotedAt)}
-                  </p>
-                )}
-                {quoteData.status === "quoted" && (
-                  <div className="mt-3">
-                    <Button className="mr-2">Accept Quote</Button>
-                    <Button variant="outline">Contact Us</Button>
+
+                {quoteData.responseMessage && (
+                  <div className="mb-4">
+                    <h4 className="font-medium mb-2">Message from Admin:</h4>
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                      {quoteData.responseMessage}
+                    </p>
                   </div>
                 )}
+
+                {/* Price Breakdown */}
+                {quoteData.priceBreakdown && (
+                  <details className="mb-4">
+                    <summary className="text-sm text-green-700 cursor-pointer hover:text-green-800 font-medium">
+                      View price breakdown
+                    </summary>
+                    <div className="mt-3 space-y-2 text-sm">
+                      {quoteData.priceBreakdown.basePrice && (
+                        <div className="flex justify-between py-1">
+                          <span>Base price</span>
+                          <span>{formatPrice(quoteData.priceBreakdown.basePrice)}</span>
+                        </div>
+                      )}
+                      {quoteData.priceBreakdown.setupFee && quoteData.priceBreakdown.setupFee > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Setup fee</span>
+                          <span>{formatPrice(quoteData.priceBreakdown.setupFee)}</span>
+                        </div>
+                      )}
+                      {quoteData.priceBreakdown.designFee && quoteData.priceBreakdown.designFee > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Design fee</span>
+                          <span>{formatPrice(quoteData.priceBreakdown.designFee)}</span>
+                        </div>
+                      )}
+                      {quoteData.priceBreakdown.rushFee && quoteData.priceBreakdown.rushFee > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Rush fee</span>
+                          <span>{formatPrice(quoteData.priceBreakdown.rushFee)}</span>
+                        </div>
+                      )}
+                      {quoteData.priceBreakdown.shippingCost && quoteData.priceBreakdown.shippingCost > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Shipping cost</span>
+                          <span>{formatPrice(quoteData.priceBreakdown.shippingCost)}</span>
+                        </div>
+                      )}
+                      {quoteData.priceBreakdown.tax && quoteData.priceBreakdown.tax > 0 && (
+                        <div className="flex justify-between py-1">
+                          <span>Tax</span>
+                          <span>{formatPrice(quoteData.priceBreakdown.tax)}</span>
+                        </div>
+                      )}
+                      <Separator className="my-2" />
+                      <div className="flex justify-between py-1 font-semibold text-green-700">
+                        <span>Total</span>
+                        <span>{formatPrice(quoteData.quotedPrice!)}</span>
+                      </div>
+                    </div>
+                  </details>
+                )}
+
+                {/* Production Details */}
+                {quoteData.productionDetails && (
+                  <div className="mb-4">
+                    <h4 className="font-medium mb-2">Production Details:</h4>
+                    <div className="text-sm space-y-1">
+                      {quoteData.productionDetails.estimatedDays && (
+                        <p>• Production time: {quoteData.productionDetails.estimatedDays} days</p>
+                      )}
+                      {quoteData.productionDetails.printingMethod && (
+                        <p>• Method: {quoteData.productionDetails.printingMethod}</p>
+                      )}
+                      {quoteData.productionDetails.materialSpecs && (
+                        <p>• Materials: {quoteData.productionDetails.materialSpecs}</p>
+                      )}
+                      {quoteData.productionDetails.colorLimitations && (
+                        <p>• Color limitations: {quoteData.productionDetails.colorLimitations}</p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {quoteData.validUntil && (
+                  <p className="text-sm text-gray-600 mb-4">
+                    Valid until: {formatOrderDate(quoteData.validUntil)}
+                  </p>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={handleAcceptQuote}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    Accept Quote
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleRejectQuote}
+                  >
+                    Reject Quote
+                  </Button>
+                </div>
               </div>
             </>
           )}
 
-          {/* Admin Notes (legacy) */}
-          {quoteData.adminNotes && !quoteData.adminResponses?.length && (
+          {/* Rejection reason display */}
+          {quoteData.status === "rejected" && quoteData.rejectionReason && (
+            <>
+              <Separator />
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-center gap-2 text-red-800 mb-2">
+                  <XCircle className="h-5 w-5" />
+                  <h4 className="font-medium">Rejection Reason:</h4>
+                </div>
+                <p className="text-sm text-red-700">{quoteData.rejectionReason}</p>
+              </div>
+            </>
+          )}
+
+          {/* Admin Notes */}
+          {quoteData.adminNotes && (
             <>
               <Separator />
               <div>
@@ -507,26 +627,68 @@ export default function RequestQuoteDetailPage() {
             </>
           )}
 
-          {/* Rejection Reason */}
-          {quoteData.status === "rejected" && quoteData.rejectionReason && (
+          {/* Status Timeline */}
+          {quoteData.quotedAt || quoteData.approvedAt || quoteData.rejectedAt && (
             <>
               <Separator />
               <div>
-                <h3 className="font-semibold mb-3 text-red-600">Rejection Reason</h3>
-                <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <p className="whitespace-pre-wrap text-red-800 text-sm">
-                    {quoteData.rejectionReason}
-                  </p>
+                <h3 className="font-semibold mb-3">Status Timeline</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Submitted:</span>
+                    <span>{formatOrderDateTime(quoteData.createdAt)}</span>
+                  </div>
+                  {quoteData.quotedAt && (
+                    <div className="flex justify-between">
+                      <span>Quoted:</span>
+                      <span>{formatOrderDateTime(quoteData.quotedAt)}</span>
+                    </div>
+                  )}
+                  {quoteData.approvedAt && (
+                    <div className="flex justify-between">
+                      <span>Approved:</span>
+                      <span>{formatOrderDateTime(quoteData.approvedAt)}</span>
+                    </div>
+                  )}
                   {quoteData.rejectedAt && (
-                    <p className="text-sm text-red-600 mt-2">
-                      Rejected on {formatOrderDateTime(quoteData.rejectedAt)}
-                    </p>
+                    <div className="flex justify-between">
+                      <span>Rejected:</span>
+                      <span>{formatOrderDateTime(quoteData.rejectedAt)}</span>
+                    </div>
                   )}
                 </div>
               </div>
             </>
           )}
         </CardContent>
+
+        <CardFooter className="flex justify-between">
+          {quoteData.status === "pending" && (
+            <div className="text-sm text-muted-foreground">
+              Waiting for admin review...
+            </div>
+          )}
+
+          {quoteData.status === "reviewing" && (
+            <div className="text-sm text-blue-600">
+              Under review by admin...
+            </div>
+          )}
+
+          {quoteData.status === "approved" && (
+            <div className="text-sm text-green-600 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Quote approved
+            </div>
+          )}
+
+          {quoteData.status === "completed" && (
+            <div className="text-sm text-gray-600 flex items-center gap-2">
+              <CheckCircle className="h-4 w-4" />
+              Order completed
+            </div>
+          )}
+        </CardFooter>
       </Card>
     </div>
   );

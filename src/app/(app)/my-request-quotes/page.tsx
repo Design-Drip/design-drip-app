@@ -42,7 +42,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
 import { getRequestQuotesQuery } from "@/features/request-quote/services/queries";
@@ -109,12 +108,10 @@ export default function MyRequestQuotesPage() {
   const router = useRouter();
 
   const statusParam = searchParams.get("status") || "all";
-  const typeParam = searchParams.get("type") || "all";
   const pageParam = parseInt(searchParams.get("page") || "1");
   const searchParam = searchParams.get("search") || "";
 
   const [status, setStatus] = useState<string>(statusParam);
-  const [type, setType] = useState<string>(typeParam);
   const [page, setPage] = useState<number>(pageParam);
   const [searchQuery, setSearchQuery] = useState<string>(searchParam);
 
@@ -124,7 +121,6 @@ export default function MyRequestQuotesPage() {
       page,
       limit,
       status: status !== "all" ? status : undefined,
-      type: type !== "all" ? type : undefined,
       search: searchQuery || undefined,
     }),
   });
@@ -136,12 +132,6 @@ export default function MyRequestQuotesPage() {
     setStatus(newStatus);
     setPage(1);
     updateURL({ status: newStatus, page: 1 });
-  };
-
-  const handleTypeChange = (newType: string) => {
-    setType(newType);
-    setPage(1);
-    updateURL({ type: newType, page: 1 });
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -159,7 +149,6 @@ export default function MyRequestQuotesPage() {
     const urlParams = new URLSearchParams();
     const currentParams = {
       status,
-      type,
       search: searchQuery,
       page,
       ...params,
@@ -248,18 +237,6 @@ export default function MyRequestQuotesPage() {
               <SelectItem value="completed">Completed</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Type Filter */}
-          <Select value={type} onValueChange={handleTypeChange}>
-            <SelectTrigger className="w-full lg:w-[180px]">
-              <SelectValue placeholder="All Types" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              <SelectItem value="product">Product</SelectItem>
-              <SelectItem value="custom">Custom</SelectItem>
-            </SelectContent>
-          </Select>
         </div>
       </div>
 
@@ -270,21 +247,15 @@ export default function MyRequestQuotesPage() {
             <CardContent>
               <FileText className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
               <h2 className="text-xl font-semibold mb-2">No request quotes found</h2>
-              <p className="text-muted-foreground mb-6">
-                {status !== "all" || type !== "all" || searchQuery
-                  ? "No quotes match your current filters."
-                  : "You haven't submitted any quote requests yet."}
-              </p>
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Button asChild>
                   <Link href="/request-quote">Submit New Request</Link>
                 </Button>
-                {(status !== "all" || type !== "all" || searchQuery) && (
+                {(status !== "all" || searchQuery) && (
                   <Button
                     variant="outline"
                     onClick={() => {
                       setStatus("all");
-                      setType("all");
                       setSearchQuery("");
                       setPage(1);
                       router.push("/my-request-quotes");
@@ -322,7 +293,7 @@ export default function MyRequestQuotesPage() {
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-sm">
-                              {quote.type === "product" ? "Product Quote" : "Custom Quote"}
+                              Product Quote
                             </h3>
                             <div className="h-4 w-px bg-border"></div>
                             <p className="text-sm text-muted-foreground">
@@ -338,7 +309,7 @@ export default function MyRequestQuotesPage() {
                             <span>Submitted: {formatOrderDate(quote.createdAt)}</span>
                           </div>
 
-                          {quote.type === "product" && quote.productDetails && (
+                          {quote.productDetails && (
                             <div className="flex items-center gap-2">
                               <Package className="h-4 w-4 text-muted-foreground" />
                               <span>
@@ -368,18 +339,6 @@ export default function MyRequestQuotesPage() {
                             </div>
                           )}
                         </div>
-
-                        {/* Preview content */}
-                        {quote.type === "custom" && quote.customRequest?.customNeed && (
-                          <div className="mt-3 p-3 bg-muted/50 rounded-lg">
-                            <p className="text-sm">
-                              {quote.customRequest.customNeed.length > 150
-                                ? `${quote.customRequest.customNeed.substring(0, 150)}...`
-                                : quote.customRequest.customNeed
-                              }
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
                   </CardContent>
