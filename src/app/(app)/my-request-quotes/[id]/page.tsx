@@ -102,8 +102,6 @@ interface QuoteData {
   rejectionReason?: string;
   adminNotes?: string;
   responseMessage?: string;
-
-  // ✅ NEW: Direct fields instead of adminResponses
   priceBreakdown?: PriceBreakdown;
   productionDetails?: ProductionDetails;
   validUntil?: string;
@@ -622,40 +620,6 @@ export default function RequestQuoteDetailPage() {
                   <p className="whitespace-pre-wrap text-blue-800 text-sm">
                     {quoteData.adminNotes}
                   </p>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Status Timeline */}
-          {quoteData.quotedAt || quoteData.approvedAt || quoteData.rejectedAt && (
-            <>
-              <Separator />
-              <div>
-                <h3 className="font-semibold mb-3">Status Timeline</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span>Submitted:</span>
-                    <span>{formatOrderDateTime(quoteData.createdAt)}</span>
-                  </div>
-                  {quoteData.quotedAt && (
-                    <div className="flex justify-between">
-                      <span>Quoted:</span>
-                      <span>{formatOrderDateTime(quoteData.quotedAt)}</span>
-                    </div>
-                  )}
-                  {quoteData.approvedAt && (
-                    <div className="flex justify-between">
-                      <span>Approved:</span>
-                      <span>{formatOrderDateTime(quoteData.approvedAt)}</span>
-                    </div>
-                  )}
-                  {quoteData.rejectedAt && (
-                    <div className="flex justify-between">
-                      <span>Rejected:</span>
-                      <span>{formatOrderDateTime(quoteData.rejectedAt)}</span>
-                    </div>
-                  )}
                 </div>
               </div>
             </>
