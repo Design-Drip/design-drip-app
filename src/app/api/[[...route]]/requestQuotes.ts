@@ -112,7 +112,7 @@ const app = new Hono()
             const isAdmin = await checkRole("admin");
 
             try {
-                const { page, limit, status, type, search, sortBy, sortOrder } = c.req.valid("query");
+                const { page, limit, status, search, sortBy, sortOrder } = c.req.valid("query");
 
                 const skip = (page - 1) * limit;
 
@@ -389,13 +389,6 @@ const app = new Hono()
         zValidator("json", updateRequestQuoteSchema),
         async (c) => {
             try {
-                const user = c.get("user")!;
-                const isAdmin = await checkRole("admin");
-
-                if (!isAdmin) {
-                    throw new HTTPException(403, { message: "Admin access required" });
-                }
-
                 const { id } = c.req.valid("param");
                 const { status, quotedPrice, rejectionReason, adminNotes } = c.req.valid("json");
 

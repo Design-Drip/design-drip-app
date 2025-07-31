@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatOrderDateTime, formatOrderDate } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
 import { getRequestQuoteQuery } from "@/features/request-quote/services/queries";
+import { useUpdateRequestQuoteStatusMutation } from "@/features/admin/request-quotes/services/mutations";
 
 // Types
 interface ProductDetail {
@@ -182,6 +183,7 @@ export default function RequestQuoteDetailPage() {
   const params = useParams<{ id?: string }>();
   const router = useRouter();
   const quoteId = params.id;
+  const updateStatusMutation = useUpdateRequestQuoteStatusMutation();
 
   const {
     data: quote,
@@ -192,9 +194,9 @@ export default function RequestQuoteDetailPage() {
   // ✅ NEW: Handler functions for simple quote actions
   const handleAcceptQuote = async () => {
     try {
-      // TODO: Implement accept quote API call
-      console.log("Accepting quote:", quoteId);
-      // await acceptQuoteMutation.mutateAsync({ id: quoteId, action: "approve" });
+      if (quoteId) {
+        await updateStatusMutation.mutateAsync({ id: quoteId, status: "approved" });
+      }
     } catch (error) {
       console.error("Error accepting quote:", error);
     }
@@ -202,9 +204,9 @@ export default function RequestQuoteDetailPage() {
 
   const handleRejectQuote = async () => {
     try {
-      // TODO: Implement reject quote API call
-      console.log("Rejecting quote:", quoteId);
-      // await acceptQuoteMutation.mutateAsync({ id: quoteId, action: "reject" });
+      if (quoteId) {
+        await updateStatusMutation.mutateAsync({ id: quoteId, status: "rejected" });
+      }
     } catch (error) {
       console.error("Error rejecting quote:", error);
     }
@@ -500,54 +502,54 @@ export default function RequestQuoteDetailPage() {
 
                 {/* Price Breakdown */}
                 {quoteData.priceBreakdown && (
-                  <details className="mb-4">
-                    <summary className="text-sm text-green-700 cursor-pointer hover:text-green-800 font-medium">
-                      View price breakdown
-                    </summary>
-                    <div className="mt-3 space-y-2 text-sm">
-                      {quoteData.priceBreakdown.basePrice && (
-                        <div className="flex justify-between py-1">
-                          <span>Base price</span>
-                          <span>{formatPrice(quoteData.priceBreakdown.basePrice)}</span>
+                  <div className="mb-4">
+                    <h4 className="font-medium mb-3 text-green-700">Price Breakdown:</h4>
+                    <div className="bg-white/50 border border-green-200 rounded-lg p-3">
+                      <div className="space-y-2 text-sm">
+                        {quoteData.priceBreakdown.basePrice && (
+                          <div className="flex justify-between py-1">
+                            <span>Base price</span>
+                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.basePrice)}</span>
+                          </div>
+                        )}
+                        {quoteData.priceBreakdown.setupFee && quoteData.priceBreakdown.setupFee > 0 && (
+                          <div className="flex justify-between py-1">
+                            <span>Setup fee</span>
+                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.setupFee)}</span>
+                          </div>
+                        )}
+                        {quoteData.priceBreakdown.designFee && quoteData.priceBreakdown.designFee > 0 && (
+                          <div className="flex justify-between py-1">
+                            <span>Design fee</span>
+                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.designFee)}</span>
+                          </div>
+                        )}
+                        {quoteData.priceBreakdown.rushFee && quoteData.priceBreakdown.rushFee > 0 && (
+                          <div className="flex justify-between py-1">
+                            <span>Rush fee</span>
+                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.rushFee)}</span>
+                          </div>
+                        )}
+                        {quoteData.priceBreakdown.shippingCost && quoteData.priceBreakdown.shippingCost > 0 && (
+                          <div className="flex justify-between py-1">
+                            <span>Shipping cost</span>
+                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.shippingCost)}</span>
+                          </div>
+                        )}
+                        {quoteData.priceBreakdown.tax && quoteData.priceBreakdown.tax > 0 && (
+                          <div className="flex justify-between py-1">
+                            <span>Tax</span>
+                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.tax)}</span>
+                          </div>
+                        )}
+                        <Separator className="my-2" />
+                        <div className="flex justify-between py-2 font-semibold text-green-700 text-base">
+                          <span>Total</span>
+                          <span>{formatPrice(quoteData.quotedPrice!)}</span>
                         </div>
-                      )}
-                      {quoteData.priceBreakdown.setupFee && quoteData.priceBreakdown.setupFee > 0 && (
-                        <div className="flex justify-between py-1">
-                          <span>Setup fee</span>
-                          <span>{formatPrice(quoteData.priceBreakdown.setupFee)}</span>
-                        </div>
-                      )}
-                      {quoteData.priceBreakdown.designFee && quoteData.priceBreakdown.designFee > 0 && (
-                        <div className="flex justify-between py-1">
-                          <span>Design fee</span>
-                          <span>{formatPrice(quoteData.priceBreakdown.designFee)}</span>
-                        </div>
-                      )}
-                      {quoteData.priceBreakdown.rushFee && quoteData.priceBreakdown.rushFee > 0 && (
-                        <div className="flex justify-between py-1">
-                          <span>Rush fee</span>
-                          <span>{formatPrice(quoteData.priceBreakdown.rushFee)}</span>
-                        </div>
-                      )}
-                      {quoteData.priceBreakdown.shippingCost && quoteData.priceBreakdown.shippingCost > 0 && (
-                        <div className="flex justify-between py-1">
-                          <span>Shipping cost</span>
-                          <span>{formatPrice(quoteData.priceBreakdown.shippingCost)}</span>
-                        </div>
-                      )}
-                      {quoteData.priceBreakdown.tax && quoteData.priceBreakdown.tax > 0 && (
-                        <div className="flex justify-between py-1">
-                          <span>Tax</span>
-                          <span>{formatPrice(quoteData.priceBreakdown.tax)}</span>
-                        </div>
-                      )}
-                      <Separator className="my-2" />
-                      <div className="flex justify-between py-1 font-semibold text-green-700">
-                        <span>Total</span>
-                        <span>{formatPrice(quoteData.quotedPrice!)}</span>
                       </div>
                     </div>
-                  </details>
+                  </div>
                 )}
 
                 {/* Production Details */}
@@ -560,12 +562,6 @@ export default function RequestQuoteDetailPage() {
                       )}
                       {quoteData.productionDetails.printingMethod && (
                         <p>• Method: {quoteData.productionDetails.printingMethod}</p>
-                      )}
-                      {quoteData.productionDetails.materialSpecs && (
-                        <p>• Materials: {quoteData.productionDetails.materialSpecs}</p>
-                      )}
-                      {quoteData.productionDetails.colorLimitations && (
-                        <p>• Color limitations: {quoteData.productionDetails.colorLimitations}</p>
                       )}
                     </div>
                   </div>

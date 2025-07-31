@@ -144,19 +144,6 @@ export default function AdminRequestQuoteDetailPage() {
               {getStatusBadge(quote.status)}
             </div>
           </div>
-
-          {/* Header Info */}
-          <div className="flex items-start justify-between">
-
-            {quote.quotedPrice && (
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Quoted Price</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatPrice(quote.quotedPrice)}
-                </p>
-              </div>
-            )}
-          </div>
         </CardHeader>
 
         <CardContent className="space-y-6">
