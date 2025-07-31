@@ -14,7 +14,15 @@ export const useCreateFeedbackMutation = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create feedback");
+        const contentType = response.headers.get("content-type");
+        let errorMessage = "Failed to submit feedback. Please try again.";
+        if (contentType && contentType.includes("application/json")) {
+          const errorData = await response.json();
+          errorMessage = errorData?.message || errorMessage;
+        } else {
+          errorMessage = await response.text();
+        }
+        throw new Error(errorMessage);
       }
 
       return response.json();

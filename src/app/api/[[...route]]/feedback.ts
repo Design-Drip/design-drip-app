@@ -48,9 +48,7 @@ const app = new Hono()
             productId
         )
       );
-      const feedbacks = await Feedback.find()
-        .sort(sortOptions)
-        .lean();
+      const feedbacks = await Feedback.find().sort(sortOptions).lean();
       const productFeedbacks = feedbacks.filter((feedback) =>
         filteredOrders.some(
           (order) =>
@@ -111,6 +109,15 @@ const app = new Hono()
             message: "Order not found",
           });
         }
+        const existingFeedback = await Feedback.findOne({
+          orderId,
+          userId: user.id,
+        });
+        if (existingFeedback) {
+          throw new HTTPException(400, {
+            message: "Feedback already exists for this order",
+          });
+        }
         const feedback = new Feedback({
           userId: user.id,
           orderId,
@@ -123,6 +130,9 @@ const app = new Hono()
           data: feedback,
         });
       } catch (error) {
+        if (error instanceof HTTPException) {
+          throw error;
+        }
         throw new HTTPException(500, {
           message: "Failed to add feedback",
         });

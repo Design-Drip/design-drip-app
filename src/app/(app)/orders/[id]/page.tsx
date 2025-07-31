@@ -46,8 +46,7 @@ export default function OrderDetailPage() {
     isError,
   } = useQuery(getOrderDetailQuery(orderId));
   const submitFeedback = useCreateFeedbackMutation();
-  const productId =
-    order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?.id;
+  const productId = order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?.id;
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -113,6 +112,11 @@ export default function OrderDetailPage() {
               queryKey: ["feedback"],
             });
             router.push(`/products/${productId}`);
+          },
+          onError: (error: any) => {
+            toast.error(
+              error?.message || "Failed to submit feedback. Please try again."
+            );
           },
         }
       );
