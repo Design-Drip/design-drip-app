@@ -5,14 +5,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { getProductDetailQuery } from "@/features/products/services/queries";
-import {
-  Heart,
-  Plus,
-  Minus,
-  Check,
-  Loader2,
-  Star,
-} from "lucide-react";
+import { Heart, Plus, Minus, Check, Loader2, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/price";
@@ -30,9 +23,7 @@ export default function ProductDetailPage({
   params: { id },
 }: ProductDetailPageProps) {
   const router = useRouter();
-  const { data, isLoading, isError } = useQuery(
-    getProductDetailQuery(id)
-  );
+  const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
   const {
     isInWishlist,
     addItem,
@@ -41,19 +32,15 @@ export default function ProductDetailPage({
     isSignedIn,
   } = useWishlist();
   const { data: feedbacks } = getFeedbackQuery(id);
-  const uniqueSizes = Array.from(
-    new Set(data?.sizes.map((size) => size.size))
-  );
+  const uniqueSizes = Array.from(new Set(data?.sizes.map((size) => size.size)));
 
-  const [selectedColor, setSelectedColor] = useState<
-    string | undefined
-  >();
+  const [selectedColor, setSelectedColor] = useState<string | undefined>();
   const [selectedSize, setSelectedSize] = useState(FIXED_SIZES[0]);
   const [quantity, setQuantity] = useState(1);
   const [selectedView, setSelectedView] = useState("front");
-  const [expandedSection, setExpandedSection] = useState<
-    string | null
-  >("description");
+  const [expandedSection, setExpandedSection] = useState<string | null>(
+    "description"
+  );
 
   const inWishlist = useMemo(() => {
     return isSignedIn && id ? isInWishlist(id) : false;
@@ -78,9 +65,7 @@ export default function ProductDetailPage({
 
   // Filter images for the current view
   const getImageForView = (viewSide: string) => {
-    return currentColor?.images.find(
-      (img) => img.view_side === viewSide
-    );
+    return currentColor?.images.find((img) => img.view_side === viewSide);
   };
 
   const primaryImage = getImageForView(selectedView)?.url;
@@ -95,8 +80,7 @@ export default function ProductDetailPage({
     .filter((view) => view.imageUrl !== "");
 
   const incrementQuantity = () => setQuantity((q) => q + 1);
-  const decrementQuantity = () =>
-    setQuantity((q) => Math.max(1, q - 1));
+  const decrementQuantity = () => setQuantity((q) => Math.max(1, q - 1));
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -111,8 +95,7 @@ export default function ProductDetailPage({
     if (!currentColor) return 999;
 
     const sizeVariant = data?.sizes.find(
-      (s) =>
-        s.size === selectedSize && s.shirtColor === currentColor.id
+      (s) => s.size === selectedSize && s.shirtColor === currentColor.id
     );
 
     return sizeVariant?.quantity || 0;
@@ -155,9 +138,7 @@ export default function ProductDetailPage({
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center">
-          <p className="text-red-600 mb-4">
-            Failed to load product details.
-          </p>
+          <p className="text-red-600 mb-4">Failed to load product details.</p>
           <Button onClick={() => router.back()}>Go Back</Button>
         </div>
       </div>
@@ -247,9 +228,7 @@ export default function ProductDetailPage({
           {/* Product Details Section */}
           <div className="lg:w-1/2">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h1 className="text-2xl font-bold mb-4">
-                {data.product.name}
-              </h1>
+              <h1 className="text-2xl font-bold mb-4">{data.product.name}</h1>
 
               {/* Color Selection */}
               <div className="mb-6">
@@ -264,9 +243,7 @@ export default function ProductDetailPage({
                           : "border border-gray-200"
                       }`}
                       style={{ backgroundColor: color.color_value }}
-                      onClick={() =>
-                        setSelectedColor(color.color_value)
-                      }
+                      onClick={() => setSelectedColor(color.color_value)}
                       title={color.color}
                     >
                       {selectedColor === color.color_value && (
@@ -309,25 +286,19 @@ export default function ProductDetailPage({
                             ? "border border-gray-300 text-gray-400 bg-gray-100"
                             : "border border-gray-300 hover:border-gray-400"
                         } rounded-md text-sm font-medium min-w-[50px] relative`}
-                        onClick={() =>
-                          !isOutOfStock && setSelectedSize(size)
-                        }
+                        onClick={() => !isOutOfStock && setSelectedSize(size)}
                         disabled={isOutOfStock}
                       >
                         {size}
                         <div className="text-xs mt-1 font-normal">
                           {isOutOfStock ? (
-                            <span className="text-gray-500">
-                              Out of stock
-                            </span>
+                            <span className="text-gray-500">Out of stock</span>
                           ) : stockQuantity <= 5 ? (
                             <span className="text-amber-600">
                               Only {stockQuantity} left
                             </span>
                           ) : (
-                            <span className="text-green-600">
-                              In stock
-                            </span>
+                            <span className="font-bold">In stock</span>
                           )}
                         </div>
                       </button>
@@ -368,13 +339,9 @@ export default function ProductDetailPage({
                 <div className="flex items-center mb-4">
                   <div className="flex items-center mr-3">
                     <span className="text-xl font-bold text-red-600">
-                      {formatPrice(
-                        data.product.base_price * quantity
-                      )}
+                      {formatPrice(data.product.base_price * quantity)}
                     </span>
-                    <span className="text-xs ml-1">
-                      *GST Included
-                    </span>
+                    <span className="text-xs ml-1">*GST Included</span>
                   </div>
                 </div>
 
@@ -389,8 +356,7 @@ export default function ProductDetailPage({
                     <div className="text-amber-600 flex items-center">
                       <Check className="h-4 w-4 mr-1" />
                       <span>
-                        Low stock: only {getMaxAvailableQuantity()}{" "}
-                        available
+                        Low stock: only {getMaxAvailableQuantity()} available
                       </span>
                     </div>
                   ) : (
@@ -429,10 +395,7 @@ export default function ProductDetailPage({
                     </Button>
                   ) : (
                     <SignInButton mode="modal">
-                      <Button
-                        variant="outline"
-                        className="py-3 h-auto"
-                      >
+                      <Button variant="outline" className="py-3 h-auto">
                         Sign in to Save
                       </Button>
                     </SignInButton>
@@ -448,9 +411,7 @@ export default function ProductDetailPage({
                     className="w-full flex items-center justify-between px-4 py-3 text-left"
                     onClick={() => toggleSection("description")}
                   >
-                    <h3 className="text-lg font-medium">
-                      Description
-                    </h3>
+                    <h3 className="text-lg font-medium">Description</h3>
                     {expandedSection === "description" ? (
                       <Minus className="h-5 w-5 text-gray-500" />
                     ) : (
@@ -475,9 +436,7 @@ export default function ProductDetailPage({
                     onClick={() => toggleSection("category")}
                     className="w-full flex items-center justify-between px-4 py-3 text-left"
                   >
-                    <h3 className="text-lg font-medium">
-                      Categories
-                    </h3>
+                    <h3 className="text-lg font-medium">Categories</h3>
                     {expandedSection === "category" ? (
                       <Minus className="h-5 w-5 text-gray-500" />
                     ) : (
@@ -508,9 +467,7 @@ export default function ProductDetailPage({
                     onClick={() => toggleSection("request-quote")}
                     className="w-full flex items-center justify-between px-4 py-3 text-left"
                   >
-                    <h3 className="text-lg font-medium">
-                      Request a quote
-                    </h3>
+                    <h3 className="text-lg font-medium">Request a quote</h3>
                     {expandedSection === "request-quote" ? (
                       <Minus className="h-5 w-5 text-gray-500" />
                     ) : (
@@ -538,10 +495,7 @@ export default function ProductDetailPage({
 
             {/* Request Quote Button */}
             <div className="mt-4">
-              <Button
-                variant="outline"
-                className="w-full py-3 h-auto"
-              >
+              <Button variant="outline" className="w-full py-3 h-auto">
                 Request a quote
               </Button>
             </div>
@@ -552,9 +506,7 @@ export default function ProductDetailPage({
         {feedbacks?.data && feedbacks.data.length > 0 && (
           <div className="mt-12">
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-2xl font-bold mb-6">
-                Customer Reviews
-              </h2>
+              <h2 className="text-2xl font-bold mb-6">Customer Reviews</h2>
 
               {/* Reviews Summary */}
               <div className="mb-6 pb-6 border-b border-gray-200">

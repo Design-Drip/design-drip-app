@@ -19,5 +19,8 @@ export interface IProcessCheckoutPayload {
   paymentIntent?: string;
   itemIds?: string[];
   return_url?: string;
-  shipping?: OrderAddress;
+  shipping?: OrderAddress & {
+    method: "standard" | "express";
+    cost: number;
+  };
 }

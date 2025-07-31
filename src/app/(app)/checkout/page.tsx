@@ -19,6 +19,7 @@ import { formatPrice } from "@/lib/price";
 import { Loader2, ShoppingBag } from "lucide-react";
 import StripeWrapper from "@/components/StripeWrapper";
 import { Separator } from "@/components/ui/separator";
+import { OrderAddress } from "@/types/address";
 
 const CheckoutPage = () => {
   const router = useRouter();
@@ -32,7 +33,9 @@ const CheckoutPage = () => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
   const [addressComplete, setAddressComplete] = useState(false);
-  const [shippingAddress, setShippingAddress] = useState<any>(null);
+  const [shippingAddress, setShippingAddress] = useState<OrderAddress | null>(
+    null
+  );
   const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
     "standard"
   );
@@ -182,13 +185,12 @@ const CheckoutPage = () => {
                   card: cardElement,
                   billing_details: {
                     name: shippingAddress.name,
-                    email: shippingAddress.email,
                     phone: shippingAddress.phone,
                     address: {
                       city: shippingAddress.address.city,
                       country: shippingAddress.address.country,
                       line1: shippingAddress.address.line1,
-                      line2: shippingAddress.address.line2 || "",
+                      line2: shippingAddress.address.line2 || undefined,
                       postal_code: shippingAddress.address.postal_code,
                       state: shippingAddress.address.state,
                     },
@@ -201,7 +203,7 @@ const CheckoutPage = () => {
                     city: shippingAddress.address.city,
                     country: shippingAddress.address.country,
                     line1: shippingAddress.address.line1,
-                    line2: shippingAddress.address.line2 || "",
+                    line2: shippingAddress.address.line2 || undefined,
                     postal_code: shippingAddress.address.postal_code,
                     state: shippingAddress.address.state,
                   },
@@ -218,7 +220,7 @@ const CheckoutPage = () => {
               processCheckout(
                 {
                   paymentIntent: paymentIntent.id,
-                  shipping: shippingAddress,
+                  shipping: shippingWithMethod,
                 },
                 {
                   onSuccess: () => {
@@ -256,6 +258,10 @@ const CheckoutPage = () => {
         ...shippingAddress,
         method: shippingMethod,
         cost: shippingCost,
+        address: {
+          ...shippingAddress.address,
+          line2: shippingAddress.address.line2 || undefined,
+        },
       };
 
       processCheckout(
@@ -278,7 +284,7 @@ const CheckoutPage = () => {
                       city: shippingAddress.address.city,
                       country: shippingAddress.address.country,
                       line1: shippingAddress.address.line1,
-                      line2: shippingAddress.address.line2 || "",
+                      line2: shippingAddress.address.line2 || undefined,
                       postal_code: shippingAddress.address.postal_code,
                       state: shippingAddress.address.state,
                     },

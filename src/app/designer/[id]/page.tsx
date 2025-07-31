@@ -19,9 +19,8 @@ function EditDesignPage({
 }) {
   const { id } = params;
   const { colorId, designId } = searchParams;
-  const isEditDesign = designId !== undefined && designId !== "";
   const { data: designDetailData, isLoading: isLoadingDesignDetail } =
-    useGetDetailDesign(isEditDesign ? designId : "");
+    useGetDetailDesign(designId);
   const designDetail = designDetailData?.data[0] || {};
   const { data, isLoading, isError } = useQuery(getProductDetailQuery(id));
   const router = useRouter();
