@@ -92,13 +92,6 @@ const getStatusConfig = (status: string) => {
                 color: "bg-purple-100 text-purple-800 border-purple-200",
                 icon: DollarSign,
             };
-        case "revised":
-            return {
-                label: "Revised",
-                description: "Quote has been revised",
-                color: "bg-orange-100 text-orange-800 border-orange-200",
-                icon: FileCheck,
-            };
         case "approved":
             return {
                 label: "Approved",
@@ -149,8 +142,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
             case "reviewing":
                 return ["quoted", "rejected"];
             case "quoted":
-                return ["revised", "approved", "rejected"];
-            case "revised":
                 return ["approved", "rejected"];
             case "approved":
                 return ["completed"];
@@ -186,7 +177,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                 responseMessage: data.responseMessage,
                 rejectionReason: data.rejectionReason,
                 adminNotes: data.adminNotes,
-                priceBreakdown: (data.status === "quoted" || data.status === "revised") ? {
+                priceBreakdown: (data.status === "quoted") ? {
                     basePrice: parseFloat(data.basePrice || "0") || undefined,
                     setupFee: parseFloat(data.setupFee || "0") || 0,
                     designFee: parseFloat(data.designFee || "0") || 0,
@@ -195,7 +186,7 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                     tax: parseFloat(data.tax || "0") || 0,
                     totalPrice: parseFloat(data.quotedPrice || "0"),
                 } : undefined,
-                productionDetails: (data.status === "quoted" || data.status === "revised") ? {
+                productionDetails: (data.status === "quoted") ? {
                     estimatedDays: data.estimatedDays ? parseInt(data.estimatedDays) : undefined,
                     printingMethod: data.printingMethod,
                     materialSpecs: data.materialSpecs,
