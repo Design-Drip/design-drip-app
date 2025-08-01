@@ -6,6 +6,7 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import { checkRole } from "@/lib/roles";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
+import { ShirtSizeVariant } from "@/models/product";
 
 const createRequestQuoteSchema = z.object({
     //Customer information
@@ -132,12 +133,16 @@ const app = new Hono()
                     .populate({
                         path: "productDetails.selectedColorId",
                         model: "ShirtColor",
-                        select: "color hex_code",
+                        select: "color color_value",
                     })
                     .sort(sort)
                     .skip(skip)
                     .limit(limit)
                     .lean()
+
+                if (!requestQuotes) {
+                    throw new HTTPException(404, { message: "Request quote not found" });
+                }
 
                 const totalQuotes = await RequestQuote.countDocuments(query);
                 const totalPages = Math.ceil(totalQuotes / limit);
@@ -190,6 +195,7 @@ const app = new Hono()
     //Create new request quote
     .post(
         "/",
+
         zValidator("json", createRequestQuoteSchema),
         async (c) => {
             try {
@@ -299,17 +305,51 @@ const app = new Hono()
                     .populate({
                         path: "productDetails.productId",
                         model: "Shirt",
-                        select: "name default_price",
+                        select: "name base_price",
                     })
                     .populate({
                         path: "productDetails.selectedColorId",
                         model: "ShirtColor",
-                        select: "color hex_code",
+                        select: "color color_value",
                     })
                     .lean();
 
                 if (!requestQuote) {
                     throw new HTTPException(404, { message: "Request quote not found" });
+                }
+                //Enhance quantityBySize with additional_price
+                let enhancedProductDetails = requestQuote.productDetails;
+
+                if (requestQuote.productDetails?.selectedColorId && requestQuote.productDetails?.quantityBySize) {
+                    const colorId = typeof requestQuote.productDetails.selectedColorId === 'string'
+                        ? requestQuote.productDetails.selectedColorId
+                        : requestQuote.productDetails.selectedColorId._id;
+
+                    try {
+                        // Get size variants for this color
+                        const sizeVariants = await ShirtSizeVariant.find({
+                            shirtColor: colorId
+                        }).lean();
+
+                        //Enhance each size in quantityBySize with additional_price
+                        const enhancedQuantityBySize = requestQuote.productDetails.quantityBySize.map(sizeItem => {
+                            const sizeVariant = sizeVariants.find(sv => sv.size === sizeItem.size);
+                            return {
+                                size: sizeItem.size,
+                                quantity: sizeItem.quantity,
+                                additional_price: sizeVariant?.additional_price || 0, //Add additional_price
+                            };
+                        });
+
+                        enhancedProductDetails = {
+                            ...requestQuote.productDetails,
+                            quantityBySize: enhancedQuantityBySize
+                        };
+                    } catch (error) {
+                        console.error("Error fetching size pricing for quote:", requestQuote._id, error);
+                        // Keep original productDetails if error occurs
+                        enhancedProductDetails = requestQuote.productDetails;
+                    }
                 }
 
                 return c.json({
@@ -328,7 +368,7 @@ const app = new Hono()
                         state: requestQuote.state,
                         postcode: requestQuote.postcode,
                         agreeTerms: requestQuote.agreeTerms,
-                        productDetails: requestQuote.productDetails,
+                        productDetails: enhancedProductDetails,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
                         designDescription: requestQuote.designDescription,
@@ -343,6 +383,7 @@ const app = new Hono()
                         rejectionReason: requestQuote.rejectionReason,
                         adminNotes: requestQuote.adminNotes,
                         priceBreakdown: requestQuote.priceBreakdown,
+                        productionDetails: requestQuote.productionDetails,
                         createdAt: requestQuote.createdAt,
                         updatedAt: requestQuote.updatedAt,
                     },

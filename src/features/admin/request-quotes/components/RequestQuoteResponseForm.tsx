@@ -42,9 +42,30 @@ import {
 } from "lucide-react";
 import { PrintingMethod } from "@/constants/quoteStatus";
 
+interface PricingAnalysis {
+    totalOriginalPrice: number;
+    totalYourPrice: number;
+    totalDiscount: number;
+    totalDiscountPercentage: number;
+    totalQuantity: number;
+    sizeBreakdown: Array<{
+        size: string;
+        quantity: number;
+        originalPricePerUnit: number;
+        yourPricePerUnit: number;
+        originalTotal: number;
+        yourTotal: number;
+        discount: number;
+        discountPercentage: number;
+        hasDiscount: boolean;
+        additional_price: number;
+    }>;
+    hasPricing: boolean;
+}
+
 const responseFormSchema = z
     .object({
-        status: z.enum(["reviewing", "quoted", "revised", "rejected"]),
+        status: z.enum(["reviewing", "quoted", "rejected"]),
         quotedPrice: z.string().optional(),
         rejectionReason: z.string().optional(),
 
@@ -59,17 +80,16 @@ const responseFormSchema = z
         printingMethod: z.enum(["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"]).optional(),
 
         validUntil: z.string().optional(),
-        revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]).optional(),
     })
     .refine(
         (data) => {
-            if (data.status === "quoted" || data.status === "revised") {
+            if (data.status === "quoted") {
                 return data.quotedPrice && parseFloat(data.quotedPrice) > 0;
             }
             return true;
         },
         {
-            message: "Quoted price is required when status is 'quoted' or 'revised'",
+            message: "Quoted price is required when status is 'quoted'",
             path: ["quotedPrice"],
         }
     )
@@ -110,11 +130,12 @@ interface RequestQuoteResponseFormProps {
             selectedColorId?: {
                 _id: string;
                 color: string;
-                hex_code?: string;
+                color_value?: string;
             } | string;
             quantityBySize?: Array<{
                 size: string;
                 quantity: number;
+                additional_price?: number;
             }>;
         };
 
@@ -137,13 +158,10 @@ interface RequestQuoteResponseFormProps {
             printingMethod?: PrintingMethod;
         };
         validUntil?: string;
-        currentVersion?: number;
-        totalRevisions?: number;
     };
     initialStatus?: string;
     onSubmit: (data: ResponseFormData) => Promise<void>;
     isLoading: boolean;
-    mode?: "respond" | "revise";
 }
 
 export default function RequestQuoteResponseForm({
@@ -153,9 +171,16 @@ export default function RequestQuoteResponseForm({
     initialStatus,
     onSubmit,
     isLoading,
-    mode = "respond"
 }: RequestQuoteResponseFormProps) {
     const [showPriceBreakdown, setShowPriceBreakdown] = React.useState(false);
+
+    // ✅ Get base price from productDetails
+    const baseProductPrice = React.useMemo(() => {
+        if (!quote.productDetails?.productId) return 0;
+        return typeof quote.productDetails.productId === 'string'
+            ? 0
+            : quote.productDetails.productId.base_price || 0;
+    }, [quote.productDetails]);
 
     const form = useForm<ResponseFormData>({
         resolver: zodResolver(responseFormSchema),
@@ -183,34 +208,66 @@ export default function RequestQuoteResponseForm({
 
     const currentStatus = form.watch("status");
 
-    //Get product details and calculate total based on actual size pricing
-    const productDetails = React.useMemo(() => {
-        if (!quote.productDetails) return null;
-        return quote.productDetails;
-    }, [quote.productDetails]);
-
-    //Calculate base total from actual product sizes and quantities
-    const baseTotal = React.useMemo(() => {
-        if (!productDetails?.quantityBySize || !Array.isArray(productDetails.quantityBySize)) {
-            // Fallback to simple quantity * base price if no size breakdown
-            const quantity = productDetails?.quantity || 1;
-            const basePrice = parseFloat(form.watch("basePrice") || "0");
-            return quantity * basePrice;
+    // ✅ Calculate pricing using additional_price from quantityBySize
+    const pricingAnalysis = React.useMemo((): PricingAnalysis => {
+        if (!quote.productDetails?.quantityBySize || !Array.isArray(quote.productDetails.quantityBySize)) {
+            return {
+                totalOriginalPrice: 0,
+                totalYourPrice: 0,
+                totalDiscount: 0,
+                totalDiscountPercentage: 0,
+                totalQuantity: quote.productDetails?.quantity || 0,
+                sizeBreakdown: [],
+                hasPricing: false
+            };
         }
 
-        // Calculate based on actual size quantities and their individual prices
         const basePrice = parseFloat(form.watch("basePrice") || "0");
+        let totalOriginalPrice = 0;
+        let totalYourPrice = 0;
+        let totalQuantity = 0;
 
-        return productDetails.quantityBySize.reduce((total, sizeItem) => {
-            // Here you would ideally get the actual price for each size
-            // For now, using basePrice as the per-unit price for all sizes
-            // In a real scenario, you'd fetch size-specific pricing
-            const pricePerUnit = basePrice; // TODO: Get actual size-specific price
-            return total + (sizeItem.quantity * pricePerUnit);
-        }, 0);
-    }, [productDetails, form.watch("basePrice")]);
+        const sizeBreakdown = quote.productDetails.quantityBySize.map(sizeItem => {
+            // ✅ Use additional_price from API data in quantityBySize
+            const originalPricePerUnit = baseProductPrice + (sizeItem.additional_price || 0);
+            const yourPricePerUnit = basePrice;
+            const quantity = sizeItem.quantity;
 
-    //Calculate total with proper size-based pricing
+            const originalTotal = originalPricePerUnit * quantity;
+            const yourTotal = yourPricePerUnit * quantity;
+            const discount = originalTotal - yourTotal;
+            const discountPercentage = originalTotal > 0 ? (discount / originalTotal) * 100 : 0;
+
+            totalOriginalPrice += originalTotal;
+            totalYourPrice += yourTotal;
+            totalQuantity += quantity;
+
+            return {
+                size: sizeItem.size,
+                quantity,
+                originalPricePerUnit,
+                yourPricePerUnit,
+                originalTotal,
+                yourTotal,
+                discount,
+                discountPercentage,
+                hasDiscount: discount > 0,
+                additional_price: sizeItem.additional_price || 0
+            };
+        });
+
+        return {
+            totalOriginalPrice,
+            totalYourPrice,
+            totalDiscount: totalOriginalPrice - totalYourPrice,
+            totalDiscountPercentage: totalOriginalPrice > 0 ? ((totalOriginalPrice - totalYourPrice) / totalOriginalPrice) * 100 : 0,
+            totalQuantity,
+            sizeBreakdown,
+            hasPricing: true
+        };
+    }, [quote.productDetails, baseProductPrice, form.watch("basePrice")]);
+
+    // Additional fees
     const setupFee = parseFloat(form.watch("setupFee") || "0");
     const designFee = parseFloat(form.watch("designFee") || "0");
     const rushFee = parseFloat(form.watch("rushFee") || "0");
@@ -218,33 +275,30 @@ export default function RequestQuoteResponseForm({
     const tax = parseFloat(form.watch("tax") || "0");
 
     const calculatedTotal = React.useMemo(() => {
-        // Base total (already calculated per size)
-        const subtotal = baseTotal + setupFee + designFee + rushFee + shippingCost;
-
-        // Tax is calculated on subtotal
+        const subtotal = pricingAnalysis.totalYourPrice + setupFee + designFee + rushFee + shippingCost;
         return subtotal + tax;
-    }, [baseTotal, setupFee, designFee, rushFee, shippingCost, tax]);
+    }, [pricingAnalysis.totalYourPrice, setupFee, designFee, rushFee, shippingCost, tax]);
 
-    //Get total quantity and size breakdown for display
+    // Get total quantity and size breakdown for display
     const quantityInfo = React.useMemo(() => {
-        if (!productDetails?.quantityBySize || !Array.isArray(productDetails.quantityBySize)) {
+        if (!quote.productDetails?.quantityBySize || !Array.isArray(quote.productDetails.quantityBySize)) {
             return {
-                totalQuantity: productDetails?.quantity || 1,
+                totalQuantity: quote.productDetails?.quantity || 1,
                 sizeBreakdown: [],
                 hasSizeBreakdown: false
             };
         }
 
-        const totalQuantity = productDetails.quantityBySize.reduce((total, item) => {
+        const totalQuantity = quote.productDetails.quantityBySize.reduce((total, item) => {
             return total + item.quantity;
         }, 0);
 
         return {
             totalQuantity,
-            sizeBreakdown: productDetails.quantityBySize,
+            sizeBreakdown: quote.productDetails.quantityBySize,
             hasSizeBreakdown: true
         };
-    }, [productDetails]);
+    }, [quote.productDetails]);
 
     useEffect(() => {
         if (calculatedTotal > 0) {
@@ -253,52 +307,76 @@ export default function RequestQuoteResponseForm({
     }, [calculatedTotal, form]);
 
     const handleSubmit = async (data: ResponseFormData) => {
-        const submissionData = {
-            ...data,
-        };
-
-        await onSubmit(submissionData);
+        await onSubmit(data);
     };
 
     return (
         <AlertDialog open={open} onOpenChange={onOpenChange}>
             <AlertDialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
                 <AlertDialogHeader>
-                    <AlertDialogTitle>
-                        {mode === "revise" ? "Create Revision" : "Create Admin Response"}
-                        {quote.currentVersion && (
-                            <Badge variant="secondary" className="ml-2">
-                                Current: v{quote.currentVersion}
-                                {quote.totalRevisions && quote.totalRevisions > 0 &&
-                                    ` (${quote.totalRevisions} revisions)`
-                                }
-                            </Badge>
-                        )}
-                    </AlertDialogTitle>
+                    <AlertDialogTitle>Create Admin Response</AlertDialogTitle>
                     <AlertDialogDescription>
-                        {mode === "revise"
-                            ? "Create a new revision of your response with updated information."
-                            : `Provide a detailed response to this quote request. Total quantity: ${quantityInfo.totalQuantity} items${quantityInfo.hasSizeBreakdown ? ` across ${quantityInfo.sizeBreakdown.length} sizes` : ''}.`
-                        }
+                        Provide a detailed response to this quote request. Total quantity: {quantityInfo.totalQuantity} items{quantityInfo.hasSizeBreakdown ? ` across ${quantityInfo.sizeBreakdown.length} sizes` : ''}.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 
-                {/* Product Summary */}
-                {productDetails && (
+                {/* ✅ Enhanced Product Summary with additional_price information */}
+                {quote.productDetails && (
                     <div className="p-4 bg-muted/30 rounded-lg mb-4">
                         <h4 className="font-medium mb-2 flex items-center gap-2">
                             <Package className="h-4 w-4" />
                             Product Summary
                         </h4>
-                        <div className="text-sm space-y-1">
+                        <div className="text-sm space-y-2">
                             <div>Total Quantity: <span className="font-medium">{quantityInfo.totalQuantity}</span></div>
-                            {quantityInfo.hasSizeBreakdown && (
-                                <div>
-                                    Size Breakdown: {quantityInfo.sizeBreakdown.map((item, index) => (
-                                        <span key={index} className="inline-block mr-2">
-                                            {item.size}: {item.quantity}
-                                        </span>
-                                    ))}
+
+                            {pricingAnalysis.hasPricing && pricingAnalysis.sizeBreakdown.length > 0 && (
+                                <div className="space-y-2">
+                                    <div className="font-medium">Size Breakdown & Pricing:</div>
+                                    <div className="grid gap-2">
+                                        {pricingAnalysis.sizeBreakdown.map((item, index) => (
+                                            <div key={index} className="flex justify-between items-center p-2 bg-white/50 rounded border text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-medium">Size {item.size}:</span>
+                                                    <span>{item.quantity} items</span>
+                                                    {/* ✅ Show additional_price */}
+                                                    <span className="text-blue-600 text-xs">
+                                                        (+{item.additional_price.toLocaleString('vi-VN')} VNĐ)
+                                                    </span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="line-through text-muted-foreground">
+                                                        {item.originalPricePerUnit.toLocaleString('vi-VN')} VNĐ/item
+                                                    </div>
+                                                    <div className="font-medium text-green-600">
+                                                        {item.yourPricePerUnit.toLocaleString('vi-VN')} VNĐ/item
+                                                    </div>
+                                                    {item.hasDiscount && (
+                                                        <div className="text-orange-600 font-medium">
+                                                            Save {item.discount.toLocaleString('vi-VN')} VNĐ ({item.discountPercentage.toFixed(1)}%)
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Total discount summary */}
+                                    {pricingAnalysis.totalDiscount > 0 && (
+                                        <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                            <div className="text-sm font-medium text-green-800 mb-1">
+                                                Customer Savings Summary:
+                                            </div>
+                                            <div className="text-xs text-green-700 space-y-1">
+                                                <div>Original Total: {pricingAnalysis.totalOriginalPrice.toLocaleString('vi-VN')} VNĐ</div>
+                                                <div>Your Quote Total: {pricingAnalysis.totalYourPrice.toLocaleString('vi-VN')} VNĐ</div>
+                                                <div className="font-bold text-green-800 text-sm">
+                                                    Total Savings: {pricingAnalysis.totalDiscount.toLocaleString('vi-VN')} VNĐ
+                                                    ({pricingAnalysis.totalDiscountPercentage.toFixed(1)}% off)
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -323,9 +401,6 @@ export default function RequestQuoteResponseForm({
                                         <SelectContent>
                                             <SelectItem value="reviewing">Reviewing</SelectItem>
                                             <SelectItem value="quoted">Quoted</SelectItem>
-                                            {mode === "revise" && (
-                                                <SelectItem value="revised">Revised</SelectItem>
-                                            )}
                                             <SelectItem value="rejected">Rejected</SelectItem>
                                         </SelectContent>
                                     </Select>
@@ -335,13 +410,18 @@ export default function RequestQuoteResponseForm({
                         />
 
                         {/* Pricing Section */}
-                        {(currentStatus === "quoted" || currentStatus === "revised") && (
+                        {currentStatus === "quoted" && (
                             <>
                                 <Separator />
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
                                         <h4 className="font-medium text-lg">
                                             Pricing Details ({quantityInfo.totalQuantity} items)
+                                            {pricingAnalysis.totalDiscount > 0 && (
+                                                <Badge variant="secondary" className="ml-2 bg-green-100 text-green-800">
+                                                    {pricingAnalysis.totalDiscountPercentage.toFixed(1)}% off retail
+                                                </Badge>
+                                            )}
                                         </h4>
                                         <Button
                                             type="button"
@@ -353,7 +433,7 @@ export default function RequestQuoteResponseForm({
                                         </Button>
                                     </div>
 
-                                    {/* Price Breakdown Fields with quantity context */}
+                                    {/* Enhanced price breakdown with additional_price details */}
                                     {showPriceBreakdown && (
                                         <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
                                             <FormField
@@ -361,7 +441,7 @@ export default function RequestQuoteResponseForm({
                                                 name="basePrice"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Base Price Per Unit (VNĐ)</FormLabel>
+                                                        <FormLabel>Your Price Per Unit (VNĐ)</FormLabel>
                                                         <FormControl>
                                                             <Input
                                                                 type="number"
@@ -372,16 +452,35 @@ export default function RequestQuoteResponseForm({
                                                             />
                                                         </FormControl>
                                                         <FormDescription>
-                                                            {baseTotal > 0 && (
-                                                                <div className="space-y-1">
-                                                                    <div>Total base cost: <span className="font-medium">{baseTotal.toLocaleString('vi-VN')} VNĐ</span></div>
-                                                                    {quantityInfo.hasSizeBreakdown && (
-                                                                        <div className="text-xs">
-                                                                            {quantityInfo.sizeBreakdown.map((item, index) => (
-                                                                                <div key={index}>
-                                                                                    Size {item.size}: {item.quantity} × {parseFloat(field.value || "0").toLocaleString('vi-VN')} = {(item.quantity * parseFloat(field.value || "0")).toLocaleString('vi-VN')} VNĐ
+                                                            {pricingAnalysis.totalYourPrice > 0 && (
+                                                                <div className="space-y-2">
+                                                                    <div>Your total: <span className="font-medium">{pricingAnalysis.totalYourPrice.toLocaleString('vi-VN')} VNĐ</span></div>
+                                                                    {pricingAnalysis.hasPricing && pricingAnalysis.sizeBreakdown.length > 0 && (
+                                                                        <div className="text-xs space-y-1">
+                                                                            <div className="font-medium text-blue-600 mb-1">Size-specific pricing:</div>
+                                                                            {pricingAnalysis.sizeBreakdown.map((item, index) => (
+                                                                                <div key={index} className="flex justify-between">
+                                                                                    <span>
+                                                                                        Size {item.size} ({item.quantity}x):
+                                                                                        <span className="text-blue-500 ml-1">
+                                                                                            +{item.additional_price.toLocaleString('vi-VN')}
+                                                                                        </span>
+                                                                                    </span>
+                                                                                    <div className="text-right">
+                                                                                        <div className="line-through text-muted-foreground">
+                                                                                            {item.originalTotal.toLocaleString('vi-VN')}
+                                                                                        </div>
+                                                                                        <div className="font-medium">
+                                                                                            {item.yourTotal.toLocaleString('vi-VN')} VNĐ
+                                                                                        </div>
+                                                                                    </div>
                                                                                 </div>
                                                                             ))}
+                                                                        </div>
+                                                                    )}
+                                                                    {pricingAnalysis.totalDiscount > 0 && (
+                                                                        <div className="text-green-600 font-medium text-sm">
+                                                                            Customer saves: {pricingAnalysis.totalDiscount.toLocaleString('vi-VN')} VNĐ vs retail
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -509,7 +608,7 @@ export default function RequestQuoteResponseForm({
                                         </div>
                                     )}
 
-                                    {/* Total Price with detailed breakdown */}
+                                    {/* Enhanced Total Price with savings info */}
                                     <FormField
                                         control={form.control}
                                         name="quotedPrice"
@@ -527,12 +626,27 @@ export default function RequestQuoteResponseForm({
                                                     />
                                                 </FormControl>
                                                 {calculatedTotal > 0 && (
-                                                    <FormDescription className="space-y-1">
+                                                    <FormDescription className="space-y-2">
                                                         <div className="font-medium text-green-700 text-base">
                                                             Calculated Total: {calculatedTotal.toLocaleString('vi-VN')} VNĐ
                                                         </div>
+
+                                                        {/* Customer savings highlight */}
+                                                        {pricingAnalysis.totalDiscount > 0 && (
+                                                            <div className="p-2 bg-orange-50 border border-orange-200 rounded text-sm">
+                                                                <div className="font-medium text-orange-800 mb-1">Customer Value:</div>
+                                                                <div className="text-orange-700 text-xs space-y-1">
+                                                                    <div>Retail Price: {(pricingAnalysis.totalOriginalPrice + setupFee + designFee + rushFee + shippingCost + tax).toLocaleString('vi-VN')} VNĐ</div>
+                                                                    <div>Your Quote: {calculatedTotal.toLocaleString('vi-VN')} VNĐ</div>
+                                                                    <div className="font-bold text-orange-800">
+                                                                        Total Savings: {((pricingAnalysis.totalOriginalPrice + setupFee + designFee + rushFee + shippingCost + tax) - calculatedTotal).toLocaleString('vi-VN')} VNĐ
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        )}
+
                                                         <div className="text-xs text-muted-foreground space-y-1">
-                                                            <div>• Base Total: {baseTotal.toLocaleString('vi-VN')} VNĐ ({quantityInfo.totalQuantity} items)</div>
+                                                            <div>• Base Total: {pricingAnalysis.totalYourPrice.toLocaleString('vi-VN')} VNĐ ({quantityInfo.totalQuantity} items)</div>
                                                             {setupFee > 0 && <div>• Setup Fee: {setupFee.toLocaleString('vi-VN')} VNĐ</div>}
                                                             {designFee > 0 && <div>• Design Fee: {designFee.toLocaleString('vi-VN')} VNĐ</div>}
                                                             {rushFee > 0 && <div>• Rush Fee: {rushFee.toLocaleString('vi-VN')} VNĐ</div>}
@@ -673,7 +787,7 @@ export default function RequestQuoteResponseForm({
                             <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
                             <AlertDialogAction type="submit" disabled={isLoading}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {"Submit Response"}
+                                Submit Response
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </form>
