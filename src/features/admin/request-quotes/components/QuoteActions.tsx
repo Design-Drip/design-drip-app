@@ -374,7 +374,7 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
                     <DialogHeader>
                         <DialogTitle>Assign Designer</DialogTitle>
                         <DialogDescription>
-                            Chọn designer để assign request quote này.
+                            Select a designer to assign this request quote.
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
@@ -386,7 +386,7 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
                                 disabled={loadingDesigners}
                             >
                                 <SelectTrigger id="designerId">
-                                    <SelectValue placeholder={loadingDesigners ? "Đang tải..." : "Chọn designer"} />
+                                    <SelectValue placeholder={loadingDesigners ? "Loading..." : "Select Designer"} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {designers.map(designer => (

@@ -39,8 +39,10 @@ export default function DesignerQuoteDetailPage() {
       setLoading(true);
       const res = await fetch(`/api/request-quotes/${id}`);
       const data = await res.json();
+      console.log("data quote", data);
       if (!res.ok) throw new Error(data.message || "Failed to fetch quote");
       setQuote(data.data);
+      console.log("quote", data.data.productDetails);
       // Lấy productId đúng kiểu string
       let productIdRaw = data.data?.productDetails?.productId;
       let productId = typeof productIdRaw === "string"
@@ -67,6 +69,7 @@ export default function DesignerQuoteDetailPage() {
       setHasFetchedProduct(true);
       const res = await fetch(`/api/products/${productId}`);
       const data = await res.json();
+      console.log("data product", data);
       if (!res.ok) throw new Error(data.message || "Failed to fetch product");
       setProduct(data);
     } catch (err: any) {
@@ -111,11 +114,19 @@ export default function DesignerQuoteDetailPage() {
     );
   }
 
-  // Lấy selectedColorId từ quote
-  const selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || quote.productDetails?.selectedColorId;
+  // Lấy selectedColorId từ quote và đảm bảo nó là string
+  const selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || 
+    quote.productDetails?.selectedColorId?._id?.toString?.() || 
+    quote.productDetails?.selectedColorId?.id?.toString?.() ||
+    quote.productDetails?.selectedColorId;
+  console.log("selectedColorId", selectedColorId);
+  console.log("selectedColorId object", quote.productDetails?.selectedColorId);
   
   // Tìm color object trong product.colors
-  const selectedColor = product?.colors?.find((c: any) => c.id === selectedColorId);
+  const selectedColor = product?.colors?.find((c: any) => {
+    // So sánh cả string và ObjectId để đảm bảo tương thích
+    return c.id === selectedColorId || c.id === quote.productDetails?.selectedColorId?.toString();
+  });
   
   // Lấy tất cả ảnh của color được chọn hoặc color đầu tiên
   const colorToUse = selectedColor || product?.colors?.[0];
@@ -138,67 +149,115 @@ export default function DesignerQuoteDetailPage() {
           <div>
             <div className="font-bold text-lg">Customer: {quote.firstName} {quote.lastName}</div>
             <div className="text-muted-foreground text-sm">{quote.emailAddress}</div>
-            <div className="mt-2">
-              <Badge variant="outline">{quote.type === "product" ? "Product" : "Custom"}</Badge>
-              <Badge variant="outline" className="ml-2">Status: {quote.status}</Badge>
-            </div>
           </div>
-          <div className="mt-4">
-            {loadingProduct && !product ? (
-              <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin h-4 w-4" /> Loading product...</div>
-            ) : product ? (
-              <div className="border rounded p-4 mt-2">
-                <div className="font-medium">{product.product?.name || "Product"}</div>
-                {/* <div className="text-sm text-muted-foreground">Price: {product.product?.base_price ? product.product.base_price + "₫" : "N/A"}</div> */}
-                {colorToUse && (
-                  <div className="text-sm text-muted-foreground">Color: {colorToUse.color}</div>
-                )}
-                {!selectedColor && selectedColorId && (
-                  <div className="text-sm text-red-500">Selected color not found (ID: {selectedColorId}), showing first available color</div>
-                )}
-                {(!product.colors || product.colors.length === 0) && (
-                  <div className="text-sm text-red-500">No colors available for this product</div>
-                )}
-                
-                {/* Hiển thị tất cả 4 ảnh của 4 mặt áo */}
-                {productImages.length > 0 ? (
-                  <div className="mt-4">
-                    <div className="text-sm font-medium mb-3">Product Images:</div>
-                    <div className="flex gap-3 overflow-x-auto pb-2">
-                      {productImages.map((image: any, index: number) => (
-                        <div key={image.id || index} className="flex flex-col items-center flex-shrink-0">
-                          <img
-                            src={image.url}
-                            alt={`${product.product?.name || "Product"} - ${image.view_side}`}
-                            className="w-20 h-20 object-contain border rounded-lg shadow-sm"
-                          />
-                          <div className="text-xs text-muted-foreground mt-1 font-medium capitalize">
-                            {image.view_side}
+          {/* Information Grid - 2 columns 2 rows */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {/* Product Details */}
+            <div className="border rounded p-4">
+              <div className="font-medium mb-2">Product Details:</div>
+              {loadingProduct && !product ? (
+                <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="animate-spin h-4 w-4" /> Loading product...</div>
+              ) : product ? (
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground">{product.product?.name || "Product"}</div>
+                  {colorToUse && (
+                    <div className="text-sm text-muted-foreground">Color: {colorToUse.color}</div>
+                  )}
+                  {!selectedColor && selectedColorId && (
+                    <div className="text-sm text-red-500">Selected color not found (ID: {selectedColorId.toString()}), showing first available color</div>
+                  )}
+                  {(!product.colors || product.colors.length === 0) && (
+                    <div className="text-sm text-red-500">No colors available for this product</div>
+                  )}
+                  
+                  {/* Hiển thị tất cả 4 ảnh của 4 mặt áo */}
+                  {productImages.length > 0 ? (
+                    <div className="mt-3">
+                      <div className="text-sm font-medium mb-2">Product Images:</div>
+                      <div className="flex gap-2 overflow-x-auto pb-2">
+                        {productImages.map((image: any, index: number) => (
+                          <div key={image.id || index} className="flex flex-col items-center flex-shrink-0">
+                            <img
+                              src={image.url}
+                              alt={`${product.product?.name || "Product"} - ${image.view_side}`}
+                              className="w-16 h-16 object-contain border rounded-lg shadow-sm"
+                            />
+                            <div className="text-xs text-muted-foreground mt-1 font-medium capitalize">
+                              {image.view_side}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
+                  ) : (
+                    <div className="text-muted-foreground">No product images available</div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-muted-foreground">No product info</div>
+              )}
+            </div>
+
+            {/* Design Description */}
+            {quote.designDescription && (
+              <div className="border rounded p-4">
+                <div className="font-medium mb-2">Design Description:</div>
+                <div className="text-sm text-muted-foreground">{quote.designDescription}</div>
+              </div>
+            )}
+
+            {/* Extra Information */}
+            {quote.extraInformation && (
+              <div className="border rounded p-4">
+                <div className="font-medium mb-2">Extra Information:</div>
+                <div className="text-sm text-muted-foreground">{quote.extraInformation}</div>
+              </div>
+            )}
+
+            {/* User Artwork Status */}
+            <div className="border rounded p-4">
+              <div className="font-medium mb-2">User Artwork:</div>
+              <div className="text-sm text-muted-foreground">
+                {quote.artwork ? (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                      Available
+                    </Badge>
+                    <span>User has provided artwork</span>
                   </div>
                 ) : (
-                  <div className="text-muted-foreground mt-4">No product images available</div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                      Not Provided
+                    </Badge>
+                    <span>No artwork provided by user</span>
+                  </div>
                 )}
               </div>
-            ) : (
-              <div className="text-muted-foreground">No product info</div>
-            )}
+            </div>
           </div>
           <div className="mt-6">
             <Button
-              onClick={() => {
-                let productIdRaw = quote.productDetails?.productId;
-                let productId = typeof productIdRaw === "string"
-                  ? productIdRaw
-                  : productIdRaw?._id || productIdRaw?.id;
-                let selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || quote.productDetails?.selectedColorId;
-                // Navigate directly to designer editor
-                router.push(`/designer_management/designer-editor/${productId}?colorId=${selectedColorId}&quoteId=${quote.id}&fromQuote=true`);
-              }}
-              disabled={!product}
+                             onClick={() => {
+                 let productIdRaw = quote.productDetails?.productId;
+                 let productId = typeof productIdRaw === "string"
+                   ? productIdRaw
+                   : productIdRaw?._id?.toString?.() || productIdRaw?.id?.toString?.() || productIdRaw;
+                 
+                 // Đảm bảo selectedColorId là string
+                 let selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || 
+                   quote.productDetails?.selectedColorId?._id?.toString?.() || 
+                   quote.productDetails?.selectedColorId?.id?.toString?.() ||
+                   quote.productDetails?.selectedColorId;
+                 
+                 console.log("Navigating to editor with:", { productId, selectedColorId, quoteId: quote.id });
+                 console.log("selectedColorId type:", typeof selectedColorId);
+                 console.log("selectedColorId value:", selectedColorId);
+                 
+                 // Navigate directly to designer editor
+                 router.push(`/designer_management/designer-editor/${productId}?colorId=${selectedColorId}&quoteId=${quote.id}&fromQuote=true`);
+               }}
+              disabled={!product || !quote.productDetails?.productId}
             >
               Start Edit
             </Button>

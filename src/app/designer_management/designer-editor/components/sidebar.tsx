@@ -8,6 +8,7 @@ import {
   Shapes,
   Sparkles,
   Type,
+  Users,
 } from "lucide-react";
 
 import { ActiveTool } from "@/features/editor/types";
@@ -46,6 +47,12 @@ export const Sidebar = ({ activeTool, onChangeActiveTool }: SidebarProps) => {
           label="Templates"
           isActive={activeTool === "design-templates"}
           onClick={() => onChangeActiveTool("design-templates")}
+        />
+        <SidebarItem
+          icon={Users}
+          label="Users"
+          isActive={activeTool === "users"}
+          onClick={() => onChangeActiveTool("users")}
         />
         <SidebarItem
           icon={Settings}

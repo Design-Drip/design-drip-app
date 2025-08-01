@@ -24,12 +24,13 @@ interface AssignedQuote {
   lastName: string;
   emailAddress: string;
   company?: string;
-  type: "product" | "custom";
   status: string;
   quotedPrice?: number;
   productDetails?: any;
   customRequest?: any;
   needDeliveryBy?: string;
+  design_id?: string;
+  designStatus?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,6 +75,30 @@ const StatusBadge = ({ status }: { status: string }) => {
   return (
     <Badge variant="outline" className={config.className}>
       {config.label}
+    </Badge>
+  );
+};
+
+const DesignStatusBadge = ({ design_id, designStatus }: { design_id?: string; designStatus?: string }) => {
+  if (design_id) {
+    return (
+      <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+        Completed
+      </Badge>
+    );
+  }
+  
+  if (designStatus === "in_progress") {
+    return (
+      <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">
+        In Progress
+      </Badge>
+    );
+  }
+  
+  return (
+    <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+      Not Started
     </Badge>
   );
 };
@@ -171,7 +196,7 @@ export default function AssignedQuotesPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Assigned</CardTitle>
@@ -183,34 +208,12 @@ export default function AssignedQuotesPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">Designs Completed</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {quotes.filter(q => q.status === "pending").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Quoted</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {quotes.filter(q => q.status === "quoted").length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Approved</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {quotes.filter(q => q.status === "approved").length}
+              {quotes.filter(q => q.design_id).length}
             </div>
           </CardContent>
         </Card>
@@ -236,8 +239,7 @@ export default function AssignedQuotesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Customer</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Request Details</TableHead>
+                    <TableHead>Design Status</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Quote Price</TableHead>
                     <TableHead>Assigned Date</TableHead>
@@ -263,28 +265,7 @@ export default function AssignedQuotesPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">
-                          {quote.type === "product" ? "Product" : "Custom"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {quote.type === "product" ? (
-                          <div className="text-sm">
-                            <div className="font-medium">
-                              {quote.productDetails?.productId?.name || "Product"}
-                            </div>
-                            <div className="text-muted-foreground">
-                              Qty: {quote.productDetails?.quantity || 0}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="text-sm">
-                            <div className="font-medium">Custom Request</div>
-                            <div className="text-muted-foreground truncate max-w-48">
-                              {quote.customRequest?.customNeed || "Custom design needed"}
-                            </div>
-                          </div>
-                        )}
+                        <DesignStatusBadge design_id={quote.design_id} designStatus={quote.designStatus} />
                       </TableCell>
                       <TableCell>
                         <StatusBadge status={quote.status} />

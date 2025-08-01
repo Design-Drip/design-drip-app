@@ -6,6 +6,7 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import { checkRole } from "@/lib/roles";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
+import { clerkClient } from "@clerk/nextjs/server";
 
 const createRequestQuoteSchema = z.object({
     //Customer information
@@ -50,10 +51,11 @@ const updateRequestQuoteSchema = z.object({
 });
 
 const adminResponseSchema = z.object({
-    status: z.enum(["reviewing", "quoted", "rejected"]),
+    status: z.enum(["reviewing", "quoted", "revised", "rejected"]),
     quotedPrice: z.number().min(0).optional(),
     responseMessage: z.string().trim().optional(),
     rejectionReason: z.string().trim().optional(),
+    adminNotes: z.string().trim().optional(),
 
     // Price breakdown
     priceBreakdown: z.object({
@@ -70,9 +72,26 @@ const adminResponseSchema = z.object({
     productionDetails: z.object({
         estimatedDays: z.number().min(1).optional(),
         printingMethod: z.enum(["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"]).optional(),
+        materialSpecs: z.string().trim().optional(),
+        colorLimitations: z.string().trim().optional(),
+        sizeAvailability: z.array(z.object({
+            size: z.string(),
+            available: z.boolean(),
+        })).optional(),
     }).optional(),
 
-    validUntil: z.string().optional(),
+    validUntil: z.string().optional(), // ISO date string
+});
+
+const revisionSchema = adminResponseSchema.extend({
+    revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]),
+});
+
+const customerFeedbackSchema = z.object({
+    requestedChanges: z.array(z.object({
+        aspect: z.enum(["price", "timeline", "materials", "design", "other"]),
+        description: z.string().trim().min(1, "Description is required"),
+    })).min(1, "At least one change must be requested"),
 });
 
 const app = new Hono()
@@ -103,9 +122,9 @@ const app = new Hono()
                 const query: any = {};
 
                 if (!isAdmin) {
-                    // Nếu không phải admin, chỉ xem được:
-                    // 1. Quote do mình tạo (userId = user.id)
-                    // 2. Quote được assign cho mình (designerId = user.id)
+                    // If not admin, can only view:
+                    // 1. Quotes created by themselves (userId = user.id)
+                    // 2. Quotes assigned to themselves (designerId = user.id)
                     query.$or = [
                         { userId: user.id },
                         { designerId: user.id }
@@ -148,6 +167,43 @@ const app = new Hono()
                 const totalQuotes = await RequestQuote.countDocuments(query);
                 const totalPages = Math.ceil(totalQuotes / limit);
 
+                // Get unique designer IDs
+                const designerIds = [...new Set(requestQuotes
+                    .map(quote => quote.designerId)
+                    .filter((id): id is string => id !== undefined && id !== null))];
+
+                // Fetch designer info from Clerk
+                let designerInfoMap: Record<string, any> = {};
+                if (designerIds.length > 0) {
+                    try {
+                        const client = await clerkClient();
+                        const designerUsers = await Promise.all(
+                            designerIds.map(async (id) => {
+                                try {
+                                    const user = await client.users.getUser(id);
+                                    return {
+                                        id: user.id,
+                                        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.emailAddresses?.[0]?.emailAddress || user.id,
+                                        email: user.emailAddresses?.[0]?.emailAddress || '',
+                                    };
+                                } catch (error) {
+                                    console.error(`Error fetching designer ${id}:`, error);
+                                    return null;
+                                }
+                            })
+                        );
+                        
+                        designerInfoMap = designerUsers
+                            .filter(user => user !== null)
+                            .reduce((acc, user) => {
+                                if (user) acc[user.id] = user;
+                                return acc;
+                            }, {} as Record<string, any>);
+                    } catch (error) {
+                        console.error("Error fetching designer info:", error);
+                    }
+                }
+
                 //Transform data for response
                 const transformQuotes = requestQuotes.map((quote) => ({
                     id: quote._id?.toString(),
@@ -177,6 +233,8 @@ const app = new Hono()
                     rejectionReason: quote.rejectionReason,
                     adminNotes: quote.adminNotes,
                     designerId: quote.designerId,
+                    design_id: quote.design_id,
+                    designerInfo: quote.designerId ? designerInfoMap[quote.designerId] : undefined,
                     createdAt: quote.createdAt,
                     updatedAt: quote.updatedAt,
                 }));
@@ -335,7 +393,12 @@ const app = new Hono()
                         state: requestQuote.state,
                         postcode: requestQuote.postcode,
                         agreeTerms: requestQuote.agreeTerms,
-                        productDetails: requestQuote.productDetails,
+                        productDetails: {
+                            productId: requestQuote.productDetails?.productId?._id?.toString() || requestQuote.productDetails?.productId?.toString(),
+                            quantity: requestQuote.productDetails?.quantity,
+                            selectedColorId: requestQuote.productDetails?.selectedColorId?._id?.toString() || requestQuote.productDetails?.selectedColorId?.toString(),
+                            quantityBySize: requestQuote.productDetails?.quantityBySize,
+                        },
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
                         designDescription: requestQuote.designDescription,
@@ -509,176 +572,13 @@ const app = new Hono()
         }
     })
 
-    // Create revision
-    .post("/:id/revise", zValidator("json", revisionSchema), async (c) => {
-        try {
-            const user = c.get("user")!;
-            const isAdmin = await checkRole("admin");
 
-            if (!isAdmin) {
-                throw new HTTPException(403, { message: "Admin access required" });
-            }
 
-            const { id } = c.req.param();
-            const responseData = c.req.valid("json");
+    
 
-            const preparedData = {
-                ...responseData,
-                validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
-                status: "revised", // Force status to revised for revisions
-            };
+    
 
-            const updatedQuote = await RequestQuote.addAdminResponse(
-                id,
-                preparedData,
-                user.id,
-                true
-            );
-
-            return c.json({
-                success: true,
-                data: updatedQuote,
-                message: "Revision submitted successfully"
-            });
-
-        } catch (error) {
-            console.error("Error submitting revision:", error);
-            if (error instanceof HTTPException) throw error;
-            throw new HTTPException(500, { message: "Failed to submit revision" });
-        }
-    })
-
-    .post("/:id/request-changes", zValidator("json", customerFeedbackSchema), async (c) => {
-        try {
-            const user = c.get("user")!;
-            const { id } = c.req.param();
-            const feedbackData = c.req.valid("json");
-
-            const quote = await RequestQuote.findOne({ _id: id, userId: user.id });
-            if (!quote) {
-                throw new HTTPException(404, { message: "Quote not found" });
-            }
-
-            const currentResponse = quote.adminResponses.find(r => r.isCurrentVersion);
-            if (!currentResponse) {
-                throw new HTTPException(400, { message: "No active response to request changes on" });
-            }
-
-            if (currentResponse.status !== "quoted" && currentResponse.status !== "revised") {
-                throw new HTTPException(400, { message: "Changes can only be requested on quoted responses" });
-            }
-
-            // Update customer feedback with requested changes
-            if (!currentResponse.customerFeedback) {
-                currentResponse.customerFeedback = {};
-            }
-
-            currentResponse.customerFeedback.requestedChanges = feedbackData.requestedChanges;
-
-            // Mark as viewed if not already
-            if (!currentResponse.customerViewed) {
-                currentResponse.customerViewed = true;
-                currentResponse.customerViewedAt = new Date();
-            }
-
-            await quote.save();
-
-            return c.json({
-                success: true,
-                message: "Change requests submitted successfully"
-            });
-
-        } catch (error) {
-            console.error("Error submitting change requests:", error);
-            if (error instanceof HTTPException) throw error;
-            throw new HTTPException(500, { message: "Failed to submit change requests" });
-        }
-    })
-
-    // Mark quote response as viewed
-    .patch("/:id/mark-viewed", async (c) => {
-        try {
-            const user = c.get("user")!;
-            const { id } = c.req.param();
-
-            const result = await RequestQuote.findOneAndUpdate(
-                {
-                    _id: id,
-                    userId: user.id,
-                    "adminResponses.isCurrentVersion": true,
-                    "adminResponses.customerViewed": { $ne: true }
-                },
-                {
-                    "adminResponses.$[elem].customerViewed": true,
-                    "adminResponses.$[elem].customerViewedAt": new Date(),
-                },
-                {
-                    arrayFilters: [{ "elem.isCurrentVersion": true }],
-                    new: true,
-                }
-            );
-
-            return c.json({
-                success: true,
-                message: "Quote marked as viewed"
-            });
-
-        } catch (error) {
-            console.error("Error marking quote as viewed:", error);
-            throw new HTTPException(500, { message: "Failed to mark as viewed" });
-        }
-    })
-
-    // Approve/Reject quote (customer action)
-    .post("/:id/approve", zValidator("json", z.object({
-        action: z.enum(["approve", "reject"]),
-        reason: z.string().optional(),
-    })), async (c) => {
-        try {
-            const user = c.get("user")!;
-            const { id } = c.req.param();
-            const { action, reason } = c.req.valid("json");
-
-            const quote = await RequestQuote.findOne({ _id: id, userId: user.id });
-            if (!quote) {
-                throw new HTTPException(404, { message: "Quote not found" });
-            }
-
-            const currentResponse = quote.adminResponses.find(r => r.isCurrentVersion);
-            if (!currentResponse) {
-                throw new HTTPException(400, { message: "No active response found" });
-            }
-
-            if (currentResponse.status !== "quoted" && currentResponse.status !== "revised") {
-                throw new HTTPException(400, { message: "Quote is not in a state that can be approved/rejected" });
-            }
-
-            // Update quote status
-            quote.status = action === "approve" ? "approved" : "rejected";
-
-            if (action === "approve") {
-                quote.approvedAt = new Date();
-                currentResponse.status = "approved";
-            } else {
-                quote.rejectedAt = new Date();
-                quote.rejectionReason = reason;
-                currentResponse.status = "rejected";
-                currentResponse.rejectionReason = reason;
-            }
-
-            await quote.save();
-
-            return c.json({
-                success: true,
-                message: `Quote ${action}d successfully`
-            });
-
-        } catch (error) {
-            console.error("Error processing quote action:", error);
-            if (error instanceof HTTPException) throw error;
-            throw new HTTPException(500, { message: "Failed to process quote action" });
-        }
-    })
+    
 
     // Get assigned quotes for designer
     .get("/my-assigned",
@@ -724,9 +624,7 @@ const app = new Hono()
                     emailAddress: quote.emailAddress,
                     phone: quote.phone,
                     company: quote.company,
-                    type: quote.type,
                     productDetails: quote.productDetails,
-                    customRequest: quote.customRequest,
                     needDeliveryBy: quote.needDeliveryBy,
                     extraInformation: quote.extraInformation,
                     status: quote.status,
@@ -783,7 +681,7 @@ const app = new Hono()
                 }
 
                 quote.designerId = designerId;
-                quote.status = "pending"; // hoặc trạng thái bạn muốn khi assign
+                quote.status = "pending"; // or status you want when assigning
                 await quote.save();
 
                 return c.json({
@@ -884,9 +782,7 @@ const app = new Hono()
                     emailAddress: quote.emailAddress,
                     phone: quote.phone,
                     company: quote.company,
-                    type: quote.type,
                     productDetails: quote.productDetails,
-                    customRequest: quote.customRequest,
                     needDeliveryBy: quote.needDeliveryBy,
                     extraInformation: quote.extraInformation,
                     status: quote.status,

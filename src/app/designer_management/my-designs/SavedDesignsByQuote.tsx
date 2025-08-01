@@ -18,6 +18,7 @@ interface Quote {
   status: string;
   type: string;
   quotedPrice: number;
+  designDescription?: string;
   createdAt: string;
   design_id?: string; // Primary design ID
 }
@@ -185,7 +186,7 @@ export const SavedDesignsByQuote = ({ designs }: SavedDesignsByQuoteProps) => {
 
   const getQuoteSubtitle = (quote: Quote | null) => {
     if (!quote) return "Your personal designs";
-    return `${quote.type} • $${quote.quotedPrice} • ${quote.status}`;
+    return quote.designDescription || "No description";
   };
 
   const getStatusColor = (status: string) => {
@@ -216,17 +217,10 @@ export const SavedDesignsByQuote = ({ designs }: SavedDesignsByQuoteProps) => {
                   <CardTitle className="text-lg font-semibold">
                     {getQuoteTitle(quote)}
                   </CardTitle>
-                  <p className="text-sm text-gray-600">
-                    {getQuoteSubtitle(quote)}
-                  </p>
+
                 </div>
               </div>
               <div className="flex items-center space-x-2">
-                {quote && (
-                  <Badge className={getStatusColor(quote.status)}>
-                    {quote.status}
-                  </Badge>
-                )}
                 <Badge variant="secondary">
                   {designs.length} design{designs.length !== 1 ? 's' : ''}
                 </Badge>

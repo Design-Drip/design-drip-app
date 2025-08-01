@@ -227,7 +227,7 @@ const app = new Hono()
         }
         
         console.log("[API GET /:id] Found design:", { 
-          id: design.id, 
+          id: design._id, 
           name: design.name,
           version: design.version,
           hasQuoteId: !!design.quote_id,

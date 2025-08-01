@@ -31,6 +31,7 @@ import { StrokeColorSidebar } from "./components/stroke-color-sidebar";
 import { StrokeWidthSidebar } from "./components/stroke-width-sidebar";
 import { RemoveBgSidebar } from "./components/remove-bg-sidebar";
 import { OpacitySidebar } from "./components/opacity-sidebar";
+import { UserArtworkSidebar } from "./components/user-artwork-sidebar";
 
 // Add inside your component
 const { useUploadThing } = generateReactHelpers<OurFileRouter>();
@@ -1013,6 +1014,17 @@ export const DesignerEditor = ({
           activeTool={activeTool}
           onChangeActiveTool={onChangeActiveTool}
         />
+        {activeTool === "users" && (
+          <UserArtworkSidebar
+            quoteId={quoteId}
+            onAddArtwork={(imageUrl) => {
+              if (editor) {
+                editor.addImage(imageUrl);
+                setHasUnsavedChanges(true);
+              }
+            }}
+          />
+        )}
         <div className="h-full flex flex-col w-full">
           <Toolbar
             editor={editor}
