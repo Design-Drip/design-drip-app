@@ -953,6 +953,17 @@ export default function RequestQuoteDetailPage() {
               Order completed
             </div>
           )}
+          <Button 
+  variant="outline" 
+  size="sm" 
+  asChild
+  disabled={!quote.design_id || quote.designStatus !== 'completed'}
+>
+  <Link href={`/my-request-quotes/${quote.id}/customer-design-view`}>
+    <Eye className="mr-2 h-4 w-4" />
+    View Design
+  </Link>
+</Button>
         </CardFooter>
       </Card>
     </div>
