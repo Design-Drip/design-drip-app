@@ -25,13 +25,10 @@ export interface AdminResponseData {
         rushFee?: number;
         shippingCost?: number;
         tax?: number;
-        totalPrice: number;
     };
     productionDetails?: {
         estimatedDays?: number;
         printingMethod?: "DTG" | "DTF" | "Screen Print" | "Vinyl" | "Embroidery";
-        materialSpecs?: string;
-        colorLimitations?: string;
     };
     validUntil?: string;
 }
@@ -87,9 +84,12 @@ export function useCreateAdminResponse() {
 
             return response.json();
         },
-        onSuccess: (_, variables) => {
+        onSuccess: (_, { quoteId }) => {
             queryClient.invalidateQueries({
-                queryKey: ["request-quotes"]
+                queryKey: getRequestQuotesQuery().queryKey,
+            });
+            queryClient.invalidateQueries({
+                queryKey: getRequestQuoteQuery(quoteId).queryKey,
             });
         },
     });

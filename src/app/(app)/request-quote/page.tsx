@@ -4,7 +4,7 @@ import React from 'react'
 const RequestQuote = () => {
     return (
         <>
-            <h1 className="text-2xl font-bold text-center mb-8">Request a Quote</h1>
+            <h1 className="text-2xl font-bold text-center mb-8 p-6 px-10">Request a Quote</h1>
             <RequestQuotePage />
         </>
     )
