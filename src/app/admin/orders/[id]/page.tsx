@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { ArrowLeft, Clock, Package } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/price";
@@ -14,12 +15,48 @@ import { Separator } from "@/components/ui/separator";
 import OrderStatusBadge from "@/components/orders/OrderStatusBadge";
 import OrderStatusUpdate from "@/features/admin/orders/components/OrderStatusUpdate";
 import { getOrderById } from "../_action";
+import { clerkClient, User } from "@clerk/nextjs/server";
+import { ClerkUser } from "../page";
+import { checkRole } from "@/lib/roles";
 
 export default async function OrderDetailsPage({
   params,
 }: {
   params: { id: string };
 }) {
+  // Verify admin access
+  const isAdmin = await checkRole("admin");
+  if (!isAdmin) {
+    redirect("/");
+  }
+  // Fetch users from Clerk
+  const client = await clerkClient();
+  const clerkUsersResponse = await client.users.getUserList({
+    limit: 100,
+  });
+  const clerkUsersList = clerkUsersResponse.data;
+  const users: ClerkUser[] = clerkUsersList.map((user: User) => {
+    const primaryEmail =
+      user.emailAddresses.find(
+        (email: any) => email.id === user.primaryEmailAddressId
+      )?.emailAddress || "";
+
+    return {
+      id: user.id,
+      email: primaryEmail,
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      fullName:
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+        primaryEmail,
+      imageUrl: user.imageUrl,
+      isActive: !user.banned,
+      lastSignInAt: user.lastSignInAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      role: (user.publicMetadata.role as string) || "",
+    };
+  });
   const orderId = params.id;
   const order = await getOrderById(orderId);
 
@@ -53,10 +90,23 @@ export default async function OrderDetailsPage({
   const totalQuantity = order.items.reduce(
     (total, item) =>
       total +
-      item.sizes.reduce((itemTotal, size) => itemTotal + size.quantity, 0),
+      item.sizes.reduce(
+        (itemTotal: number, size: { quantity: number }) => itemTotal + size.quantity,
+        0
+      ),
     0
   );
-
+  const userDetails = users.find((user) => user.id === order.userId);
+  const userFullName = userDetails?.fullName || "Unknown User";
+  const userEmail = userDetails?.email || "No email provided";
+  const userImage = userDetails?.imageUrl || null;
+  if (!userDetails) {
+    return (
+      <div className="container py-10">
+        <p className="text-red-500">User not found for this order.</p>
+      </div>
+    );
+  }
   return (
     <div className="container py-10">
       <Link
@@ -119,7 +169,7 @@ export default async function OrderDetailsPage({
                           Color: {item.color}
                         </p>
                         <div className="mt-1 space-y-1">
-                          {item.sizes.map((size, sizeIndex) => (
+                          {item.sizes.map((size: { size: string; quantity: number; pricePerUnit: number }, sizeIndex: number) => (
                             <div
                               key={`${size.size}-${sizeIndex}`}
                               className="flex justify-between text-sm"
@@ -158,11 +208,19 @@ export default async function OrderDetailsPage({
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span>{formatPrice(order.totalAmount)}</span>
+                  <span>
+                    {formatPrice(
+                      order.totalAmount - (order.shipping?.cost || 0)
+                    )}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Shipping</span>
-                  <span>Free</span>
+                  <span>
+                    {order.shipping?.cost
+                      ? formatPrice(order.shipping.cost)
+                      : "Free"}
+                  </span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex justify-between font-medium">
@@ -182,13 +240,97 @@ export default async function OrderDetailsPage({
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  {userImage ? (
+                    <img
+                      src={userImage}
+                      alt={userFullName}
+                      className="h-12 w-12 rounded-full object-cover"
+                    />
+                  ) : (
+                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
+                      <span className="text-lg font-medium text-muted-foreground">
+                        {userFullName.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="font-medium">{userFullName}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {userEmail}
+                    </p>
+                  </div>
+                </div>
                 <div>
                   <h3 className="text-sm font-medium text-muted-foreground mb-1">
                     Customer ID
                   </h3>
-                  <p>{order.userId}</p>
+                  <p className="font-mono text-sm">{order.userId}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipping Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {order.shipping ? (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Recipient
+                    </h3>
+                    <p>{order.shipping.name}</p>
+                  </div>
+                  {order.shipping.phone && (
+                    <div>
+                      <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                        Phone
+                      </h3>
+                      <p>{order.shipping.phone}</p>
+                    </div>
+                  )}
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Address
+                    </h3>
+                    <p>
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
+                        <>
+                          <br />
+                          {order.shipping.address.line2}
+                        </>
+                      )}
+                      <br />
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
+                      <br />
+                      {order.shipping.address.country}
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-muted-foreground mb-1">
+                      Shipping Method
+                    </h3>
+                    <p>
+                      {order.shipping.method === "express"
+                        ? "Express Shipping"
+                        : "Standard Shipping"}
+                      {order.shipping?.cost &&
+                        order.shipping.cost > 0 &&
+                        ` (${formatPrice(order.shipping.cost)})`}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-muted-foreground">
+                  No shipping information available
+                </p>
+              )}
             </CardContent>
           </Card>
 

@@ -1,3 +1,5 @@
+import { OrderAddress } from "@/types/address";
+
 export interface ISetDefaultPaymentMethodPayload {
   paymentMethodId: string;
 }
@@ -17,4 +19,8 @@ export interface IProcessCheckoutPayload {
   paymentIntent?: string;
   itemIds?: string[];
   return_url?: string;
+  shipping?: OrderAddress & {
+    method: "standard" | "express";
+    cost: number;
+  };
 }

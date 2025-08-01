@@ -235,6 +235,22 @@ const app = new Hono()
         paymentIntent: z.string().optional(),
         itemIds: z.array(z.string()).optional(),
         return_url: z.string().optional(),
+        shipping: z
+          .object({
+            name: z.string(),
+            phone: z.string().optional(),
+            address: z.object({
+              city: z.string(),
+              country: z.string(),
+              line1: z.string(),
+              line2: z.string().optional(),
+              postal_code: z.string(),
+              state: z.string(),
+            }),
+            method: z.enum(["standard", "express"]).default("standard"),
+            cost: z.number().default(0),
+          })
+          .optional(),
       })
     ),
     async (c) => {
@@ -245,6 +261,7 @@ const app = new Hono()
         paymentIntent,
         itemIds,
         return_url,
+        shipping,
       } = c.req.valid("json");
 
       const cart = await Cart.findOne({ userId: user.id }).lean();
@@ -278,6 +295,7 @@ const app = new Hono()
               totalAmount: intent.amount,
               paymentMethod: "card",
               paymentMethodDetails,
+              shipping: shipping || intent.shipping,
             });
 
             await order.save();
@@ -344,19 +362,41 @@ const app = new Hono()
           });
         }
 
+        // Calculate total amount including shipping cost
+        const itemsTotal = validOrderItems.reduce(
+          (sum, item) => sum + item.totalPrice,
+          0
+        );
+
+        const shippingCost = shipping?.cost || 0;
+        const totalAmount = itemsTotal + shippingCost;
+
         // Create payment intent
         const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-          amount: validOrderItems.reduce(
-            (sum, item) => sum + item.totalPrice,
-            0
-          ),
+          amount: totalAmount,
           currency: "vnd",
           customer: stripeId,
           metadata: {
             userId: user.id,
             cartId: cart._id.toString(),
             itemIds: itemIds ? itemIds.join(",") : "",
+            shippingMethod: shipping?.method || "standard",
+            shippingCost: String(shippingCost),
           },
+          shipping: shipping
+            ? {
+                name: shipping.name,
+                phone: shipping.phone,
+                address: {
+                  city: shipping.address.city,
+                  country: shipping.address.country,
+                  line1: shipping.address.line1,
+                  line2: shipping.address.line2,
+                  postal_code: shipping.address.postal_code,
+                  state: shipping.address.state,
+                },
+              }
+            : undefined,
         };
 
         // If using saved payment method
@@ -391,8 +431,9 @@ const app = new Hono()
           userId: user.id,
           stripePaymentIntentId: createdPaymentIntent.id,
           items: validOrderItems,
-          totalAmount: createdPaymentIntent.amount,
+          totalAmount: totalAmount,
           paymentMethod: "card",
+          shipping: shipping,
         });
 
         await processingOrder.save();

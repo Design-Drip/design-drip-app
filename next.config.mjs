@@ -12,7 +12,16 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "replicate.delivery", 
+        hostname: "gti33638oe.ufs.sh",
+      },
+      {
+        protocol: "https",
+        hostname: "*.ufs.sh",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "replicate.delivery",
       },
       {
         protocol: "https",

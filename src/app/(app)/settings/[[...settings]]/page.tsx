@@ -6,6 +6,8 @@ import PaymentMethods from "@/features/payments/components/PaymentMethods";
 import SavedDesigns from "@/components/saved-designs/SavedDesigns";
 
 const UserProfilePage = () => (
+  <div     className=" mx-auto px-4 py-6"
+>
   <UserProfile
     appearance={{
       elements: {
@@ -31,6 +33,7 @@ const UserProfilePage = () => (
       <SavedDesigns />
     </UserProfile.Page>
   </UserProfile>
+  </div>
 );
 
 export default UserProfilePage;

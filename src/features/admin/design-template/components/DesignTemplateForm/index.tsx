@@ -121,6 +121,7 @@ export default function DesignTemplateForm({
                             width={200}
                             height={150}
                             className="rounded-lg border object-cover"
+                            unoptimized
                           />
                           <Button
                             type="button"
@@ -142,8 +143,8 @@ export default function DesignTemplateForm({
                       <UploadButton
                         endpoint="imageUploader"
                         onClientUploadComplete={(res) => {
-                          if (res && res[0]?.url) {
-                            handleImageUpload(res[0].url);
+                          if (res && res[0]?.ufsUrl) {
+                            handleImageUpload(res[0].ufsUrl);
                           }
                         }}
                         onUploadError={(error: Error) => {
@@ -165,8 +166,8 @@ export default function DesignTemplateForm({
                       <UploadDropzone
                         endpoint="imageUploader"
                         onClientUploadComplete={(res) => {
-                          if (res && res[0]?.url) {
-                            handleImageUpload(res[0].url)
+                          if (res && res[0]?.ufsUrl) {
+                            handleImageUpload(res[0].ufsUrl)
                           }
                         }}
                         onUploadError={(error: Error) => {

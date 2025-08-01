@@ -1,8 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+import { useState } from "react";
 import {
   ArrowLeft,
   Package,
@@ -10,6 +11,9 @@ import {
   AlertTriangle,
   CreditCard,
   Clock,
+  MapPin,
+  Star,
+  MessageSquare,
 } from "lucide-react";
 import {
   Card,
@@ -21,20 +25,40 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import OrderStatusBadge from "@/components/orders/OrderStatusBadge";
 import { formatOrderDateTime } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
 import { getOrderDetailQuery } from "@/features/orders/services/queries";
+import { useCreateFeedbackMutation } from "@/features/feedback/services/mutations";
+import { toast } from "sonner";
+import { getFeedbackQuery } from "@/features/feedback/services/queries";
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const orderId = params.id;
 
   const {
     data: order,
     isLoading,
     isError,
-  } = useQuery(getOrderDetailQuery(params?.id));
+  } = useQuery(getOrderDetailQuery(orderId));
+  const submitFeedback = useCreateFeedbackMutation();
+  const productId = order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?.id;
+
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { data: feedbacks } = getFeedbackQuery(productId ?? "");
+
+  const existingFeedback = feedbacks?.data?.find(
+    (feedback: { orderId: string }) => feedback?.orderId === orderId
+  );
 
   if (isLoading) {
     return (
@@ -44,7 +68,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  if (isError || !order) {
+  if (isError || !order || !productId) {
     return (
       <div className="container mx-auto max-w-4xl py-10 px-4">
         <Button
@@ -69,6 +93,47 @@ export default function OrderDetailPage() {
       </div>
     );
   }
+
+  const handleFeedbackSubmit = () => {
+    if (rating === 0) return;
+
+    setIsSubmittingFeedback(true);
+    try {
+      if (!orderId) {
+        throw new Error("Order ID is required to submit feedback");
+      }
+      console.log("Submitting feedback:", {
+        rating,
+        comment,
+        orderId,
+      });
+      submitFeedback.mutate(
+        { orderId, rating, comment },
+        {
+          onSuccess: () => {
+            // Reset form after successful submission
+            setRating(0);
+            setComment("");
+            toast.success("Feedback submitted successfully!");
+            queryClient.invalidateQueries({
+              queryKey: ["feedback"],
+            });
+            router.push(`/products/${productId}`);
+          },
+          onError: (error: any) => {
+            toast.error(
+              error?.message || "Failed to submit feedback. Please try again."
+            );
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      alert("Failed to submit feedback. Please try again.");
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
 
   return (
     <div className="container mx-auto max-w-4xl py-10 px-4">
@@ -111,36 +176,53 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Shipping Address */}
-              {/* <div>
+              <div>
                 <div className="flex items-center gap-2 mb-2">
                   <MapPin className="h-4 w-4 text-muted-foreground" />
                   <h3 className="font-medium">Shipping Address</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {order.shippingDetails?.name &&
-                  order.shippingDetails.address ? (
+                  {order.shipping?.name ? (
                     <>
-                      {order.shippingDetails.name}
+                      {order.shipping.name}
                       <br />
-                      {order.shippingDetails.address.line1}
-                      {order.shippingDetails.address.line2 && (
+                      {order.shipping.phone && (
+                        <>
+                          {order.shipping.phone}
+                          <br />
+                        </>
+                      )}
+                      {order.shipping.address.line1}
+                      {order.shipping.address.line2 && (
                         <>
                           <br />
-                          {order.shippingDetails.address.line2}
+                          {order.shipping.address.line2}
                         </>
                       )}
                       <br />
-                      {order.shippingDetails.address.city},{" "}
-                      {order.shippingDetails.address.state}{" "}
-                      {order.shippingDetails.address.postalCode}
+                      {order.shipping.address.city},{" "}
+                      {order.shipping.address.state}{" "}
+                      {order.shipping.address.postal_code}
                       <br />
-                      {order.shippingDetails.address.country}
+                      {order.shipping.address.country}
+                      <br />
+                      <span className="mt-2 inline-block">
+                        <span className="capitalize font-medium">
+                          {order.shipping.method === "express"
+                            ? "Express"
+                            : "Standard"}{" "}
+                          Shipping
+                        </span>
+                        {order.shipping.cost && order.shipping.cost > 0 && (
+                          <span> ({formatPrice(order.shipping.cost)})</span>
+                        )}
+                      </span>
                     </>
                   ) : (
                     "No shipping details available"
                   )}
                 </p>
-              </div> */}
+              </div>
 
               {/* Delivery timeline */}
               <div className="col-span-1 md:col-span-2">
@@ -155,7 +237,9 @@ export default function OrderDetailPage() {
                         className={`h-2.5 rounded-full ${getProgressBarColor(
                           order.status!
                         )}`}
-                        style={{ width: getProgressWidth(order.status!) }}
+                        style={{
+                          width: getProgressWidth(order.status!),
+                        }}
                       ></div>
                     </div>
                   </div>
@@ -231,11 +315,19 @@ export default function OrderDetailPage() {
             <div className="w-full md:w-1/3 space-y-1">
               <div className="flex justify-between text-sm">
                 <span>Subtotal</span>
-                <span>{formatPrice(order.totalAmount!)}</span>
+                <span>
+                  {formatPrice(
+                    order.totalAmount! - (order.shipping?.cost || 0)
+                  )}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span>Shipping</span>
-                <span>Free</span>
+                <span>
+                  {order.shipping?.cost
+                    ? formatPrice(order.shipping.cost)
+                    : "Free"}
+                </span>
               </div>
               <Separator className="my-2" />
               <div className="flex justify-between font-medium">
@@ -245,6 +337,92 @@ export default function OrderDetailPage() {
             </div>
           </CardFooter>
         </Card>
+
+        {/* Feedback Card - Only show when delivered */}
+        {order.status === "delivered" && !existingFeedback && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                <CardTitle>Share Your Experience</CardTitle>
+              </div>
+              <CardDescription>
+                How was your experience with this order? Your feedback helps us
+                improve.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium">
+                  Rate your experience
+                </Label>
+                <div className="flex items-center gap-1 mt-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <button
+                      key={star}
+                      type="button"
+                      onClick={() => setRating(star)}
+                      onMouseEnter={() => setHoveredRating(star)}
+                      onMouseLeave={() => setHoveredRating(0)}
+                      className="p-1 transition-colors"
+                    >
+                      <Star
+                        className={`h-6 w-6 ${
+                          star <= (hoveredRating || rating)
+                            ? "fill-yellow-400 text-yellow-400"
+                            : "text-gray-300"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                  {rating > 0 && (
+                    <span className="ml-2 text-sm text-muted-foreground">
+                      {rating} star{rating !== 1 ? "s" : ""}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <Label
+                  htmlFor="feedback-comment"
+                  className="text-sm font-medium"
+                >
+                  Additional comments (optional)
+                </Label>
+                <Textarea
+                  id="feedback-comment"
+                  placeholder="Tell us about your experience with the product quality, delivery, or anything else..."
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  className="mt-2 min-h-[100px]"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {comment.length}/500 characters
+                </p>
+              </div>
+            </CardContent>
+
+            <CardFooter>
+              <Button
+                onClick={handleFeedbackSubmit}
+                disabled={rating === 0 || isSubmittingFeedback}
+                className="ml-auto"
+              >
+                {isSubmittingFeedback ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Feedback"
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        )}
       </div>
     </div>
   );

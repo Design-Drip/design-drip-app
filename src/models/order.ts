@@ -1,3 +1,4 @@
+import { OrderAddress } from "@/types/address";
 import mongoose, { Model } from "mongoose";
 
 const orderItemSizeSchema = new mongoose.Schema({
@@ -54,7 +55,13 @@ const orderSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["pending", "processing", "shipped", "delivered", "canceled"],
+      enum: [
+        "pending",
+        "processing",
+        "shipped",
+        "delivered",
+        "canceled",
+      ],
       default: "pending",
     },
     items: [orderItemSchema],
@@ -62,15 +69,28 @@ const orderSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    shippingDetails: {
-      name: String,
+    shipping: {
+      name: {
+        type: String,
+        required: true,
+      },
+      phone: String,
       address: {
+        city: String,
         line1: String,
         line2: String,
-        city: String,
         state: String,
-        postalCode: String,
         country: String,
+        postal_code: String,
+      },
+      method: {
+        type: String,
+        enum: ["standard", "express"],
+        default: "standard",
+      },
+      cost: {
+        type: Number,
+        default: 0,
       },
     },
     paymentMethod: {
@@ -93,12 +113,6 @@ const orderSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    shipping: {
-      trackingNumber: String,
-      carrier: String,
-      estimatedDeliveryDate: Date,
-      shippedAt: Date,
-    },
     notes: {
       type: String,
     },
@@ -116,11 +130,25 @@ const orderSchema = new mongoose.Schema(
 );
 
 interface OrderDoc extends mongoose.Document {
+  _id: mongoose.Types.ObjectId;
   userId: string;
   stripePaymentIntentId: string;
-  status: "pending" | "processing" | "shipped" | "delivered" | "canceled";
+  status:
+    | "pending"
+    | "processing"
+    | "shipped"
+    | "delivered"
+    | "canceled";
   items: {
-    designId: mongoose.Types.ObjectId;
+    designId: {
+      _id: mongoose.Types.ObjectId;
+      shirt_color_id?: {
+        shirt_id?: {
+          id: mongoose.Types.ObjectId;
+          name: string;
+        };
+      } | null;
+    } | null;
     name: string;
     color: string;
     sizes: {
@@ -132,16 +160,9 @@ interface OrderDoc extends mongoose.Document {
     imageUrl?: string;
   }[];
   totalAmount: number;
-  shippingDetails?: {
-    name?: string;
-    address?: {
-      line1?: string;
-      line2?: string;
-      city?: string;
-      state?: string;
-      postalCode?: string;
-      country?: string;
-    };
+  shipping?: OrderAddress & {
+    method?: "standard" | "express";
+    cost?: number;
   };
   paymentMethod: string;
   paymentMethodDetails?: any;
@@ -149,12 +170,6 @@ interface OrderDoc extends mongoose.Document {
   refundedAt?: Date;
   refundAmount?: number;
   partiallyRefunded?: boolean;
-  shipping?: {
-    trackingNumber?: string;
-    carrier?: string;
-    estimatedDeliveryDate?: Date;
-    shippedAt?: Date;
-  };
   notes?: string;
   createdAt: Date;
   updatedAt: Date;

@@ -14,9 +14,12 @@ import { getCheckoutInfoQuery } from "@/features/payments/services/queries";
 import { useProcessCheckoutMutation } from "@/features/payments/services/mutations";
 import PaymentMethods from "@/features/payments/components/PaymentMethods";
 import NewCardForm from "@/features/payments/components/NewCardForm";
+import ShippingAddressElement from "@/features/payments/components/AddressElement";
 import { formatPrice } from "@/lib/price";
 import { Loader2, ShoppingBag } from "lucide-react";
 import StripeWrapper from "@/components/StripeWrapper";
+import { Separator } from "@/components/ui/separator";
+import { OrderAddress } from "@/types/address";
 
 const CheckoutPage = () => {
   const router = useRouter();
@@ -29,6 +32,14 @@ const CheckoutPage = () => {
   const [cardError, setCardError] = useState<string | null>(null);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  const [addressComplete, setAddressComplete] = useState(false);
+  const [shippingAddress, setShippingAddress] = useState<OrderAddress | null>(
+    null
+  );
+  const [shippingMethod, setShippingMethod] = useState<"standard" | "express">(
+    "standard"
+  );
+  const [shippingCost, setShippingCost] = useState(0);
 
   const stripe = useStripe();
   const elements = useElements();
@@ -71,6 +82,14 @@ const CheckoutPage = () => {
     }
   }, [checkoutInfo]);
 
+  useEffect(() => {
+    if (shippingMethod === "express") {
+      setShippingCost(30000); // 30,000 VND for express shipping
+    } else {
+      setShippingCost(0); // Free for standard shipping
+    }
+  }, [shippingMethod]);
+
   const handlePaymentMethodSelect = (id: string) => {
     setSelectedPaymentMethod(id);
   };
@@ -78,6 +97,11 @@ const CheckoutPage = () => {
   const handleCardChange = (complete: boolean, error: string | null) => {
     setCardComplete(complete);
     setCardError(error);
+  };
+
+  const handleAddressChange = (complete: boolean, address: any) => {
+    setAddressComplete(complete);
+    setShippingAddress(address);
   };
 
   const handleCheckout = async () => {
@@ -89,6 +113,13 @@ const CheckoutPage = () => {
     if (paymentTab === "saved" && !selectedPaymentMethod) {
       toast.error("Payment method required", {
         description: "Please select a payment method to continue",
+      });
+      return;
+    }
+
+    if (!addressComplete || !shippingAddress) {
+      toast.error("Shipping address required", {
+        description: "Please provide a complete shipping address",
       });
       return;
     }
@@ -112,12 +143,20 @@ const CheckoutPage = () => {
 
       setProcessingPayment(true);
 
+      // Add shipping method and cost to the shipping address
+      const shippingWithMethod = {
+        ...shippingAddress,
+        method: shippingMethod,
+        cost: shippingCost,
+      };
+
       // First, create a payment intent and get the client secret
       processCheckout(
         {
           savePaymentMethod: saveNewCard,
           itemIds: selectedItemIds,
           return_url,
+          shipping: shippingWithMethod,
         },
         {
           onSuccess: async (data) => {
@@ -144,6 +183,30 @@ const CheckoutPage = () => {
               {
                 payment_method: {
                   card: cardElement,
+                  billing_details: {
+                    name: shippingAddress.name,
+                    phone: shippingAddress.phone,
+                    address: {
+                      city: shippingAddress.address.city,
+                      country: shippingAddress.address.country,
+                      line1: shippingAddress.address.line1,
+                      line2: shippingAddress.address.line2 || undefined,
+                      postal_code: shippingAddress.address.postal_code,
+                      state: shippingAddress.address.state,
+                    },
+                  },
+                },
+                shipping: {
+                  name: shippingAddress.name,
+                  phone: shippingAddress.phone,
+                  address: {
+                    city: shippingAddress.address.city,
+                    country: shippingAddress.address.country,
+                    line1: shippingAddress.address.line1,
+                    line2: shippingAddress.address.line2 || undefined,
+                    postal_code: shippingAddress.address.postal_code,
+                    state: shippingAddress.address.state,
+                  },
                 },
               }
             );
@@ -155,7 +218,10 @@ const CheckoutPage = () => {
             } else if (paymentIntent.status === "succeeded") {
               // Confirm the payment was successful on the server
               processCheckout(
-                { paymentIntent: paymentIntent.id },
+                {
+                  paymentIntent: paymentIntent.id,
+                  shipping: shippingWithMethod,
+                },
                 {
                   onSuccess: () => {
                     toast.success("Payment successful", {
@@ -188,18 +254,42 @@ const CheckoutPage = () => {
       );
     } else {
       // Using an existing payment method
+      const shippingWithMethod = {
+        ...shippingAddress,
+        method: shippingMethod,
+        cost: shippingCost,
+        address: {
+          ...shippingAddress.address,
+          line2: shippingAddress.address.line2 || undefined,
+        },
+      };
+
       processCheckout(
         {
           paymentMethodId: selectedPaymentMethod,
           itemIds: selectedItemIds,
           return_url,
+          shipping: shippingWithMethod,
         },
         {
           onSuccess: (data) => {
             if (data.requiresAction && data.clientSecret) {
               // Handle 3D Secure authentication if needed
               stripe!
-                .confirmCardPayment(data.clientSecret)
+                .confirmCardPayment(data.clientSecret, {
+                  shipping: {
+                    name: shippingAddress.name,
+                    phone: shippingAddress.phone,
+                    address: {
+                      city: shippingAddress.address.city,
+                      country: shippingAddress.address.country,
+                      line1: shippingAddress.address.line1,
+                      line2: shippingAddress.address.line2 || undefined,
+                      postal_code: shippingAddress.address.postal_code,
+                      state: shippingAddress.address.state,
+                    },
+                  },
+                })
                 .then(function (result) {
                   if (result.error) {
                     toast.error("Payment failed", {
@@ -279,7 +369,7 @@ const CheckoutPage = () => {
   }
 
   return (
-    <div className="container py-10">
+    <div className="container py-10 mx-auto">
       <h1 className="text-3xl font-bold">Checkout</h1>
 
       <div className="grid md:grid-cols-3 gap-6 mt-8">
@@ -307,6 +397,63 @@ const CheckoutPage = () => {
 
           <Card>
             <CardHeader>
+              <CardTitle>Shipping Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ShippingAddressElement onChange={handleAddressChange} />
+
+              <div className="mt-6">
+                <h3 className="font-medium mb-3">Shipping Method</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="standard-shipping"
+                      name="shipping-method"
+                      value="standard"
+                      checked={shippingMethod === "standard"}
+                      onChange={() => setShippingMethod("standard")}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label
+                      htmlFor="standard-shipping"
+                      className="flex flex-col"
+                    >
+                      <span className="font-medium">
+                        Standard Shipping (Free)
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        Delivery in 5-7 business days
+                      </span>
+                    </Label>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="express-shipping"
+                      name="shipping-method"
+                      value="express"
+                      checked={shippingMethod === "express"}
+                      onChange={() => setShippingMethod("express")}
+                      className="h-4 w-4 border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <Label htmlFor="express-shipping" className="flex flex-col">
+                      <span className="font-medium">
+                        Express Shipping ({formatPrice(30000)})
+                      </span>
+                      <span className="text-sm text-muted-foreground">
+                        Delivery in 1-2 business days
+                      </span>
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Payment Method</CardTitle>
             </CardHeader>
             <CardContent>
@@ -315,14 +462,14 @@ const CheckoutPage = () => {
                 value={paymentTab}
                 onValueChange={setPaymentTab}
               >
-                {/* {checkoutInfo.hasPaymentMethods && (
+                {checkoutInfo.hasPaymentMethods && (
                   <TabsList className="grid w-full grid-cols-2 mb-6">
                     <TabsTrigger value="saved">
                       Saved Payment Methods
                     </TabsTrigger>
                     <TabsTrigger value="new">Use New Card</TabsTrigger>
                   </TabsList>
-                )} */}
+                )}
 
                 <TabsContent value="saved">
                   {checkoutInfo.hasPaymentMethods ? (
@@ -342,7 +489,7 @@ const CheckoutPage = () => {
                   )}
                 </TabsContent>
 
-                {/* <TabsContent value="new">
+                <TabsContent value="new">
                   <div className="space-y-6">
                     <NewCardForm onCardChange={handleCardChange} />
 
@@ -357,7 +504,7 @@ const CheckoutPage = () => {
                       </Label>
                     </div>
                   </div>
-                </TabsContent> */}
+                </TabsContent>
               </Tabs>
             </CardContent>
           </Card>
@@ -373,9 +520,18 @@ const CheckoutPage = () => {
                 <span>Subtotal</span>
                 <span>{formatPrice(checkoutInfo.totalAmount)}</span>
               </div>
+              <div className="flex justify-between">
+                <span>Shipping</span>
+                <span>
+                  {shippingCost > 0 ? formatPrice(shippingCost) : "Free"}
+                </span>
+              </div>
+              <Separator className="my-2" />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>{formatPrice(checkoutInfo.totalAmount)}</span>
+                <span>
+                  {formatPrice(checkoutInfo.totalAmount + shippingCost)}
+                </span>
               </div>
 
               <Button
@@ -385,6 +541,7 @@ const CheckoutPage = () => {
                 disabled={
                   isProcessing ||
                   processingPayment ||
+                  !addressComplete ||
                   (paymentTab === "new" && (!cardComplete || !!cardError))
                 }
               >
@@ -394,7 +551,7 @@ const CheckoutPage = () => {
                     Processing...
                   </>
                 ) : (
-                  `Pay ${formatPrice(checkoutInfo.totalAmount)}`
+                  `Pay ${formatPrice(checkoutInfo.totalAmount + shippingCost)}`
                 )}
               </Button>
             </CardContent>
@@ -407,7 +564,7 @@ const CheckoutPage = () => {
 
 export default function CheckoutWithStripe() {
   return (
-    <StripeWrapper>
+    <StripeWrapper >
       <CheckoutPage />
     </StripeWrapper>
   );

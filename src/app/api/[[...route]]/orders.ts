@@ -27,13 +27,9 @@ const app = new Hono()
 
       if (
         status &&
-        [
-          "pending",
-          "processing",
-          "shipped",
-          "delivered",
-          "canceled",
-        ].includes(status)
+        ["pending", "processing", "shipped", "delivered", "canceled"].includes(
+          status
+        )
       ) {
         query.status = status;
       }
@@ -45,10 +41,7 @@ const app = new Hono()
         // If search looks like an ObjectId or partial ObjectId, search by _id
         if (mongoose.isObjectIdOrHexString(search)) {
           query._id = search;
-        } else if (
-          search.length >= 3 &&
-          /^[a-fA-F0-9]+$/.test(search)
-        ) {
+        } else if (search.length >= 3 && /^[a-fA-F0-9]+$/.test(search)) {
           // Partial ObjectId search (at least 3 hex characters)
           query._id = new RegExp(search, "i");
         } else {
@@ -124,7 +117,16 @@ const app = new Hono()
         const order = await Order.findOne({
           _id: orderId,
           userId: user.id,
-        }).lean();
+        }).populate({
+          path: "items.designId", 
+          populate: {
+            path: "shirt_color_id", 
+            populate: {
+              path: "shirt_id",
+              select: "name", 
+            },
+          },
+        });
 
         return c.json({
           id: order?._id?.toString() as string,
@@ -135,6 +137,7 @@ const app = new Hono()
           createdAt: order?.createdAt,
           updatedAt: order?.updatedAt,
           paymentMethod: order?.paymentMethod,
+          shipping: order?.shipping,
         });
       } catch (error) {
         console.error(`Error fetching order ${orderId}:`, error);
@@ -165,9 +168,18 @@ const app = new Hono()
           }),
       })
     ),
-    zValidator("json", z.object({
-      status: z.enum(["pending", "processing", "shipped", "delivered", "canceled"]),
-    })),
+    zValidator(
+      "json",
+      z.object({
+        status: z.enum([
+          "pending",
+          "processing",
+          "shipped",
+          "delivered",
+          "canceled",
+        ]),
+      })
+    ),
     async (c) => {
       const orderId = c.req.param("id");
       const isAdmin = await checkRole("admin");
@@ -179,13 +191,9 @@ const app = new Hono()
       const { status } = body;
 
       if (
-        ![
-          "pending",
-          "processing",
-          "shipped",
-          "delivered",
-          "canceled",
-        ].includes(status)
+        !["pending", "processing", "shipped", "delivered", "canceled"].includes(
+          status
+        )
       ) {
         throw new HTTPException(400, {
           message: "Invalid order status",
@@ -222,6 +230,41 @@ const app = new Hono()
         });
       }
     }
-  );
+  )
+  .get("/dashboard", async (c) => {
+    try {
+      // Get basic counts
+      const totalOrders = await Order.countDocuments();
+      
+      // Get total revenue
+      const revenueResult = await Order.aggregate([
+        { $match: { status: { $ne: "canceled" } } },
+        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
+      ]);
+      const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+
+      // Get recent orders (last 5)
+      const recentOrders = await Order.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("_id totalAmount status createdAt");
+
+      return c.json({
+        success: true,
+        data: {
+          overview: {
+            totalUsers: 0, // Will be populated later
+            totalOrders,
+            totalRevenue,
+            totalProducts: 0, // Will be populated later
+          },
+          recentOrders
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      return c.json({ success: false, error: "Failed to fetch dashboard stats" }, 500);
+    }
+  });
 
 export default app;

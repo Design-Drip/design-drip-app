@@ -2,14 +2,19 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
+const isDesignerRoute = createRouteMatcher(["/designer_management(.*)"]);
 const isProtectedRoute = createRouteMatcher(["/settings(.*)", "wishlist(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
   const { sessionClaims, getToken } = await auth();
   const token = await getToken();
-  console.log("Token:", token);
 
-  if (isAdminRoute(req) && sessionClaims?.metadata?.role !== "admin") {
+  if (isAdminRoute(req) && sessionClaims?.metadata?.role !== "admin" && sessionClaims?.metadata?.role !== "designer") {
+    const url = new URL("/", req.url);
+    return NextResponse.redirect(url);
+  }
+  
+  if (isDesignerRoute(req) && sessionClaims?.metadata?.role !== "designer" && sessionClaims?.metadata?.role !== "admin") {
     const url = new URL("/", req.url);
     return NextResponse.redirect(url);
   }

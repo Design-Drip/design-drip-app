@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from "react";
 import { TableSavedDesign } from "./TableSavedDesign";
 import useGetDesign from "@/features/design/use-get-design";
@@ -17,21 +19,39 @@ function SavedDesigns({ displayActionMenu = false }: SavedDesignsProps) {
   const designsData = data?.data || [];
   const queryClient = useQueryClient();
   const formatData = designsData.map((item: any) => {
+
     const previewImages = item.design_images
       ? Object.entries(item.design_images).map(([key, url]) => ({
           view: key,
           url: url as string,
         }))
       : [];
-    const productId = item.shirt_color_id?.shirt_id?.id || "Unknown Color";
-    const colorId = item.shirt_color_id?.id || "Unknown Product";
+    const productId = item.shirt_color_id?.shirt_id?.id || item.shirt_color_id?.shirt_id?._id || "";
+    const colorId = item.shirt_color_id?.id || item.shirt_color_id?._id || "";
+
+    // Check if this design has a parent (is a version)
+    const isVersion = !!item.parent_design_id;
+
+    const parentDesign: any = isVersion
+      ? designsData.find((d: any) => (d._id || d.id) === item.parent_design_id)
+      : null;
+
+
     return {
-      id: item.id,
+      id: item._id || item.id,
       colorId: colorId,
       productId: productId,
       previewImages: [previewImages],
       productName: item.shirt_color_id?.shirt_id?.name || "Unknown Product",
       designName: item.name,
+      isVersion,
+      version: item.version || "original", // Add version field
+      parentDesignName: parentDesign?.name || null,
+      createdAt:
+        item.createdAt ||
+        item.created_at ||
+        item.updatedAt ||
+        new Date().toISOString(),
     };
   });
   const [confirmModalOpen, setConfirmModalOpen] = useState(false);
