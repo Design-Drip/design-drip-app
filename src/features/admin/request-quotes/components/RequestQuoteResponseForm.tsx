@@ -283,7 +283,7 @@ export default function RequestQuoteResponseForm({
                     </AlertDialogDescription>
                 </AlertDialogHeader>
 
-                {/* ✅ NEW: Product Summary */}
+                {/* Product Summary */}
                 {productDetails && (
                     <div className="p-4 bg-muted/30 rounded-lg mb-4">
                         <h4 className="font-medium mb-2 flex items-center gap-2">
@@ -353,7 +353,7 @@ export default function RequestQuoteResponseForm({
                                         </Button>
                                     </div>
 
-                                    {/* ✅ UPDATED: Price Breakdown Fields with quantity context */}
+                                    {/* Price Breakdown Fields with quantity context */}
                                     {showPriceBreakdown && (
                                         <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-muted/20">
                                             <FormField
@@ -509,7 +509,7 @@ export default function RequestQuoteResponseForm({
                                         </div>
                                     )}
 
-                                    {/* ✅ ENHANCED: Total Price with detailed breakdown */}
+                                    {/* Total Price with detailed breakdown */}
                                     <FormField
                                         control={form.control}
                                         name="quotedPrice"
@@ -673,7 +673,7 @@ export default function RequestQuoteResponseForm({
                             <AlertDialogCancel type="button">Cancel</AlertDialogCancel>
                             <AlertDialogAction type="submit" disabled={isLoading}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {mode === "revise" ? "Create Revision" : "Submit Response"}
+                                {"Submit Response"}
                             </AlertDialogAction>
                         </AlertDialogFooter>
                     </form>

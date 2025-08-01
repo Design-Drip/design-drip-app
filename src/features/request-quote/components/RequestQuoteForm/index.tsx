@@ -60,15 +60,11 @@ const fullSchema = z.object({
     artwork: z.string().optional(),
 });
 
-// ✅ REMOVED: Design description validation refinement
-
 type FormData = z.infer<typeof fullSchema>;
 
 // --- Main component ---
 export default function RequestQuotePage() {
     const router = useRouter();
-    // ✅ REMOVED: needDesignService state
-
     const { selectedProduct, clearSelectedProduct } = useSelectedProductStore();
     const createRequestQuoteMutation = useCreateRequestQuoteMutation();
 
@@ -92,7 +88,6 @@ export default function RequestQuotePage() {
                 selectedColorId: '',
                 quantityBySize: {},
             },
-            // ✅ REMOVED: needDesignService: false,
             designDescription: '',
             needDeliveryBy: '',
             extraInformation: '',
@@ -153,10 +148,7 @@ export default function RequestQuotePage() {
 
             // Reset form
             form.reset();
-            // ✅ REMOVED: setNeedDesignService(false);
             clearSelectedProduct();
-
-            // ✅ FIXED: Add router ready check
             if (typeof window !== 'undefined') {
                 router.push('/my-request-quotes');
             }
@@ -349,7 +341,7 @@ export default function RequestQuotePage() {
 
                 {/* ✅ SIMPLIFIED: Always show design service section without toggle */}
                 <div className="mb-6">
-                    <h3 className="text-md font-medium mb-4">Design Requirements (Optional)</h3>
+                    <h3 className="text-md font-medium mb-4">Design Requirements</h3>
 
                     <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
                         <FormField
