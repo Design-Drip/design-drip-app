@@ -1028,6 +1028,7 @@ export const Editor = ({
                             ? "border-[1px] border-black rounded-lg"
                             : ""
                         }`}
+                        unoptimized
                       />
                       <p className="text-sm text-center group-hover:font-medium uppercase">
                         {image.view_side}

@@ -81,6 +81,7 @@ export default function DesignTemplateList({
                 alt={template.name}
                 fill
                 className="object-cover group-hover:scale-105 transition-transform"
+                unoptimized
                 onError={(e) => {
                   const target = e.target as HTMLImageElement;
                   target.src = "/placeholder-image.jpg";

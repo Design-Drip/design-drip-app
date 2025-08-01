@@ -322,6 +322,7 @@ export const TableSavedDesign = ({
                             alt={`Design view ${img.view}`}
                             fill
                             className="object-contain"
+                            unoptimized
                           />
                           <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs py-0.5 text-center">
                             View {img.view}

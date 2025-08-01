@@ -55,6 +55,7 @@ import {
 // Sử dụng Icon nào đó cho hình ảnh (có thể từ một thư viện khác nếu cần)
 import { Image as ImageIconOutline } from "lucide-react";
 import { OurFileRouter } from "@/app/api/uploadthing/core";
+import Image from "next/image";
 
 // Cố định kích thước ảnh
 const IMAGE_WIDTH = 800;
@@ -963,10 +964,11 @@ export function ProductImageEditor({
                     onClick={() => setCurrentView(view)}
                   >
                     {images[view]?.url ? (
-                      <img
+                      <Image
                         src={images[view].url}
                         alt={`${view} view`}
                         className="w-full h-full object-cover"
+                        unoptimized
                       />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center bg-muted/50 p-2">

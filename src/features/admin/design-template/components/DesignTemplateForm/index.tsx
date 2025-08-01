@@ -121,6 +121,7 @@ export default function DesignTemplateForm({
                             width={200}
                             height={150}
                             className="rounded-lg border object-cover"
+                            unoptimized
                           />
                           <Button
                             type="button"
