@@ -60,18 +60,6 @@ export default function AdminLayout({
                         isActive: pathname === "/admin/orders" || pathname.startsWith("/admin/orders/"),
                     },
                     {
-                        title: "Reports",
-                        url: "/admin/reports",
-                        icon: FileText,
-                        isActive: pathname === "/admin/reports" || pathname?.startsWith("/admin/reports/"),
-                    },
-                    {
-                        title: "Coupons",
-                        url: "/admin/coupons",
-                        icon: Tickets,
-                        isActive: pathname === "/admin/coupons" || pathname?.startsWith("/admin/coupons/"),
-                    },
-                    {
                         title: "Design template",
                         url: "/admin/design-template",
                         icon: Images,
