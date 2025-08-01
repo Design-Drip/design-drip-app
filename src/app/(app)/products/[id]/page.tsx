@@ -213,6 +213,7 @@ export default function ProductDetailPage({
                           alt={view.label}
                           fill
                           className="object-contain"
+                          unoptimized
                         />
                       </div>
                       <div className="text-xs text-center py-1 bg-gray-50">
