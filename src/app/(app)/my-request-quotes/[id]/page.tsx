@@ -643,9 +643,6 @@ export default function RequestQuoteDetailPage() {
                             <div className="flex justify-between items-center py-2 border-b border-green-100">
                               <div>
                                 <span className="font-medium">Your Price Per Unit</span>
-                                <p className="text-xs text-muted-foreground">
-                                  Base price for {quoteData.productDetails?.quantity || 0} items
-                                </p>
                                 {quoteData.productDetails?.quantityBySize && (
                                   <div className="text-xs text-green-600 mt-1">
                                     28.6% off retail price
@@ -653,11 +650,8 @@ export default function RequestQuoteDetailPage() {
                                 )}
                               </div>
                               <div className="text-right">
-                                <div className="font-semibold text-lg">
-                                  {formatPrice(quoteData.priceBreakdown.basePrice / (quoteData.productDetails?.quantity || 1))}
-                                </div>
-                                <div className="text-xs text-green-600">
-                                  Total: {formatPrice(quoteData.priceBreakdown.basePrice)}
+                                <div className="text-sm text-green-600">
+                                  {formatPrice(quoteData.priceBreakdown.basePrice)}
                                 </div>
                               </div>
                             </div>
@@ -760,9 +754,6 @@ export default function RequestQuoteDetailPage() {
                               <div className="flex justify-between items-center">
                                 <div>
                                   <span className="text-xl font-bold text-green-800">Total Quote</span>
-                                  <p className="text-xs text-green-600">
-                                    Average: {formatPrice(quoteData.quotedPrice! / (quoteData.productDetails?.quantity || 1))} per item
-                                  </p>
                                 </div>
                                 <span className="text-2xl font-bold text-green-700">
                                   {formatPrice(quoteData.quotedPrice!)}
