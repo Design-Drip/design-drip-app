@@ -2,12 +2,12 @@
 
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { 
-  ArrowLeft, 
-  Package, 
-  User, 
-  MapPin, 
-  FileText, 
+import {
+  ArrowLeft,
+  Package,
+  User,
+  MapPin,
+  FileText,
   Edit,
   Loader2,
   AlertTriangle,
@@ -110,7 +110,7 @@ export default function AdminRequestQuoteDetailPage() {
       rejected: { label: "Rejected", icon: XCircle, className: "bg-red-100 text-red-800 border-red-200" },
       completed: { label: "Completed", icon: CheckCircle, className: "bg-gray-100 text-gray-800 border-gray-200" },
     }[status] || { label: status, icon: Clock, className: "bg-gray-100 text-gray-800 border-gray-200" };
-    
+
     const Icon = config.icon;
     return (
       <Badge variant="outline" className={config.className}>
@@ -126,36 +126,23 @@ export default function AdminRequestQuoteDetailPage() {
         <CardHeader className="">
           {/* Back Button */}
           <div className="flex items-center justify-between">
-              <Button variant="ghost" asChild className="pl-0">
-                <Link href="/admin/request-quotes" className="flex items-center text-muted-foreground hover:text-primary">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back
-                </Link>
-              </Button>
-              <div className="flex items-center gap-4">
-                  <p className="text-sm">
-                    Request #{quote.id.slice(-8).toUpperCase()}
-                  </p>
-                  <div className="h-8 w-px bg-border"></div>
-                  <p className="text-sm text-muted-foreground">
-                    {quote.type === "product" ? "Product Quote" : "Custom Quote"}
-                  </p>
-                  <div className="h-8 w-px bg-border"></div>
-                  {getStatusBadge(quote.status)}
-              </div>
-          </div>
-
-          {/* Header Info */}
-          <div className="flex items-start justify-between">
-            
-            {quote.quotedPrice && (
-              <div className="text-right">
-                <p className="text-sm text-muted-foreground">Quoted Price</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatPrice(quote.quotedPrice)}
-                </p>
-              </div>
-            )}
+            <Button variant="ghost" asChild className="pl-0">
+              <Link href="/admin/request-quotes" className="flex items-center text-muted-foreground hover:text-primary">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back
+              </Link>
+            </Button>
+            <div className="flex items-center gap-4">
+              <p className="text-sm">
+                Request #{quote.id.slice(-8).toUpperCase()}
+              </p>
+              <div className="h-8 w-px bg-border"></div>
+              <p className="text-sm text-muted-foreground">
+                Product Quote
+              </p>
+              <div className="h-8 w-px bg-border"></div>
+              {getStatusBadge(quote.status)}
+            </div>
           </div>
         </CardHeader>
 
@@ -207,8 +194,8 @@ export default function AdminRequestQuoteDetailPage() {
               <FileText className="h-5 w-5" />
               Quote Details
             </h3>
-            
-            {quote.type === "product" && quote.productDetails ? (
+
+            {quote.productDetails && (
               <div className="bg-muted/50 p-4 rounded-lg space-y-3">
                 <div className="flex items-center gap-2 mb-2">
                   <Package className="h-4 w-4" />
@@ -246,18 +233,6 @@ export default function AdminRequestQuoteDetailPage() {
                   )}
                 </div>
               </div>
-            ) : (
-              quote.customRequest && (
-                <div className="bg-muted/50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Edit className="h-4 w-4" />
-                    <h4 className="font-semibold">Custom Request</h4>
-                  </div>
-                  <div className="bg-white/50 p-3 rounded border">
-                    <p className="whitespace-pre-wrap">{quote.customRequest.customNeed}</p>
-                  </div>
-                </div>
-              )
             )}
 
             {/* Additional Information */}
@@ -268,7 +243,7 @@ export default function AdminRequestQuoteDetailPage() {
                   <p className="text-blue-700 font-medium">{formatOrderDate(quote.needDeliveryBy)}</p>
                 </div>
               )}
-              
+
               {quote.extraInformation && (
                 <div className="bg-amber-50 p-3 rounded-lg md:col-span-2">
                   <strong className="text-amber-800">Additional Information:</strong>
@@ -323,13 +298,6 @@ export default function AdminRequestQuoteDetailPage() {
                   <div className="bg-red-50 p-3 rounded-lg border border-red-200">
                     <strong className="text-red-800">Rejection Reason:</strong>
                     <p className="text-sm text-red-700 mt-1">{quote.rejectionReason}</p>
-                  </div>
-                )}
-
-                {quote.adminNotes && (
-                  <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
-                    <strong className="text-blue-800">Admin Notes:</strong>
-                    <p className="text-sm text-blue-700 mt-1 whitespace-pre-wrap">{quote.adminNotes}</p>
                   </div>
                 )}
               </div>

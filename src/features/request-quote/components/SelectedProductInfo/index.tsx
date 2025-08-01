@@ -27,8 +27,22 @@ const SelectedProductInfo: React.FC<SelectedProductInfoProps> = ({
 
     const { control, setValue, watch } = useFormContext();
 
+    useEffect(() => {
+        if (product?.colors && product.colors.length > 0) {
+            const firstColor = product.colors[0];
+            setSelectedColor(firstColor);
+
+            setValue('product.selectedColorId', firstColor.id);
+        } else {
+            setSelectedColor(null);
+            setValue('product.selectedColorId', '');
+        }
+    }, [product, setValue]);
+
     const handleColorSelect = (color: ProductColor) => {
         setSelectedColor(color);
+
+        setValue(`product.selectedColorId`, color.id)
 
         if (Array.isArray(color.sizes)) {
             color.sizes.forEach((sizeObj: any) => {

@@ -10,28 +10,19 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
     Eye,
-    MoreHorizontal,
-    Package,
     FileText,
     DollarSign,
     Clock,
     CheckCircle,
     XCircle,
     User,
+    Palette,
+    AlertCircle,
 } from "lucide-react";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/date";
 import { formatPrice } from "@/lib/price";
@@ -46,12 +37,27 @@ interface RequestQuote {
     emailAddress: string;
     phone: string;
     company?: string;
-    type: "product" | "custom";
     status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
     quotedPrice?: number;
     productDetails?: any;
     customRequest?: any;
     needDeliveryBy?: string;
+
+    // ✅ NEW: Design-related fields
+    designId?: string;
+    designStatus?: "pending" | "in_progress" | "awaiting_approval" | "approved" | "needs_revision" | "rejected" | "completed";
+    needDesignService?: boolean;
+    designerInfo?: {
+        id: string;
+        name: string;
+        email: string;
+    };
+    designInfo?: {
+        id: string;
+        name: string;
+        status: string;
+    };
+
     createdAt: string;
     updatedAt: string;
     designerId?: string;
@@ -132,20 +138,99 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
+// ✅ NEW: Design Status Badge component
+const DesignStatusBadge = ({ status, needsDesign }: {
+    status?: string;
+    needsDesign?: boolean;
+}) => {
+    if (!needsDesign) {
+        return (
+            <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500 border-gray-200">
+                No Design
+            </Badge>
+        );
+    }
+
+    if (!status) {
+        return (
+            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200">
+                Not Set
+            </Badge>
+        );
+    }
+
+    const getDesignStatusConfig = (status: string) => {
+        switch (status) {
+            case "pending":
+                return {
+                    label: "Pending",
+                    className: "bg-yellow-100 text-yellow-700 border-yellow-200",
+                    icon: Clock,
+                };
+            case "in_progress":
+                return {
+                    label: "In Progress",
+                    className: "bg-blue-100 text-blue-700 border-blue-200",
+                    icon: Palette,
+                };
+            case "awaiting_approval":
+                return {
+                    label: "Review",
+                    className: "bg-orange-100 text-orange-700 border-orange-200",
+                    icon: Eye,
+                };
+            case "approved":
+                return {
+                    label: "Approved",
+                    className: "bg-green-100 text-green-700 border-green-200",
+                    icon: CheckCircle,
+                };
+            case "needs_revision":
+                return {
+                    label: "Revision",
+                    className: "bg-amber-100 text-amber-700 border-amber-200",
+                    icon: AlertCircle,
+                };
+            case "rejected":
+                return {
+                    label: "Rejected",
+                    className: "bg-red-100 text-red-800 border-red-200",
+                    icon: XCircle,
+                };
+            case "completed":
+                return {
+                    label: "Complete",
+                    className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+                    icon: CheckCircle,
+                };
+            default:
+                return {
+                    label: status,
+                    className: "bg-gray-100 text-gray-700 border-gray-200",
+                    icon: FileText,
+                };
+        }
+    };
+
+    const config = getDesignStatusConfig(status);
+    const IconComponent = config.icon;
+
+    return (
+        <Badge variant="outline" className={cn("text-xs font-medium", config.className)}>
+            <IconComponent className="w-3 h-3 mr-1" />
+            {config.label}
+        </Badge>
+    );
+};
+
 export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
 
     const getRequestSummary = (quote: RequestQuote) => {
-        if (quote.type === "product" && quote.productDetails) {
+        if (quote.productDetails) {
             const productName = quote.productDetails.productId?.name || "Product";
             return `${productName} (Qty: ${quote.productDetails.quantity})`;
         }
-
-        if (quote.type === "custom" && quote.customRequest) {
-            const preview = quote.customRequest.customNeed.substring(0, 50);
-            return `${preview}${preview.length < quote.customRequest.customNeed.length ? "..." : ""}`;
-        }
-
-        return `${quote.type === "product" ? "Product" : "Custom"} Quote`;
+        return "No product details";
     };
 
     return (
@@ -163,8 +248,9 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                             <TableRow>
                                 <TableHead>Customer</TableHead>
                                 <TableHead>Request Details</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>Quote Status</TableHead>
+                                <TableHead>Design Status</TableHead>
+                                <TableHead>Designer</TableHead>
                                 <TableHead>Quote Price</TableHead>
                                 <TableHead>Submitted</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -182,7 +268,7 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                                         {quote.firstName[0]}{quote.lastName[0]}
                                                     </AvatarFallback>
                                                 </Avatar>
-                                                <div>
+                                                <div className="ml-4">
                                                     <div className="font-medium">
                                                         {quote.firstName} {quote.lastName}
                                                     </div>
@@ -211,27 +297,49 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                                         Needed: {formatOrderDate(quote.needDeliveryBy)}
                                                     </div>
                                                 )}
+                                                {quote.needDesignService && (
+                                                    <div className="text-xs text-blue-600 font-medium flex items-center gap-1 mt-1">
+                                                        <Palette className="w-3 h-3" />
+                                                        Design Service
+                                                    </div>
+                                                )}
                                             </div>
                                         </TableCell>
 
                                         <TableCell>
-                                            <Badge variant="secondary" className="text-xs">
-                                                {quote.type === "product" ? (
-                                                    <>
-                                                        <Package className="w-3 h-3 mr-1" />
-                                                        Product
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <FileText className="w-3 h-3 mr-1" />
-                                                        Custom
-                                                    </>
-                                                )}
-                                            </Badge>
+                                            <StatusBadge status={quote.status} />
                                         </TableCell>
 
                                         <TableCell>
-                                            <StatusBadge status={quote.status} />
+                                            <DesignStatusBadge
+                                                status={quote.designStatus}
+                                                needsDesign={quote.needDesignService}
+                                            />
+                                        </TableCell>
+
+                                        <TableCell>
+                                            {quote.designerInfo ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Avatar className="h-6 w-6">
+                                                        <AvatarFallback className="text-xs">
+                                                            {quote.designerInfo.name.split(' ').map(n => n[0]).join('')}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div>
+                                                        <div className="text-xs font-medium">
+                                                            {quote.designerInfo.name}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {quote.designerInfo.email}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                    <User className="w-3 h-3" />
+                                                    Not Assigned
+                                                </div>
+                                            )}
                                         </TableCell>
 
                                         <TableCell>
@@ -259,6 +367,19 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                     </TableRow>
                                 );
                             })}
+
+                            {/* Empty state */}
+                            {requestQuotes.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                                        <div className="flex flex-col items-center gap-2">
+                                            <FileText className="h-8 w-8 text-gray-400" />
+                                            <p>No request quotes found</p>
+                                            <p className="text-xs">Quotes will appear here when customers submit requests</p>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            )}
                         </TableBody>
                     </Table>
                 </div>

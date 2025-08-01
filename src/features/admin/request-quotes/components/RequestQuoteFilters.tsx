@@ -16,13 +16,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 interface RequestQuoteFiltersProps {
     searchTerm: string;
     statusFilter: string;
-    typeFilter: string;
 }
 
 export function RequestQuoteFilters({
     searchTerm,
     statusFilter,
-    typeFilter,
 }: RequestQuoteFiltersProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
@@ -52,7 +50,7 @@ export function RequestQuoteFilters({
         updateFilters({ search });
     };
 
-    const hasActiveFilters = searchTerm || statusFilter !== "all" || typeFilter !== "all";
+    const hasActiveFilters = searchTerm || statusFilter !== "all"
 
     return (
         <div className="flex flex-col lg:flex-row gap-4">
@@ -85,21 +83,6 @@ export function RequestQuoteFilters({
                     <SelectItem value="approved">Approved</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
-                </SelectContent>
-            </Select>
-
-            {/* Type Filter */}
-            <Select
-                value={typeFilter}
-                onValueChange={(value) => updateFilters({ type: value })}
-            >
-                <SelectTrigger className="w-full lg:w-[180px]">
-                    <SelectValue placeholder="All Types" />
-                </SelectTrigger>
-                <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="product">Product Quotes</SelectItem>
-                    <SelectItem value="custom">Custom Quotes</SelectItem>
                 </SelectContent>
             </Select>
         </div>

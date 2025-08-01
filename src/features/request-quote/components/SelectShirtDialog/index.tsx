@@ -13,7 +13,7 @@ import { Pagination, PaginationContent, PaginationItem, PaginationLink, Paginati
 import { useSelectedProductStore } from '../../store/useSelectedProductStore'
 
 interface SelectShirtDialogProps {
-    onProductSelect: (product: any) => void;
+    onProductSelect?: (product: any) => void;
     placeholder?: string;
 }
 

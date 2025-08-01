@@ -137,7 +137,7 @@ export default function OrdersPage() {
                 : "You haven't placed any orders yet."}
             </p>
             <Button asChild>
-              <Link href="/designs">Browse Designs</Link>
+              <Link href="/settings/saved-designs">Browse Designs</Link>
             </Button>
           </CardContent>
         </Card>

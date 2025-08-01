@@ -21,9 +21,6 @@ const createRequestQuoteSchema = z.object({
     postcode: z.string().min(1, "Postcode is required"),
     agreeTerms: z.boolean().refine(v => v, { message: "You must agree to terms" }),
 
-    //Request type and details
-    type: z.enum(["product", "custom"]),
-
     //Product details (conditional)
     productId: z.string().optional(),
     quantity: z.coerce.number().min(1).optional(),
@@ -33,23 +30,16 @@ const createRequestQuoteSchema = z.object({
         quantity: z.number().min(0),
     })).optional(),
 
-    //Custom request details (conditional)
-    customNeed: z.string().min(5, "Describe what you need").optional(),
+    designDescription: z.string().min(10, "Design description must be at least 10 characters").optional(),
+
+    //Artwork and design dimensions
+    artwork: z.string().url().optional(),
+    desiredWidth: z.coerce.number().min(0.5, "Minimum width is 0.5 inches").max(50, "Maximum width is 50 inches").optional(),
+    desiredHeight: z.coerce.number().min(0.5, "Minimum height is 0.5 inches").max(50, "Maximum height is 50 inches").optional(),
 
     //Delivery and additional information
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
-}).refine((data) => {
-    if (data.type === "product") {
-        return data.productId && data.quantity;
-    }
-    //Validate custom type requirements
-    if (data.type === "custom") {
-        return data.customNeed;
-    }
-    return false;
-}, {
-    message: "Invalid request data based on type",
 });
 
 const updateRequestQuoteSchema = z.object({
@@ -60,11 +50,10 @@ const updateRequestQuoteSchema = z.object({
 });
 
 const adminResponseSchema = z.object({
-    status: z.enum(["reviewing", "quoted", "revised", "rejected"]),
+    status: z.enum(["reviewing", "quoted", "rejected"]),
     quotedPrice: z.number().min(0).optional(),
     responseMessage: z.string().trim().optional(),
     rejectionReason: z.string().trim().optional(),
-    adminNotes: z.string().trim().optional(),
 
     // Price breakdown
     priceBreakdown: z.object({
@@ -81,26 +70,9 @@ const adminResponseSchema = z.object({
     productionDetails: z.object({
         estimatedDays: z.number().min(1).optional(),
         printingMethod: z.enum(["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"]).optional(),
-        materialSpecs: z.string().trim().optional(),
-        colorLimitations: z.string().trim().optional(),
-        sizeAvailability: z.array(z.object({
-            size: z.string(),
-            available: z.boolean(),
-        })).optional(),
     }).optional(),
 
-    validUntil: z.string().optional(), // ISO date string
-});
-
-const revisionSchema = adminResponseSchema.extend({
-    revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]),
-});
-
-const customerFeedbackSchema = z.object({
-    requestedChanges: z.array(z.object({
-        aspect: z.enum(["price", "timeline", "materials", "design", "other"]),
-        description: z.string().trim().min(1, "Description is required"),
-    })).min(1, "At least one change must be requested"),
+    validUntil: z.string().optional(),
 });
 
 const app = new Hono()
@@ -114,7 +86,6 @@ const app = new Hono()
                 page: z.coerce.number().optional().default(1),
                 limit: z.coerce.number().optional().default(10),
                 status: z.enum(["pending", "reviewing", "quote", "approved", "rejected", "completed"]).optional(),
-                type: z.enum(["product", "custom"]).optional(),
                 search: z.string().optional(),
                 sortBy: z.enum(["createdAt", "updatedAt", "status"]).optional().default("createdAt"),
                 sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
@@ -125,7 +96,7 @@ const app = new Hono()
             const isAdmin = await checkRole("admin");
 
             try {
-                const { page, limit, status, type, search, sortBy, sortOrder } = c.req.valid("query");
+                const { page, limit, status, search, sortBy, sortOrder } = c.req.valid("query");
 
                 const skip = (page - 1) * limit;
 
@@ -143,10 +114,6 @@ const app = new Hono()
 
                 if (status) {
                     query.status = status;
-                }
-
-                if (type) {
-                    query.type = type;
                 }
 
                 if (search) {
@@ -195,11 +162,13 @@ const app = new Hono()
                     country: quote.country,
                     state: quote.state,
                     postcode: quote.postcode,
-                    type: quote.type,
                     productDetails: quote.productDetails,
-                    customRequest: quote.customRequest,
                     needDeliveryBy: quote.needDeliveryBy,
                     extraInformation: quote.extraInformation,
+                    designDescription: quote.designDescription,
+                    artwork: quote.artwork,
+                    desiredWidth: quote.desiredWidth,
+                    desiredHeight: quote.desiredHeight,
                     status: quote.status,
                     quotedPrice: quote.quotedPrice,
                     quotedAt: quote.quotedAt,
@@ -248,25 +217,23 @@ const app = new Hono()
                     state: data.state,
                     postcode: data.postcode,
                     agreeTerms: data.agreeTerms,
-                    type: data.type,
                     needDeliveryBy: data.needDeliveryBy ? new Date(data.needDeliveryBy) : undefined,
                     extraInformation: data.extraInformation,
                     status: "pending",
+                    artwork: data.artwork,
+                    desiredWidth: data.desiredWidth,
+                    desiredHeight: data.desiredHeight,
+                    designDescription: data.designDescription,
                 };
 
                 //Add type-specific details
-                if (data.type === "product") {
-                    requestQuoteData.productDetails = {
-                        productId: new mongoose.Types.ObjectId(data.productId!),
-                        quantity: data.quantity!,
-                        selectedColorId: new mongoose.Types.ObjectId(data.selectedColorId),
-                        quantityBySize: data.quantityBySize,
-                    };
-                } else if (data.type === "custom") {
-                    requestQuoteData.customRequest = {
-                        customNeed: data.customNeed!,
-                    };
-                }
+                requestQuoteData.productDetails = {
+                    productId: new mongoose.Types.ObjectId(data.productId!),
+                    quantity: data.quantity!,
+                    selectedColorId: data.selectedColorId ? new mongoose.Types.ObjectId(data.selectedColorId) : undefined,
+                    quantityBySize: data.quantityBySize,
+                };
+
 
                 const requestQuote = new RequestQuote(requestQuoteData);
                 await requestQuote.save();
@@ -288,8 +255,8 @@ const app = new Hono()
                         success: true,
                         message: "Request quote created successfully",
                         data: {
+                            id: populateQuote?._id?.toString(),
                             status: populateQuote?.status,
-                            type: populateQuote?.type,
                             createdAt: populateQuote?.createdAt,
                         }
                     },
@@ -368,11 +335,13 @@ const app = new Hono()
                         state: requestQuote.state,
                         postcode: requestQuote.postcode,
                         agreeTerms: requestQuote.agreeTerms,
-                        type: requestQuote.type,
                         productDetails: requestQuote.productDetails,
-                        customRequest: requestQuote.customRequest,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
+                        designDescription: requestQuote.designDescription,
+                        artwork: requestQuote.artwork,
+                        desiredWidth: requestQuote.desiredWidth,
+                        desiredHeight: requestQuote.desiredHeight,
                         status: requestQuote.status,
                         quotedPrice: requestQuote.quotedPrice,
                         quotedAt: requestQuote.quotedAt,
@@ -380,7 +349,7 @@ const app = new Hono()
                         rejectedAt: requestQuote.rejectedAt,
                         rejectionReason: requestQuote.rejectionReason,
                         adminNotes: requestQuote.adminNotes,
-                        adminResponses: requestQuote.adminResponses,
+                        priceBreakdown: requestQuote.priceBreakdown,
                         createdAt: requestQuote.createdAt,
                         updatedAt: requestQuote.updatedAt,
                     },
@@ -408,13 +377,6 @@ const app = new Hono()
         zValidator("json", updateRequestQuoteSchema),
         async (c) => {
             try {
-                const user = c.get("user")!;
-                const isAdmin = await checkRole("admin");
-
-                if (!isAdmin) {
-                    throw new HTTPException(403, { message: "Admin access required" });
-                }
-
                 const { id } = c.req.valid("param");
                 const { status, quotedPrice, rejectionReason, adminNotes } = c.req.valid("json");
 
@@ -501,21 +463,38 @@ const app = new Hono()
                         message: "Total price doesn't match breakdown calculation"
                     });
                 }
-
-                responseData.quotedPrice = breakdown.totalPrice;
             }
 
-            const preparedData = {
-                ...responseData,
+            const updateData: any = {
+                status: responseData.status,
+                responseMessage: responseData.responseMessage,
+                rejectionReason: responseData.rejectionReason,
+                priceBreakdown: responseData.priceBreakdown,
+                productionDetails: responseData.productionDetails,
                 validUntil: responseData.validUntil ? new Date(responseData.validUntil) : undefined,
+                updatedAt: new Date(),
             };
 
-            const updatedQuote = await RequestQuote.addAdminResponse(
+            // Set specific timestamps based on status
+            switch (responseData.status) {
+                case "quoted":
+                    updateData.quotedPrice = responseData.priceBreakdown?.totalPrice || responseData.quotedPrice;
+                    updateData.quotedAt = new Date();
+                    break;
+                case "rejected":
+                    updateData.rejectedAt = new Date();
+                    break;
+            }
+
+            const updatedQuote = await RequestQuote.findByIdAndUpdate(
                 id,
-                preparedData,
-                user.id,
-                false
+                updateData,
+                { new: true }
             );
+
+            if (!updatedQuote) {
+                throw new HTTPException(404, { message: "Request quote not found" });
+            }
 
             return c.json({
                 success: true,

@@ -28,18 +28,8 @@ import SelectedProductInfo from '../SelectedProductInfo';
 import { useSelectedProductStore } from '../../store/useSelectedProductStore';
 import { useCreateRequestQuoteMutation } from '../../services/mutations';
 import { toast } from 'sonner';
-
-// --- Zod schemas ---
-const productSchema = z.object({
-    productId: z.string().min(1, 'Choose a product'),
-    quantity: z.coerce.number().min(1, 'At least 1'),
-    productsQuantities: z.record(z.record(z.number().min(0))).optional(),
-    quantityBySize: z.record(z.record(z.number().min(0))).optional()
-});
-
-const customSchema = z.object({
-    customNeed: z.string().min(5, 'Describe what you need'),
-});
+import { UploadDropzone } from '@/lib/uploadthing';
+import { useRouter } from 'next/navigation';
 
 const fullSchema = z.object({
     firstName: z.string().min(1, 'Required'),
@@ -53,24 +43,33 @@ const fullSchema = z.object({
     phone: z.string().min(1, 'Required'),
     company: z.string().optional(),
     agreeTerms: z.boolean().refine(v => v, { message: 'You must agree to terms' }),
-    type: z.enum(['product', 'custom']),
-    product: productSchema.optional(),
-    custom: customSchema.optional(),
+
+    product: z.object({
+        productId: z.string().optional(),
+        quantity: z.coerce.number().optional(),
+        selectedColorId: z.string().optional(),
+        quantityBySize: z.record(z.record(z.number().min(0))).optional()
+    }).optional(),
+
+    designDescription: z.string().optional(),
+
     needDeliveryBy: z.string().optional(),
     extraInformation: z.string().optional(),
+    desiredWidth: z.coerce.number().min(0.5, 'Minimum width is 0.5 inches').optional(),
+    desiredHeight: z.coerce.number().min(0.5, 'Minimum height is 0.5 inches').optional(),
+    artwork: z.string().optional(),
 });
 
 type FormData = z.infer<typeof fullSchema>;
 
 // --- Main component ---
 export default function RequestQuotePage() {
-    const [type, setType] = React.useState<'product' | 'custom'>('product');
-
+    const router = useRouter();
     const { selectedProduct, clearSelectedProduct } = useSelectedProductStore();
     const createRequestQuoteMutation = useCreateRequestQuoteMutation();
 
     const form = useForm<FormData>({
-        // resolver: zodResolver(fullSchema),
+        resolver: zodResolver(fullSchema) as any,
         defaultValues: {
             firstName: '',
             lastName: '',
@@ -83,18 +82,18 @@ export default function RequestQuotePage() {
             state: '',
             postcode: '',
             agreeTerms: false,
-            type: 'product',
             product: {
                 productId: '',
                 quantity: 0,
-                productsQuantities: {},
+                selectedColorId: '',
                 quantityBySize: {},
             },
-            custom: {
-                customNeed: '',
-            },
+            designDescription: '',
             needDeliveryBy: '',
             extraInformation: '',
+            desiredWidth: undefined,
+            desiredHeight: undefined,
+            artwork: '',
         },
         mode: 'onTouched',
     });
@@ -120,14 +119,19 @@ export default function RequestQuotePage() {
                 state: data.state,
                 postcode: data.postcode,
                 agreeTerms: data.agreeTerms,
-                type: data.type,
                 needDeliveryBy: data.needDeliveryBy,
                 extraInformation: data.extraInformation,
+                desiredWidth: data.desiredWidth,
+                desiredHeight: data.desiredHeight,
+                artwork: data.artwork,
+                needDesignService: !!(data.designDescription && data.designDescription.trim().length > 0),
+                designDescription: data.designDescription,
             };
 
-            if (data.type === 'product' && data.product) {
+            if (data.product) {
                 requestData.productId = data.product.productId;
                 requestData.quantity = data.product.quantity;
+                requestData.selectedColorId = data.product.selectedColorId;
                 if (data.product.quantityBySize) {
                     const colorIds = Object.keys(data.product.quantityBySize);
                     const sizeObj = data.product.quantityBySize[colorIds[0]] || {};
@@ -138,28 +142,21 @@ export default function RequestQuotePage() {
                 }
             }
 
-            if (data.type === 'custom' && data.custom) {
-                requestData.customNeed = data.custom.customNeed;
-            }
-
             await createRequestQuoteMutation.mutateAsync(requestData);
 
             toast.success("Request quote submitted successfully!");
 
             // Reset form
             form.reset();
-            setType('product');
-            clearSelectedProduct()
+            clearSelectedProduct();
+            if (typeof window !== 'undefined') {
+                router.push('/my-request-quotes');
+            }
         } catch (error) {
             console.error("Error submitting request:", error);
             toast.error(error instanceof Error ? error.message : "Failed to submit request");
         }
     };
-
-    const handleProductSelect = (product: any) => {
-        form.setValue('product.productId', product._id);
-        form.trigger('product.productId')
-    }
 
     return (
         <Form {...form}>
@@ -228,7 +225,7 @@ export default function RequestQuotePage() {
                             name="company"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Company <span className="text-red-500">*</span></FormLabel>
+                                    <FormLabel>Company</FormLabel>
                                     <FormControl>
                                         <Input placeholder="Company (optional)" {...field} />
                                     </FormControl>
@@ -321,82 +318,201 @@ export default function RequestQuotePage() {
                         )}
                     />
                 </div>
+
                 <div className='mb-8'>
                     <h2 className="text-lg font-semibold mb-4">2. What do you need?</h2>
+                    <div className='mt-4'>
+                        <FormField
+                            control={form.control}
+                            name="product.productId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className='mr-2'>Select Product</FormLabel>
+                                    <FormControl>
+                                        <SelectShirtDialog />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        {selectedProduct && <SelectedProductInfo product={selectedProduct} className='mt-4' />}
+                    </div>
+                </div>
+
+                {/* ✅ SIMPLIFIED: Always show design service section without toggle */}
+                <div className="mb-6">
+                    <h3 className="text-md font-medium mb-4">Design Requirements</h3>
+
+                    <div className="p-4 border border-blue-200 rounded-lg bg-blue-50">
+                        <FormField
+                            control={form.control}
+                            name="designDescription"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Describe your design ideas</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Tell us about your design ideas, style preferences, colors, themes, text, images you'd like to include, or any specific requirements..."
+                                            className="resize-none min-h-[120px] bg-white"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormDescription>
+                                        Describe your design needs and our team will help create the perfect design for you. Leave blank if you already have your design ready.
+                                    </FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <div className="mt-3 p-3 bg-blue-100 rounded border border-blue-300">
+                            <h4 className="text-sm font-medium text-blue-800 mb-2">💡 Design Service Information:</h4>
+                            <ul className="text-xs text-blue-700 space-y-1">
+                                <li>• Our professional designers will create custom artwork for you (if design description is provided)</li>
+                                <li>• Design service fees will be included in the quote</li>
+                                <li>• You'll receive design proofs for approval before production</li>
+                                <li>• Includes up to 3 rounds of revisions</li>
+                                <li>• Design turnaround: 2-3 business days</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ✅ UPDATED: Always show artwork upload section */}
+                <div className="mb-6">
+                    <h3 className="text-md font-medium mb-3">Upload Your Design or Reference</h3>
                     <FormField
                         control={form.control}
-                        name="type"
+                        name="artwork"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Choose an option</FormLabel>
+                                <FormLabel>Upload Artwork, Logo, or Reference Images</FormLabel>
                                 <FormControl>
-                                    <RadioGroup
-                                        className="flex space-x-4 mb-4"
-                                        value={type}
-                                        onValueChange={val => {
-                                            setType(val as 'product' | 'custom');
-                                            field.onChange(val);
-                                        }}
-                                    >
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <RadioGroupItem value="product" id="type-product" className='mt-2 mr-2' />
-                                            </FormControl>
-                                            <FormLabel htmlFor="type-product" className="cursor-pointer">
-                                                Choose one of our products
-                                            </FormLabel>
-                                        </FormItem>
-                                        <FormItem className="flex items-center space-x-2">
-                                            <FormControl>
-                                                <RadioGroupItem value="custom" id="type-custom" className='mt-2 mr-2' />
-                                            </FormControl>
-                                            <FormLabel htmlFor="type-custom" className="cursor-pointer">
-                                                Tell us what you need
-                                            </FormLabel>
-                                        </FormItem>
-                                    </RadioGroup>
+                                    <div className="w-full">
+                                        {field.value ? (
+                                            <div className="border-2 border-dashed border-green-300 rounded-lg p-4 bg-green-50">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="w-12 h-12 bg-green-100 rounded flex items-center justify-center">
+                                                            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-green-800">
+                                                                File uploaded successfully
+                                                            </p>
+                                                            <p className="text-xs text-green-600">
+                                                                Click to view or replace
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex space-x-2">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => window.open(field.value, '_blank')}
+                                                        >
+                                                            View
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            onClick={() => field.onChange('')}
+                                                        >
+                                                            Remove
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <UploadDropzone
+                                                endpoint="designCanvas"
+                                                onClientUploadComplete={(res) => {
+                                                    if (res && res[0]) {
+                                                        field.onChange(res[0].url);
+                                                        toast.success("File uploaded successfully!");
+                                                    }
+                                                }}
+                                                onUploadError={(error: Error) => {
+                                                    toast.error("Upload failed: " + error.message);
+                                                }}
+                                                appearance={{
+                                                    container: "border-2 border-dashed border-gray-300 rounded-lg p-6 hover:border-gray-400 transition-colors",
+                                                    uploadIcon: "text-gray-400",
+                                                    label: "text-gray-600 text-sm",
+                                                    allowedContent: "text-xs text-gray-500"
+                                                }}
+                                            />
+                                        )}
+                                    </div>
                                 </FormControl>
+                                <FormDescription>
+                                    Upload your design file, logo, or reference images (PNG, JPG, SVG, PDF, AI). Max file size: 8MB
+                                </FormDescription>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
-                    {type === 'product' ? (
-                        <div className='mt-4'>
-                            <FormField
-                                control={form.control}
-                                name="product.productId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className='mr-2'>Select Product</FormLabel>
+                </div>
+
+                {/* Desired Dimensions Section */}
+                <div className="mb-6">
+                    <h3 className="text-md font-medium mb-3">Design Dimensions (Optional)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name="desiredWidth"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Desired Width</FormLabel>
+                                    <div className="flex items-center space-x-2">
                                         <FormControl>
-                                            <SelectShirtDialog
-                                                onProductSelect={handleProductSelect}
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                min="0.5"
+                                                placeholder="e.g. 5.5"
+                                                {...field}
+                                                value={field.value || ''}
                                             />
                                         </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            {selectedProduct && <SelectedProductInfo product={selectedProduct} className='mt-4' />}
-                        </div>
-                    ) : (
-                        <div className='mt-4'>
-                            <FormField
-                                control={form.control}
-                                name="custom.customNeed"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Describe what you need</FormLabel>
+                                        <span className="text-sm text-muted-foreground min-w-[2rem]">inches</span>
+                                    </div>
+                                    <FormDescription>Width of your design in inches</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="desiredHeight"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Desired Height</FormLabel>
+                                    <div className="flex items-center space-x-2">
                                         <FormControl>
-                                            <Textarea placeholder="Tell us in detail..." {...field} />
+                                            <Input
+                                                type="number"
+                                                step="0.1"
+                                                min="0.5"
+                                                placeholder="e.g. 3.2"
+                                                {...field}
+                                                value={field.value || ''}
+                                            />
                                         </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    )}
+                                        <span className="text-sm text-muted-foreground min-w-[2rem]">inches</span>
+                                    </div>
+                                    <FormDescription>Height of your design in inches</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                 </div>
+
                 <div>
                     <h2 className="text-lg font-semibold mb-4">3. Delivery & Extra Information</h2>
                     <FormField
@@ -423,10 +539,19 @@ export default function RequestQuotePage() {
                                     <PopoverContent className="w-auto p-0">
                                         <Calendar
                                             mode="single"
-                                            selected={field.value ? new Date(field.value) : undefined}
+                                            selected={field.value ? new Date(field.value + 'T00:00:00') : undefined}
                                             onSelect={date => {
-                                                field.onChange(date ? date.toISOString().slice(0, 10) : "");
+                                                if (date) {
+                                                    const year = date.getFullYear();
+                                                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                                                    const day = String(date.getDate()).padStart(2, '0');
+                                                    const localDateString = `${year}-${month}-${day}`;
+                                                    field.onChange(localDateString);
+                                                } else {
+                                                    field.onChange("");
+                                                }
                                             }}
+                                            disabled={(date) => date < new Date()}
                                         />
                                     </PopoverContent>
                                 </Popover>
@@ -442,14 +567,22 @@ export default function RequestQuotePage() {
                             <FormItem>
                                 <FormLabel>Extra information</FormLabel>
                                 <FormControl>
-                                    <Textarea className="resize-none" placeholder="Any other details or requirements?" {...field} />
+                                    <Textarea
+                                        className="resize-none"
+                                        cols={30}
+                                        rows={6}
+                                        placeholder="Any other details or requirements?"
+                                        {...field}
+                                    />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
                     />
                     <div className="flex justify-end mt-6">
-                        <Button type="submit">Submit Request</Button>
+                        <Button type="submit" disabled={createRequestQuoteMutation.isPending}>
+                            {createRequestQuoteMutation.isPending ? "Submitting..." : "Submit Request"}
+                        </Button>
                     </div>
                 </div>
             </form>

@@ -222,20 +222,6 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
                         </DropdownMenuItem>
                     )}
 
-                    {(quote.status === "pending" || quote.status === "reviewing") && (
-                        <>
-                            <DropdownMenuItem onClick={() => setShowQuoteDialog(true)}>
-                                <DollarSign className="mr-2 h-4 w-4" />
-                                Provide Quote
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem onClick={() => setShowRejectDialog(true)}>
-                                <XCircle className="mr-2 h-4 w-4" />
-                                Reject Request
-                            </DropdownMenuItem>
-                        </>
-                    )}
-
                     {quote.status === "quoted" && (
                         <DropdownMenuItem onClick={() => handleSimpleStatusUpdate("approved")}>
                             <CheckCircle className="mr-2 h-4 w-4" />

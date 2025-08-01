@@ -38,6 +38,7 @@ const ProductItem = ({ product, onSelect, isSelected }: ProductItemProps) => {
                 className="mb-4 rounded-lg overflow-hidden bg-gray-100"
             />
             <div>
+                <h4 className='font-semibold text-xl'>{product.name}</h4>
                 <div dangerouslySetInnerHTML={{ __html: product.description }} />
                 <div>
                     <h3 className='text-sm font-medium mb-2'>Color</h3>
