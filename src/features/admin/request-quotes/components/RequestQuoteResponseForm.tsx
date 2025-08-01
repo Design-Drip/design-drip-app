@@ -151,7 +151,6 @@ interface RequestQuoteResponseFormProps {
             rushFee?: number;
             shippingCost?: number;
             tax?: number;
-            totalPrice?: number;
         };
         productionDetails?: {
             estimatedDays?: number;

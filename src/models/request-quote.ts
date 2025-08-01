@@ -50,7 +50,6 @@ interface RequestQuoteDoc extends mongoose.Document {
         rushFee?: number;
         shippingCost?: number;
         tax?: number;
-        totalPrice?: number;
     };
 
     productionDetails?: {
@@ -246,10 +245,6 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
                 type: Number,
                 min: 0,
                 default: 0,
-            },
-            totalPrice: {
-                type: Number,
-                min: 0,
             },
         },
 

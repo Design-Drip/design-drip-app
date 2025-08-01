@@ -64,7 +64,6 @@ const adminResponseSchema = z.object({
         rushFee: z.number().min(0).default(0),
         shippingCost: z.number().min(0).default(0),
         tax: z.number().min(0).default(0),
-        totalPrice: z.number().min(0),
     }).optional(),
 
     // Production details
@@ -491,12 +490,6 @@ const app = new Hono()
                     (breakdown.rushFee || 0) +
                     (breakdown.shippingCost || 0) +
                     (breakdown.tax || 0);
-
-                if (Math.abs(calculatedTotal - breakdown.totalPrice) > 0.01) {
-                    throw new HTTPException(400, {
-                        message: "Total price doesn't match breakdown calculation"
-                    });
-                }
             }
 
             const updateData: any = {

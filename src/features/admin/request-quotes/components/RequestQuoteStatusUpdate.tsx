@@ -51,14 +51,11 @@ interface RequestQuote {
         rushFee?: number;
         shippingCost?: number;
         tax?: number;
-        totalPrice?: number;
     };
     productionDetails?: {
         estimatedDays?: number;
         printingMethod?: "DTG" | "DTF" | "Screen Print" | "Vinyl" | "Embroidery";
         materialSpecs?: string;
-        colorLimitations?: string;
-        sizeAvailability?: { size: string; available: boolean }[];
     };
     validUntil?: string;
     createdAt: string;
@@ -184,13 +181,10 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                     rushFee: parseFloat(data.rushFee || "0") || 0,
                     shippingCost: parseFloat(data.shippingCost || "0") || 0,
                     tax: parseFloat(data.tax || "0") || 0,
-                    totalPrice: parseFloat(data.quotedPrice || "0"),
                 } : undefined,
                 productionDetails: (data.status === "quoted") ? {
                     estimatedDays: data.estimatedDays ? parseInt(data.estimatedDays) : undefined,
                     printingMethod: data.printingMethod,
-                    materialSpecs: data.materialSpecs,
-                    colorLimitations: data.colorLimitations,
                 } : undefined,
                 validUntil: data.validUntil,
             };
@@ -331,17 +325,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                                         <div className="flex items-center gap-2">
                                             <Package className="h-4 w-4" />
                                             <span>Method: {quote.productionDetails.printingMethod}</span>
-                                        </div>
-                                    )}
-                                    {quote.productionDetails.materialSpecs && (
-                                        <div>
-                                            <strong>Materials:</strong> {quote.productionDetails.materialSpecs}
-                                        </div>
-                                    )}
-                                    {quote.productionDetails.colorLimitations && (
-                                        <div className="flex items-center gap-2">
-                                            <Palette className="h-4 w-4" />
-                                            <span>Color Limits: {quote.productionDetails.colorLimitations}</span>
                                         </div>
                                     )}
                                 </div>

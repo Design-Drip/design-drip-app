@@ -19,6 +19,11 @@ import {
   Eye,
   CheckCircle,
   XCircle,
+  MessageSquare,
+  Calculator,
+  Printer,
+  Clock,
+  Palette,
 } from "lucide-react";
 import {
   Card,
@@ -479,114 +484,423 @@ export default function RequestQuoteDetailPage() {
             </>
           )}
 
-          {/* ✅ NEW: Simple Quote Display (when status is quoted) */}
+          {/* ✅ ENHANCED: Detailed Quote Display (when status is quoted) */}
           {quoteData.status === "quoted" && (
             <>
               <Separator />
-              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <div className="flex items-center gap-2 text-green-800 mb-4">
-                  <DollarSign className="h-5 w-5" />
-                  <span className="font-semibold text-lg">
-                    Quote: {formatPrice(quoteData.quotedPrice!)}
-                  </span>
-                </div>
-
-                {quoteData.responseMessage && (
-                  <div className="mb-4">
-                    <h4 className="font-medium mb-2">Message from Admin:</h4>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                      {quoteData.responseMessage}
-                    </p>
+              <div className="space-y-6">
+                {/* Quote Header */}
+                <div className="p-6 bg-gradient-to-r from-green-50 to-blue-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-green-100 rounded-full">
+                        <DollarSign className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-green-800">
+                          Official Quote: {formatPrice(quoteData.quotedPrice!)}
+                        </h3>
+                        <p className="text-sm text-green-600">
+                          For {quoteData.productDetails?.quantity || 0} items
+                        </p>
+                      </div>
+                    </div>
+                    {quoteData.validUntil && (
+                      <div className="text-right">
+                        <p className="text-sm text-muted-foreground">Valid until</p>
+                        <p className="font-semibold text-orange-600">
+                          {formatOrderDate(quoteData.validUntil)}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                )}
 
-                {/* Price Breakdown */}
-                {quoteData.priceBreakdown && (
-                  <div className="mb-4">
-                    <h4 className="font-medium mb-3 text-green-700">Price Breakdown:</h4>
-                    <div className="bg-white/50 border border-green-200 rounded-lg p-3">
-                      <div className="space-y-2 text-sm">
-                        {quoteData.priceBreakdown.basePrice && (
-                          <div className="flex justify-between py-1">
-                            <span>Base price</span>
-                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.basePrice)}</span>
+                  {/* Admin Response Message */}
+                  {quoteData.responseMessage && (
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-green-800 mb-2 flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        Message from Admin
+                      </h4>
+                      <div className="p-4 bg-white/70 border border-green-200 rounded-lg">
+                        <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                          {quoteData.responseMessage}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Enhanced Price Breakdown */}
+                  {quoteData.priceBreakdown && (
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                        <Calculator className="h-4 w-4" />
+                        Detailed Price Breakdown
+                      </h4>
+                      <div className="bg-white/70 border border-green-200 rounded-lg overflow-hidden">
+                        <div className="p-4 space-y-3">
+
+                          {/* ✅ NEW: Product Summary Section */}
+                          {quoteData.productDetails?.quantityBySize && quoteData.productDetails.quantityBySize.length > 0 && (
+                            <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                              <h5 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
+                                <Package className="h-4 w-4" />
+                                Product Summary
+                              </h5>
+                              <div className="space-y-3">
+                                <div className="text-sm">
+                                  <span className="font-medium">Total Quantity:</span> {quoteData.productDetails.quantity} items
+                                </div>
+                                <div>
+                                  <div className="font-medium text-sm mb-2">Size Breakdown & Pricing:</div>
+                                  <div className="space-y-2">
+                                    {quoteData.productDetails.quantityBySize.map((item: any, index: number) => {
+                                      // Calculate pricing for each size (assuming base price + additional price structure)
+                                      const basePrice = quoteData.priceBreakdown?.basePrice || 0;
+                                      const totalForSize = basePrice * item.quantity;
+                                      const additionalPrice = item.additional_price || 0;
+                                      const pricePerUnit = (basePrice + additionalPrice);
+                                      const originalPricePerUnit = pricePerUnit * 1.4; // Assuming 40% markup for retail
+                                      const savings = (originalPricePerUnit - pricePerUnit) * item.quantity;
+                                      const savingsPercentage = ((originalPricePerUnit - pricePerUnit) / originalPricePerUnit) * 100;
+
+                                      return (
+                                        <div key={index} className="p-3 bg-white border border-blue-200 rounded-md">
+                                          <div className="flex justify-between items-start">
+                                            <div>
+                                              <div className="font-medium text-sm">
+                                                Size {item.size}: {item.quantity} items
+                                                {additionalPrice > 0 && (
+                                                  <span className="text-orange-600 ml-2">
+                                                    (+{formatPrice(additionalPrice)})
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <div className="text-xs text-muted-foreground mt-1">
+                                                Per unit: {formatPrice(pricePerUnit)}
+                                              </div>
+                                            </div>
+                                            <div className="text-right">
+                                              <div className="line-through text-muted-foreground text-xs">
+                                                {formatPrice(originalPricePerUnit * item.quantity)}
+                                              </div>
+                                              <div className="font-medium text-green-600">
+                                                {formatPrice(totalForSize + (additionalPrice * item.quantity))}
+                                              </div>
+                                              {savings > 0 && (
+                                                <div className="text-orange-600 font-medium text-xs">
+                                                  Save {formatPrice(savings)} ({savingsPercentage.toFixed(1)}%)
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Customer Savings Summary */}
+                                  {(() => {
+                                    const totalOriginal = quoteData.productDetails.quantityBySize.reduce((sum: number, item: any) => {
+                                      const basePrice = quoteData.priceBreakdown?.basePrice || 0;
+                                      const additionalPrice = item.additional_price || 0;
+                                      const pricePerUnit = basePrice + additionalPrice;
+                                      const originalPricePerUnit = pricePerUnit * 1.4;
+                                      return sum + (originalPricePerUnit * item.quantity);
+                                    }, 0);
+
+                                    const totalQuoted = quoteData.productDetails.quantityBySize.reduce((sum: number, item: any) => {
+                                      const basePrice = quoteData.priceBreakdown?.basePrice || 0;
+                                      const additionalPrice = item.additional_price || 0;
+                                      return sum + ((basePrice + additionalPrice) * item.quantity);
+                                    }, 0);
+
+                                    const totalSavings = totalOriginal - totalQuoted;
+                                    const savingsPercentage = (totalSavings / totalOriginal) * 100;
+
+                                    return totalSavings > 0 && (
+                                      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                                        <div className="text-sm font-medium text-green-800 mb-1">
+                                          Your Savings Summary:
+                                        </div>
+                                        <div className="text-xs text-green-700 space-y-1">
+                                          <div>Retail Price: {formatPrice(totalOriginal)}</div>
+                                          <div>Your Quote Price: {formatPrice(totalQuoted)}</div>
+                                          <div className="font-bold text-green-800 text-sm">
+                                            Total Savings: {formatPrice(totalSavings)} ({savingsPercentage.toFixed(1)}% off)
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Base Price Display */}
+                          {quoteData.priceBreakdown.basePrice && (
+                            <div className="flex justify-between items-center py-2 border-b border-green-100">
+                              <div>
+                                <span className="font-medium">Your Price Per Unit</span>
+                                <p className="text-xs text-muted-foreground">
+                                  Base price for {quoteData.productDetails?.quantity || 0} items
+                                </p>
+                                {quoteData.productDetails?.quantityBySize && (
+                                  <div className="text-xs text-green-600 mt-1">
+                                    28.6% off retail price
+                                  </div>
+                                )}
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-lg">
+                                  {formatPrice(quoteData.priceBreakdown.basePrice / (quoteData.productDetails?.quantity || 1))}
+                                </div>
+                                <div className="text-xs text-green-600">
+                                  Total: {formatPrice(quoteData.priceBreakdown.basePrice)}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Additional Fees */}
+                          <div className="space-y-2">
+                            {quoteData.priceBreakdown.setupFee && quoteData.priceBreakdown.setupFee > 0 && (
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium">Setup Fee</span>
+                                  <p className="text-xs text-muted-foreground">One-time production setup</p>
+                                </div>
+                                <span className="font-medium text-orange-600">
+                                  {formatPrice(quoteData.priceBreakdown.setupFee)}
+                                </span>
+                              </div>
+                            )}
+
+                            {quoteData.priceBreakdown.designFee && quoteData.priceBreakdown.designFee > 0 && (
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium">Design Fee</span>
+                                  <p className="text-xs text-muted-foreground">
+                                    {quoteData.needDesignService ? "Design service as requested" : "Additional design work"}
+                                  </p>
+                                </div>
+                                <span className="font-medium text-blue-600">
+                                  {formatPrice(quoteData.priceBreakdown.designFee)}
+                                </span>
+                              </div>
+                            )}
+
+                            {quoteData.priceBreakdown.rushFee && quoteData.priceBreakdown.rushFee > 0 && (
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium">Rush Fee</span>
+                                  <p className="text-xs text-muted-foreground">
+                                    {quoteData.needDeliveryBy ? "Rush delivery requested" : "Rush processing"}
+                                  </p>
+                                </div>
+                                <span className="font-medium text-orange-500">
+                                  {formatPrice(quoteData.priceBreakdown.rushFee)}
+                                </span>
+                              </div>
+                            )}
+
+                            {quoteData.priceBreakdown.shippingCost && quoteData.priceBreakdown.shippingCost > 0 && (
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium">Shipping Cost</span>
+                                  <p className="text-xs text-muted-foreground">
+                                    Delivery to {quoteData.suburbCity}, {quoteData.state}
+                                  </p>
+                                </div>
+                                <span className="font-medium text-purple-600">
+                                  {formatPrice(quoteData.priceBreakdown.shippingCost)}
+                                </span>
+                              </div>
+                            )}
+
+                            {quoteData.priceBreakdown.tax && quoteData.priceBreakdown.tax > 0 && (
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-sm font-medium">Tax</span>
+                                  <p className="text-xs text-muted-foreground">VAT and applicable taxes</p>
+                                </div>
+                                <span className="font-medium text-gray-600">
+                                  {formatPrice(quoteData.priceBreakdown.tax)}
+                                </span>
+                              </div>
+                            )}
                           </div>
-                        )}
-                        {quoteData.priceBreakdown.setupFee && quoteData.priceBreakdown.setupFee > 0 && (
-                          <div className="flex justify-between py-1">
-                            <span>Setup fee</span>
-                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.setupFee)}</span>
+
+                          {/* Calculated Total Display */}
+                          <div className="border-t-2 border-green-300 pt-3 mt-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <div>
+                                <span className="font-medium text-green-800">Calculated Total</span>
+                                <p className="text-xs text-green-600">
+                                  Based on pricing breakdown
+                                </p>
+                              </div>
+                              <span className="text-lg font-bold text-green-700">
+                                {(() => {
+                                  const calculatedTotal =
+                                    (quoteData.priceBreakdown.basePrice || 0) +
+                                    (quoteData.priceBreakdown.setupFee || 0) +
+                                    (quoteData.priceBreakdown.designFee || 0) +
+                                    (quoteData.priceBreakdown.rushFee || 0) +
+                                    (quoteData.priceBreakdown.shippingCost || 0) +
+                                    (quoteData.priceBreakdown.tax || 0);
+                                  return formatPrice(calculatedTotal);
+                                })()}
+                              </span>
+                            </div>
+
+                            {/* Final Quote Total */}
+                            <div className="border-t pt-2">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <span className="text-xl font-bold text-green-800">Total Quote</span>
+                                  <p className="text-xs text-green-600">
+                                    Average: {formatPrice(quoteData.quotedPrice! / (quoteData.productDetails?.quantity || 1))} per item
+                                  </p>
+                                </div>
+                                <span className="text-2xl font-bold text-green-700">
+                                  {formatPrice(quoteData.quotedPrice!)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Customer Value Display */}
+                            {(() => {
+                              const retailPrice = (quoteData.priceBreakdown.basePrice || 0) * 1.4; // Assuming retail markup
+                              if (retailPrice > quoteData.quotedPrice!) {
+                                return (
+                                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded">
+                                    <div className="text-sm text-green-700">
+                                      <span className="font-medium">Customer Value:</span>
+                                      <div className="text-xs mt-1">
+                                        Retail Price: {formatPrice(retailPrice)} |
+                                        You Save: {formatPrice(retailPrice - quoteData.quotedPrice!)}
+                                        ({(((retailPrice - quoteData.quotedPrice!) / retailPrice) * 100).toFixed(1)}% off)
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
-                        )}
-                        {quoteData.priceBreakdown.designFee && quoteData.priceBreakdown.designFee > 0 && (
-                          <div className="flex justify-between py-1">
-                            <span>Design fee</span>
-                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.designFee)}</span>
-                          </div>
-                        )}
-                        {quoteData.priceBreakdown.rushFee && quoteData.priceBreakdown.rushFee > 0 && (
-                          <div className="flex justify-between py-1">
-                            <span>Rush fee</span>
-                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.rushFee)}</span>
-                          </div>
-                        )}
-                        {quoteData.priceBreakdown.shippingCost && quoteData.priceBreakdown.shippingCost > 0 && (
-                          <div className="flex justify-between py-1">
-                            <span>Shipping cost</span>
-                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.shippingCost)}</span>
-                          </div>
-                        )}
-                        {quoteData.priceBreakdown.tax && quoteData.priceBreakdown.tax > 0 && (
-                          <div className="flex justify-between py-1">
-                            <span>Tax</span>
-                            <span className="font-medium">{formatPrice(quoteData.priceBreakdown.tax)}</span>
-                          </div>
-                        )}
-                        <Separator className="my-2" />
-                        <div className="flex justify-between py-2 font-semibold text-green-700 text-base">
-                          <span>Total</span>
-                          <span>{formatPrice(quoteData.quotedPrice!)}</span>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Production Details */}
-                {quoteData.productionDetails && (
-                  <div className="mb-4">
-                    <h4 className="font-medium mb-2">Production Details:</h4>
-                    <div className="text-sm space-y-1">
-                      {quoteData.productionDetails.estimatedDays && (
-                        <p>• Production time: {quoteData.productionDetails.estimatedDays} days</p>
-                      )}
-                      {quoteData.productionDetails.printingMethod && (
-                        <p>• Method: {quoteData.productionDetails.printingMethod}</p>
-                      )}
+                  {/* Enhanced Production Details */}
+                  {quoteData.productionDetails && (
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Production Information
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {quoteData.productionDetails.estimatedDays && (
+                          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Calendar className="h-4 w-4 text-blue-600" />
+                              <span className="font-medium text-blue-800">Production Time</span>
+                            </div>
+                            <p className="text-xl font-bold text-blue-700">
+                              {quoteData.productionDetails.estimatedDays} business days
+                            </p>
+                            {quoteData.needDeliveryBy && (
+                              <p className="text-xs text-blue-600 mt-1">
+                                Your requested date: {formatOrderDate(quoteData.needDeliveryBy)}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {quoteData.productionDetails.printingMethod && (
+                          <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Printer className="h-4 w-4 text-purple-600" />
+                              <span className="font-medium text-purple-800">Printing Method</span>
+                            </div>
+                            <p className="text-lg font-semibold text-purple-700">
+                              {quoteData.productionDetails.printingMethod}
+                            </p>
+                          </div>
+                        )}
+
+                        {quoteData.productionDetails.materialSpecs && (
+                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg md:col-span-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FileText className="h-4 w-4 text-amber-600" />
+                              <span className="font-medium text-amber-800">Material Specifications</span>
+                            </div>
+                            <p className="text-sm text-amber-700">
+                              {quoteData.productionDetails.materialSpecs}
+                            </p>
+                          </div>
+                        )}
+
+                        {quoteData.productionDetails.colorLimitations && (
+                          <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg md:col-span-2">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Palette className="h-4 w-4 text-orange-600" />
+                              <span className="font-medium text-orange-800">Color Information</span>
+                            </div>
+                            <p className="text-sm text-orange-700">
+                              {quoteData.productionDetails.colorLimitations}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-green-200">
+                    <Button
+                      onClick={handleAcceptQuote}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      {updateStatusMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Accept Quote
+                        </>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleRejectQuote}
+                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 font-semibold py-3"
+                      disabled={updateStatusMutation.isPending}
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Decline Quote
+                    </Button>
                   </div>
-                )}
 
-                {quoteData.validUntil && (
-                  <p className="text-sm text-gray-600 mb-4">
-                    Valid until: {formatOrderDate(quoteData.validUntil)}
-                  </p>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={handleAcceptQuote}
-                    className="bg-green-600 hover:bg-green-700"
-                  >
-                    Accept Quote
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={handleRejectQuote}
-                  >
-                    Reject Quote
-                  </Button>
+                  {/* Quote Validity Notice */}
+                  {quoteData.validUntil && (
+                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-yellow-800">
+                        <Clock className="h-4 w-4" />
+                        <span className="text-sm font-medium">
+                          This quote expires on {formatOrderDate(quoteData.validUntil)}.
+                          Please respond before this date to secure the quoted price.
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
