@@ -115,12 +115,9 @@ export default function DesignerQuoteDetailPage() {
   }
 
   // Lấy selectedColorId từ quote và đảm bảo nó là string
-  const selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || 
-    quote.productDetails?.selectedColorId?._id?.toString?.() || 
-    quote.productDetails?.selectedColorId?.id?.toString?.() ||
-    quote.productDetails?.selectedColorId;
+  const selectedColorId = quote.productDetails?.selectedColorId?._id.toString?.()
   console.log("selectedColorId", selectedColorId);
-  console.log("selectedColorId object", quote.productDetails?.selectedColorId);
+  console.log("selectedColorId object", quote.productDetails?.selectedColorId._id.toString());
   
   // Tìm color object trong product.colors
   const selectedColor = product?.colors?.find((c: any) => {
@@ -245,10 +242,7 @@ export default function DesignerQuoteDetailPage() {
                    : productIdRaw?._id?.toString?.() || productIdRaw?.id?.toString?.() || productIdRaw;
                  
                  // Đảm bảo selectedColorId là string
-                 let selectedColorId = quote.productDetails?.selectedColorId?.toString?.() || 
-                   quote.productDetails?.selectedColorId?._id?.toString?.() || 
-                   quote.productDetails?.selectedColorId?.id?.toString?.() ||
-                   quote.productDetails?.selectedColorId;
+                 let selectedColorId = quote.productDetails?.selectedColorId?._id.toString?.()
                  
                  console.log("Navigating to editor with:", { productId, selectedColorId, quoteId: quote.id });
                  console.log("selectedColorId type:", typeof selectedColorId);

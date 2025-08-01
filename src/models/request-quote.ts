@@ -24,7 +24,7 @@ interface RequestQuoteDoc extends mongoose.Document {
         productId: mongoose.Types.ObjectId;
         quantity: number;
         selectedColorId?: mongoose.Types.ObjectId;
-        quantityBySize?: { size: string; quantity: number }[];
+        quantityBySize?: { size: string; quantity: number, additional_price: number }[];
     };
 
     needDeliveryBy?: Date;
@@ -50,18 +50,14 @@ interface RequestQuoteDoc extends mongoose.Document {
         rushFee?: number;
         shippingCost?: number;
         tax?: number;
-        totalPrice?: number;
     };
 
     productionDetails?: {
         estimatedDays?: number;
         printingMethod?: PrintingMethod;
-        materialSpecs?: string;
-        colorLimitations?: string;
-        sizeAvailability?: { size: string; available: boolean }[];
     };
 
-    designerId?: string,
+    designerId?: string;
     design_id?: mongoose.Types.ObjectId, // Reference to primary design for this quote
     designStatus?: string;
 
@@ -149,6 +145,7 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
             quantityBySize: [{
                 size: String,
                 quantity: Number,
+                additional_price: Number
             }],
         },
 
@@ -249,10 +246,6 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
                 min: 0,
                 default: 0,
             },
-            totalPrice: {
-                type: Number,
-                min: 0,
-            },
         },
 
         productionDetails: {
@@ -273,7 +266,6 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
             default: null,
         },
 
-        // ✅ NEW: Primary design for this quote
         design_id: {
             type: mongoose.Types.ObjectId,
             ref: "Design",
