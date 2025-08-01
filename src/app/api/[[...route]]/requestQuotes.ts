@@ -415,6 +415,7 @@ const app = new Hono()
                         priceBreakdown: requestQuote.priceBreakdown,
                         createdAt: requestQuote.createdAt,
                         updatedAt: requestQuote.updatedAt,
+                        design_id: requestQuote.design_id,
                     },
                 });
             } catch (error) {
