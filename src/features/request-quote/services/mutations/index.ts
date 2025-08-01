@@ -32,3 +32,41 @@ export const useCreateRequestQuoteMutation = () => {
     },
   });
 };
+
+export const useSetPrimaryDesign = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ quoteId, designId }: { quoteId: string; designId: string }) => {
+      const requestBody = { design_id: designId };
+      
+      const response = await fetch(`/api/request-quotes/${quoteId}/set-primary-design`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let error;
+        try {
+          error = JSON.parse(errorText);
+        } catch {
+          error = { message: errorText };
+        }
+        throw new Error(error.message || "Failed to set primary design");
+      }
+
+      const responseData = await response.json();
+      return responseData;
+    },
+    onSuccess: () => {
+      // Invalidate relevant queries
+      queryClient.invalidateQueries({ queryKey: ["quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["my-assigned-quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["design"] });
+    },
+  });
+};

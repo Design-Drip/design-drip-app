@@ -6,6 +6,7 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import { checkRole } from "@/lib/roles";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
+import { clerkClient } from "@clerk/nextjs/server";
 import { ShirtSizeVariant } from "@/models/product";
 
 const createRequestQuoteSchema = z.object({
@@ -51,10 +52,11 @@ const updateRequestQuoteSchema = z.object({
 });
 
 const adminResponseSchema = z.object({
-    status: z.enum(["reviewing", "quoted", "rejected"]),
+    status: z.enum(["reviewing", "quoted", "revised", "rejected"]),
     quotedPrice: z.number().min(0).optional(),
     responseMessage: z.string().trim().optional(),
     rejectionReason: z.string().trim().optional(),
+    adminNotes: z.string().trim().optional(),
 
     // Price breakdown
     priceBreakdown: z.object({
@@ -70,9 +72,26 @@ const adminResponseSchema = z.object({
     productionDetails: z.object({
         estimatedDays: z.number().min(1).optional(),
         printingMethod: z.enum(["DTG", "DTF", "Screen Print", "Vinyl", "Embroidery"]).optional(),
+        materialSpecs: z.string().trim().optional(),
+        colorLimitations: z.string().trim().optional(),
+        sizeAvailability: z.array(z.object({
+            size: z.string(),
+            available: z.boolean(),
+        })).optional(),
     }).optional(),
 
-    validUntil: z.string().optional(),
+    validUntil: z.string().optional(), // ISO date string
+});
+
+const revisionSchema = adminResponseSchema.extend({
+    revisionReason: z.enum(["customer_request", "admin_improvement", "cost_change", "timeline_change", "material_change"]),
+});
+
+const customerFeedbackSchema = z.object({
+    requestedChanges: z.array(z.object({
+        aspect: z.enum(["price", "timeline", "materials", "design", "other"]),
+        description: z.string().trim().min(1, "Description is required"),
+    })).min(1, "At least one change must be requested"),
 });
 
 const app = new Hono()
@@ -103,7 +122,13 @@ const app = new Hono()
                 const query: any = {};
 
                 if (!isAdmin) {
-                    query.userId = user.id;
+                    // If not admin, can only view:
+                    // 1. Quotes created by themselves (userId = user.id)
+                    // 2. Quotes assigned to themselves (designerId = user.id)
+                    query.$or = [
+                        { userId: user.id },
+                        { designerId: user.id }
+                    ];
                 }
 
                 if (status) {
@@ -146,6 +171,43 @@ const app = new Hono()
                 const totalQuotes = await RequestQuote.countDocuments(query);
                 const totalPages = Math.ceil(totalQuotes / limit);
 
+                // Get unique designer IDs
+                const designerIds = [...new Set(requestQuotes
+                    .map(quote => quote.designerId)
+                    .filter((id): id is string => id !== undefined && id !== null))];
+
+                // Fetch designer info from Clerk
+                let designerInfoMap: Record<string, any> = {};
+                if (designerIds.length > 0) {
+                    try {
+                        const client = await clerkClient();
+                        const designerUsers = await Promise.all(
+                            designerIds.map(async (id) => {
+                                try {
+                                    const user = await client.users.getUser(id);
+                                    return {
+                                        id: user.id,
+                                        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.emailAddresses?.[0]?.emailAddress || user.id,
+                                        email: user.emailAddresses?.[0]?.emailAddress || '',
+                                    };
+                                } catch (error) {
+                                    console.error(`Error fetching designer ${id}:`, error);
+                                    return null;
+                                }
+                            })
+                        );
+                        
+                        designerInfoMap = designerUsers
+                            .filter(user => user !== null)
+                            .reduce((acc, user) => {
+                                if (user) acc[user.id] = user;
+                                return acc;
+                            }, {} as Record<string, any>);
+                    } catch (error) {
+                        console.error("Error fetching designer info:", error);
+                    }
+                }
+
                 //Transform data for response
                 const transformQuotes = requestQuotes.map((quote) => ({
                     id: quote._id?.toString(),
@@ -174,6 +236,9 @@ const app = new Hono()
                     rejectedAt: quote.rejectedAt,
                     rejectionReason: quote.rejectionReason,
                     adminNotes: quote.adminNotes,
+                    designerId: quote.designerId,
+                    design_id: quote.design_id,
+                    designerInfo: quote.designerId ? designerInfoMap[quote.designerId] : undefined,
                     createdAt: quote.createdAt,
                     updatedAt: quote.updatedAt,
                 }));
@@ -367,6 +432,12 @@ const app = new Hono()
                         state: requestQuote.state,
                         postcode: requestQuote.postcode,
                         agreeTerms: requestQuote.agreeTerms,
+                        productDetails: {
+                            productId: requestQuote.productDetails?.productId?._id?.toString() || requestQuote.productDetails?.productId?.toString(),
+                            quantity: requestQuote.productDetails?.quantity,
+                            selectedColorId: requestQuote.productDetails?.selectedColorId?._id?.toString() || requestQuote.productDetails?.selectedColorId?.toString(),
+                            quantityBySize: requestQuote.productDetails?.quantityBySize,
+                        },
                         productDetails: enhancedProductDetails,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
@@ -535,6 +606,323 @@ const app = new Hono()
             throw new HTTPException(500, { message: "Failed to submit response" });
         }
     })
+
+
+
+    
+
+    
+
+    
+
+    // Get assigned quotes for designer
+    .get("/my-assigned",
+        zValidator("query", z.object({
+            designerId: z.string().min(1, "Designer ID is required"),
+        })),
+        async (c) => {
+            console.log("=== ENTERING /my-assigned endpoint ===");
+            
+            try {
+                console.log("=== Inside try block ===");
+                
+                const { designerId } = c.req.valid("query");
+                
+                console.log("Debug - designerId from query:", designerId);
+                
+                // Designer chỉ xem được quote được assign cho mình
+                const query = { designerId };
+                
+                console.log("Debug - query:", query);
+
+                const requestQuotes = await RequestQuote.find(query)
+                    .populate({
+                        path: "productDetails.productId",
+                        model: "Shirt",
+                        select: "name default_price",
+                    })
+                    .populate({
+                        path: "productDetails.selectedColorId",
+                        model: "ShirtColor",
+                        select: "color hex_code",
+                    })
+                    .sort({ createdAt: -1 })
+                    .lean();
+
+                console.log("Debug - found quotes:", requestQuotes.length);
+
+                const transformQuotes = requestQuotes.map((quote) => ({
+                    id: quote._id?.toString(),
+                    userId: quote.userId,
+                    firstName: quote.firstName,
+                    lastName: quote.lastName,
+                    emailAddress: quote.emailAddress,
+                    phone: quote.phone,
+                    company: quote.company,
+                    productDetails: quote.productDetails,
+                    needDeliveryBy: quote.needDeliveryBy,
+                    extraInformation: quote.extraInformation,
+                    status: quote.status,
+                    quotedPrice: quote.quotedPrice,
+                    designerId: quote.designerId,
+                    createdAt: quote.createdAt,
+                    updatedAt: quote.updatedAt,
+                }));
+
+                console.log("=== About to return response ===");
+
+                return c.json({
+                    success: true,
+                    data: transformQuotes,
+                });
+
+            } catch (error) {
+                console.error("=== ERROR in /my-assigned ===", error);
+                if (error instanceof HTTPException) throw error;
+                throw new HTTPException(500, { message: "Failed to fetch assigned quotes" });
+            }
+        }
+    )
+
+    // Assign designer to request quote
+    .post("/:id/assign-designer", 
+        zValidator("param", z.object({
+            id: z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
+                message: "Invalid request quote ID",
+            }),
+        })),
+        zValidator("json", z.object({
+            designerId: z.string().min(1, "Designer ID is required"),
+        })),
+        async (c) => {
+            try {
+                const user = c.get("user")!;
+                const isAdmin = await checkRole("admin");
+
+                if (!isAdmin) {
+                    throw new HTTPException(403, { message: "Admin access required" });
+                }
+
+                const { id } = c.req.valid("param");
+                const { designerId } = c.req.valid("json");
+
+                const quote = await RequestQuote.findById(id);
+                if (!quote) {
+                    throw new HTTPException(404, { message: "Request quote not found" });
+                }
+
+                if (quote.designerId) {
+                    throw new HTTPException(400, { message: "Request quote is already assigned to a designer. Unassign first." });
+                }
+
+                quote.designerId = designerId;
+                quote.status = "pending"; // or status you want when assigning
+                await quote.save();
+
+                return c.json({
+                    success: true,
+                    data: quote,
+                    message: "Designer assigned successfully"
+                });
+
+            } catch (error) {
+                console.error("Error assigning designer:", error);
+                if (error instanceof HTTPException) throw error;
+                throw new HTTPException(500, { message: "Failed to assign designer" });
+            }
+        }
+    )
+
+    // Unassign designer from request quote
+    .post("/:id/unassign-designer",
+        zValidator("param", z.object({
+            id: z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
+                message: "Invalid request quote ID",
+            }),
+        })),
+        async (c) => {
+            try {
+                const user = c.get("user")!;
+                const isAdmin = await checkRole("admin");
+
+                if (!isAdmin) {
+                    throw new HTTPException(403, { message: "Admin access required" });
+                }
+
+                const { id } = c.req.valid("param");
+
+                const quote = await RequestQuote.findById(id);
+                if (!quote) {
+                    throw new HTTPException(404, { message: "Request quote not found" });
+                }
+
+                if (!quote.designerId) {
+                    throw new HTTPException(400, { message: "Request quote is not assigned to any designer." });
+                }
+
+                quote.designerId = undefined;
+                await quote.save();
+
+                return c.json({
+                    success: true,
+                    data: quote,
+                    message: "Designer unassigned successfully"
+                });
+
+            } catch (error) {
+                console.error("Error unassigning designer:", error);
+                if (error instanceof HTTPException) throw error;
+                throw new HTTPException(500, { message: "Failed to unassign designer" });
+            }
+        }
+    )
+
+    // Get assigned quotes for designer
+    .get("/my-assigned",
+        async (c) => {
+            try {
+                const user = c.get("user")!;
+                const isDesigner = await checkRole("designer");
+
+                if (!isDesigner) {
+                    throw new HTTPException(403, { message: "Designer access required" });
+                }
+
+                const query = { designerId: user.id };
+
+                const requestQuotes = await RequestQuote.find(query)
+                    .populate({
+                        path: "productDetails.productId",
+                        model: "Shirt",
+                        select: "name default_price",
+                    })
+                    .populate({
+                        path: "productDetails.selectedColorId",
+                        model: "ShirtColor",
+                        select: "color hex_code",
+                    })
+                    .populate({
+                        path: "design_id",
+                        model: "Design",
+                        select: "id name design_images",
+                    })
+                    .sort({ createdAt: -1 })
+                    .lean();
+
+                const transformQuotes = requestQuotes.map((quote) => ({
+                    id: quote._id?.toString(),
+                    userId: quote.userId,
+                    firstName: quote.firstName,
+                    lastName: quote.lastName,
+                    emailAddress: quote.emailAddress,
+                    phone: quote.phone,
+                    company: quote.company,
+                    productDetails: quote.productDetails,
+                    needDeliveryBy: quote.needDeliveryBy,
+                    extraInformation: quote.extraInformation,
+                    status: quote.status,
+                    quotedPrice: quote.quotedPrice,
+                    designerId: quote.designerId,
+                    design_id: quote.design_id,
+                    createdAt: quote.createdAt,
+                    updatedAt: quote.updatedAt,
+                }));
+
+                return c.json({
+                    success: true,
+                    data: transformQuotes,
+                });
+
+            } catch (error) {
+                console.error("Error fetching assigned quotes:", error);
+                if (error instanceof HTTPException) throw error;
+                throw new HTTPException(500, { message: "Failed to fetch assigned quotes" });
+            }
+        }
+    )
+
+    .patch(
+        "/:id/set-primary-design",
+        zValidator(
+            "param",
+            z.object({
+                id: z.string().trim(),
+            })
+        ),
+        zValidator("json", z.object({
+            design_id: z.string().refine((val) => {
+                console.log("[API PATCH set-primary-design] JSON validation - design_id:", val);
+                return true;
+            }),
+        })),
+        async (c) => {
+            try {
+                // Log raw request body first
+                const rawBody = await c.req.json();
+                console.log("[API PATCH set-primary-design] Raw request body:", rawBody);
+                
+                const { id } = c.req.valid("param");
+                const { design_id } = c.req.valid("json");
+                const user = c.get("user");
+
+                console.log("[API PATCH set-primary-design] Request:", { id, design_id, userId: user?.id });
+                console.log("[API PATCH set-primary-design] Design ID type:", typeof design_id);
+                console.log("[API PATCH set-primary-design] Design ID value:", design_id);
+
+                if (!user) {
+                    throw new HTTPException(401, { message: "Unauthorized" });
+                }
+
+                // Check if quote exists
+                const quote = await RequestQuote.findById(id);
+                if (!quote) {
+                    throw new HTTPException(404, { message: "Quote not found" });
+                }
+
+                // Handle case where quote doesn't have designerId (old quotes)
+                if (!quote.designerId) {
+                    quote.designerId = user.id;
+                    await quote.save();
+                } else if (quote.designerId !== user.id) {
+                    throw new HTTPException(403, { message: "You can only set primary design for your assigned quotes" });
+                }
+
+                // Check if design exists and belongs to the user
+                const { Design } = await import("@/models/design");
+                const design = await Design.findById(design_id);
+                if (!design) {
+                    throw new HTTPException(404, { message: "Design not found" });
+                }
+
+                if (design.user_id !== user.id) {
+                    throw new HTTPException(403, { message: "You can only set your own designs as primary" });
+                }
+
+                // Update quote with primary design
+                console.log("[API PATCH set-primary-design] Before update - quote.design_id:", quote.design_id);
+                quote.design_id = new mongoose.Types.ObjectId(design_id);
+                await quote.save();
+                console.log("[API PATCH set-primary-design] After update - quote.design_id:", quote.design_id);
+
+                return c.json({
+                    success: true,
+                    message: "Primary design set successfully",
+                    data: {
+                        quote_id: id,
+                        design_id: design_id,
+                    },
+                });
+            } catch (error) {
+                console.error("Error setting primary design:", error);
+                if (error instanceof HTTPException) {
+                    throw error;
+                }
+                throw new HTTPException(500, {
+                    message: "Failed to set primary design",
+                });
+            }
+        }
+    )
 
 
 export default app;

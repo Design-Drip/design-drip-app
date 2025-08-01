@@ -30,9 +30,14 @@ import {
     XCircle,
     MessageSquare,
     ExternalLink,
+    UserPlus,
+    UserMinus,
 } from "lucide-react";
 import { useUpdateRequestQuoteStatusMutation } from "@/features/admin/request-quotes/services/mutations";
 import Link from "next/link";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useEffect } from "react";
 
 interface QuoteActionsProps {
     quote: {
@@ -40,6 +45,7 @@ interface QuoteActionsProps {
         status: string;
         quotedPrice?: number;
         adminNotes?: string;
+        designerId?: string;
     };
 }
 
@@ -47,10 +53,30 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
     const [showQuoteDialog, setShowQuoteDialog] = useState(false);
     const [showRejectDialog, setShowRejectDialog] = useState(false);
     const [showNotesDialog, setShowNotesDialog] = useState(false);
+    const [showAssignDialog, setShowAssignDialog] = useState(false);
+    const [assigning, setAssigning] = useState(false);
+    const [designerIdInput, setDesignerIdInput] = useState("");
 
     const [quotePrice, setQuotePrice] = useState(quote.quotedPrice?.toString() || "");
     const [rejectionReason, setRejectionReason] = useState("");
     const [adminNotes, setAdminNotes] = useState(quote.adminNotes || "");
+
+    const [designers, setDesigners] = useState<{ id: string; name: string; email: string; imageUrl: string }[]>([]);
+    const [loadingDesigners, setLoadingDesigners] = useState(false);
+
+    useEffect(() => {
+        if (showAssignDialog) {
+            setLoadingDesigners(true);
+            fetch("/api/designers")
+                .then(res => res.json())
+                .then(data => {
+                    console.log("Fetched designers:", data);
+                    setDesigners(data);
+                })
+                .catch(() => setDesigners([]))
+                .finally(() => setLoadingDesigners(false));
+        }
+    }, [showAssignDialog]);
 
     const updateStatusMutation = useUpdateRequestQuoteStatusMutation();
 
@@ -126,6 +152,49 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
         }
     };
 
+    const handleAssignDesigner = async () => {
+        if (!designerIdInput) {
+            toast.error("Please select a designer");
+            return;
+        }
+        setAssigning(true);
+        try {
+            const res = await fetch(`/api/request-quotes/${quote.id}/assign-designer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ designerId: designerIdInput }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Failed to assign");
+            toast.success("Assigned designer successfully");
+            setShowAssignDialog(false);
+            setDesignerIdInput("");
+            window.location.reload();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to assign");
+        } finally {
+            setAssigning(false);
+        }
+    };
+
+    const handleUnassignDesigner = async () => {
+        setAssigning(true);
+        try {
+            const res = await fetch(`/api/request-quotes/${quote.id}/unassign-designer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message || "Failed to unassign");
+            toast.success("Unassigned designer successfully");
+            window.location.reload();
+        } catch (e: any) {
+            toast.error(e.message || "Failed to unassign");
+        } finally {
+            setAssigning(false);
+        }
+    };
+
     return (
         <>
             <DropdownMenu>
@@ -166,6 +235,24 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
                             Mark as Completed
                         </DropdownMenuItem>
                     )}
+
+                    <DropdownMenuSeparator />
+                    {!quote.designerId ? (
+                        <DropdownMenuItem onClick={() => setShowAssignDialog(true)}>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Assign Designer
+                        </DropdownMenuItem>
+                    ) : (
+                        <DropdownMenuItem onClick={handleUnassignDesigner}>
+                            <UserMinus className="mr-2 h-4 w-4" />
+                            Unassign Designer
+                        </DropdownMenuItem>
+                    )}
+
+                    <DropdownMenuItem onClick={() => setShowNotesDialog(true)}>
+                        <MessageSquare className="mr-2 h-4 w-4" />
+                        {quote.adminNotes ? "Edit Notes" : "Add Notes"}
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
 
@@ -276,6 +363,47 @@ export function QuoteActions({ quote }: QuoteActionsProps) {
                             disabled={updateStatusMutation.isPending}
                         >
                             {updateStatusMutation.isPending ? "Saving..." : "Save Notes"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Assign Designer Dialog */}
+            <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Assign Designer</DialogTitle>
+                        <DialogDescription>
+                            Select a designer to assign this request quote.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label htmlFor="designerId">Designer</Label>
+                            <Select
+                                value={designerIdInput}
+                                onValueChange={setDesignerIdInput}
+                                disabled={loadingDesigners}
+                            >
+                                <SelectTrigger id="designerId">
+                                    <SelectValue placeholder={loadingDesigners ? "Loading..." : "Select Designer"} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {designers.map(designer => (
+                                        <SelectItem key={designer.id} value={designer.id}>
+                                            {designer.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setShowAssignDialog(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleAssignDesigner} disabled={assigning || !designerIdInput}>
+                            {assigning ? "Assigning..." : "Assign"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

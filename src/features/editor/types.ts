@@ -98,6 +98,7 @@ export type ActiveTool =
   | "text"
   | "images"
   | "draw"
+  | "users"
   | "fill"
   | "stroke-color"
   | "stroke-width"

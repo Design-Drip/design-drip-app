@@ -1,5 +1,5 @@
 "use client";
-import { Eye, MoreHorizontal, User, ShieldCheck, Shield } from "lucide-react";
+import { Eye, MoreHorizontal, User, ShieldCheck, Shield, Palette } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
 
 import {
@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
+import { RoleBadge } from "@/components/ui/role-badge";
 
 // Import ClerkUser type and UserDetailDialog component
 import type { ClerkUser } from "@/app/admin/users/page";
@@ -192,11 +193,7 @@ export function TableUsers({ staff }: UserTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={user.role === "admin" ? "default" : "secondary"}
-                    >
-                      {user.role ? user.role : "User"}
-                    </Badge>
+                    <RoleBadge role={user.role || "User"} />
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">{formatDate(user.createdAt)}</div>
@@ -232,6 +229,13 @@ export function TableUsers({ staff }: UserTableProps) {
                         >
                           <Shield className="mr-2 h-4 w-4" />
                           Make Staff
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={isPending}
+                          onClick={() => handleSetRole(user.id, "designer")}
+                        >
+                          <Palette className="mr-2 h-4 w-4" />
+                          Make Designer
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={isPending}

@@ -43,20 +43,13 @@ interface RequestQuote {
     customRequest?: any;
     needDeliveryBy?: string;
 
-    // ✅ NEW: Design-related fields
+    // ✅ Design-related fields
     designerId?: string;
-    designId?: string;
-    designStatus?: "pending" | "in_progress" | "awaiting_approval" | "approved" | "needs_revision" | "rejected" | "completed";
-    needDesignService?: boolean;
+    design_id?: string;
     designerInfo?: {
         id: string;
         name: string;
         email: string;
-    };
-    designInfo?: {
-        id: string;
-        name: string;
-        status: string;
     };
 
     createdAt: string;
@@ -139,86 +132,22 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 // ✅ NEW: Design Status Badge component
-const DesignStatusBadge = ({ status, needsDesign }: {
-    status?: string;
-    needsDesign?: boolean;
+const DesignStatusBadge = ({ design_id }: {
+    design_id?: string;
 }) => {
-    if (!needsDesign) {
+    if (design_id) {
         return (
-            <Badge variant="outline" className="text-xs bg-gray-50 text-gray-500 border-gray-200">
-                No Design
+            <Badge variant="outline" className="text-xs bg-green-100 text-green-700 border-green-200">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Has Design
             </Badge>
         );
     }
-
-    if (!status) {
-        return (
-            <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200">
-                Not Set
-            </Badge>
-        );
-    }
-
-    const getDesignStatusConfig = (status: string) => {
-        switch (status) {
-            case "pending":
-                return {
-                    label: "Pending",
-                    className: "bg-yellow-100 text-yellow-700 border-yellow-200",
-                    icon: Clock,
-                };
-            case "in_progress":
-                return {
-                    label: "In Progress",
-                    className: "bg-blue-100 text-blue-700 border-blue-200",
-                    icon: Palette,
-                };
-            case "awaiting_approval":
-                return {
-                    label: "Review",
-                    className: "bg-orange-100 text-orange-700 border-orange-200",
-                    icon: Eye,
-                };
-            case "approved":
-                return {
-                    label: "Approved",
-                    className: "bg-green-100 text-green-700 border-green-200",
-                    icon: CheckCircle,
-                };
-            case "needs_revision":
-                return {
-                    label: "Revision",
-                    className: "bg-amber-100 text-amber-700 border-amber-200",
-                    icon: AlertCircle,
-                };
-            case "rejected":
-                return {
-                    label: "Rejected",
-                    className: "bg-red-100 text-red-800 border-red-200",
-                    icon: XCircle,
-                };
-            case "completed":
-                return {
-                    label: "Complete",
-                    className: "bg-emerald-100 text-emerald-700 border-emerald-200",
-                    icon: CheckCircle,
-                };
-            default:
-                return {
-                    label: status,
-                    className: "bg-gray-100 text-gray-700 border-gray-200",
-                    icon: FileText,
-                };
-        }
-    };
-
-    const config = getDesignStatusConfig(status);
-    const IconComponent = config.icon;
 
     return (
-        <Badge variant="outline" className={cn("text-xs font-medium", config.className)}>
-            <IconComponent className="w-3 h-3 mr-1" />
-            {config.label}
+        <Badge variant="outline" className="text-xs bg-gray-100 text-gray-600 border-gray-200">
+            <FileText className="w-3 h-3 mr-1" />
+            No Design
         </Badge>
     );
 };
@@ -297,12 +226,7 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                                         Needed: {formatOrderDate(quote.needDeliveryBy)}
                                                     </div>
                                                 )}
-                                                {quote.needDesignService && (
-                                                    <div className="text-xs text-blue-600 font-medium flex items-center gap-1 mt-1">
-                                                        <Palette className="w-3 h-3" />
-                                                        Design Service
-                                                    </div>
-                                                )}
+
                                             </div>
                                         </TableCell>
 
@@ -312,8 +236,7 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
 
                                         <TableCell>
                                             <DesignStatusBadge
-                                                status={quote.designStatus}
-                                                needsDesign={quote.needDesignService}
+                                                design_id={quote.design_id}
                                             />
                                         </TableCell>
 
@@ -362,7 +285,7 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
                                         </TableCell>
 
                                         <TableCell className="text-right">
-                                            <QuoteActions quote={quote} />
+                                            <QuoteActions quote={{ ...quote, designerId: quote.designerId }} />
                                         </TableCell>
                                     </TableRow>
                                 );

@@ -365,8 +365,8 @@ export function ProductImageManager({
                         <UploadDropzone
                           endpoint="imageUploader"
                           onClientUploadComplete={(res) => {
-                            if (res && res[0]?.url) {
-                              handleImageUpload(side, res[0].url);
+                            if (res && res[0]?.ufsUrl) {
+                              handleImageUpload(side, res[0].ufsUrl);
                               toast.success(`${side} image uploaded`);
                             }
                           }}

@@ -11,6 +11,7 @@ import designTemplate from "./designTemplates";
 import cart from "./cart";
 import feedback from "./feedback";
 import orders from "./orders";
+import dashboard from "./dashboard";
 import paymentMethods from "./payments/paymentMethods";
 import checkout from "./payments/checkout";
 import webhooks from "./payments/webhooks";
@@ -34,8 +35,10 @@ const routes = app
   .route("/design-templates", designTemplate)
   .route("/cart", cart)
   .route("/orders", orders)
-  .route("/feedback", feedback)
+  .route("/dashboard", dashboard)
   .route("/request-quotes", requestQuotes)
+  .route("/feedback", feedback)
+  .route("/request-quotes", requestQuotes);
 
 export const GET = handle(app);
 export const POST = handle(app);

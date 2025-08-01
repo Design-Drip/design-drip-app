@@ -25,7 +25,7 @@ interface DesignTemplate {
   id: string;
   name: string;
   imageUrl: string;
-  category: string;
+  category: boolean;
 }
 
 export const DesignTemplateSidebar = ({
@@ -198,6 +198,7 @@ export const DesignTemplateSidebar = ({
                     alt={template.name}
                     fill
                     className="object-cover"
+                    unoptimized
                   />
                 </div>
                 <div className="p-2 bg-white border-t group-hover:bg-gray-50">

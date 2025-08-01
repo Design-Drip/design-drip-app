@@ -88,6 +88,7 @@ export default function CartItem({
             alt={name}
             fill
             className="object-cover"
+            unoptimized
           />
         </div>
 

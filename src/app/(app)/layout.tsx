@@ -11,11 +11,16 @@ export default async function AppLayout({ children }: AppLayoutProps) {
   if (await checkRole("admin")) {
     redirect("/admin");
   }
+  
+  if (await checkRole("designer")) {
+    redirect("/designer_management/assigned-quotes");
+  }
+  
   return (
     <div className="flex min-h-screen flex-col">
       <Header />
       <main className="flex-1">
-        <div className="container mx-auto px-4 py-6">{children}</div>
+        {children}
       </main>
       <Footer />
     </div>

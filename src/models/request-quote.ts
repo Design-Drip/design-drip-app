@@ -58,7 +58,7 @@ interface RequestQuoteDoc extends mongoose.Document {
     };
 
     designerId?: mongoose.Types.ObjectId;
-    design_id?: mongoose.Types.ObjectId;
+    design_id?: mongoose.Types.ObjectId, // Reference to primary design for this quote
     designStatus?: string;
 
     validUntil?: Date;
@@ -259,12 +259,17 @@ const requestQuoteSchema = new mongoose.Schema<RequestQuoteDoc>(
             },
         },
 
+        //Designer assignment
         designerId: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: String,
+            ref: "Users", // hoặc "Designers" nếu có collection riêng
+            default: null,
         },
 
         design_id: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: mongoose.Types.ObjectId,
+            ref: "Design",
+            default: null,
         },
 
         designStatus: {
