@@ -1,61 +1,95 @@
+"use client";
+
 import { useState } from "react";
 import {
   Dialog,
-  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
+import { useDeleteDesign } from "@/features/design/use-delete-design";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
-type DeleteDesignDialogProps = {
-  itemId: string;
-  onConfirmDelete: (id: string) => void;
-  loading?: boolean;
+interface Design {
+  id?: string;
+  _id?: string;
+  name: string;
+  version: string;
+  createdAt: string;
+  design_images: Record<string, string>;
+  quote_id?: any;
+}
+
+interface DeleteDesignDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-};
+  design: Design | null;
+}
 
-const DeleteDesignDialog = ({
-  itemId,
-  onConfirmDelete,
-  loading,
+export const DeleteDesignDialog = ({
   open,
   onOpenChange,
+  design,
 }: DeleteDesignDialogProps) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteDesignMutation = useDeleteDesign();
+  const queryClient = useQueryClient();
+
+  const handleDelete = async () => {
+    if (!design) return;
+
+    const designId = design.id || design._id;
+    if (!designId) {
+      toast.error("Invalid design ID");
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteDesignMutation.mutateAsync(designId);
+      
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["design"] });
+      
+      toast.success("Design deleted successfully");
+      onOpenChange(false);
+    } catch (error) {
+      toast.error("Failed to delete design");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Are you absolutely sure?</DialogTitle>
+          <DialogTitle>Delete Design</DialogTitle>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete your
-            design and remove your design from your cart.
+            Are you sure you want to delete "{design?.name}"? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
-        <DialogFooter className="sm:justify-end">
-          <DialogClose asChild>
-            <Button type="button" variant="secondary">
-              Close
-            </Button>
-          </DialogClose>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
           <Button
             variant="destructive"
-            size="sm"
-            onClick={() => {
-              onConfirmDelete(itemId);
-              onOpenChange(false);
-            }}
-            disabled={loading}
+            onClick={handleDelete}
+            disabled={isDeleting}
           >
-            {loading ? "Loading..." : "Confirm"}
+            {isDeleting ? "Deleting..." : "Delete"}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
-export default DeleteDesignDialog;

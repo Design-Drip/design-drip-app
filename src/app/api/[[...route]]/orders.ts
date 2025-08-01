@@ -230,6 +230,41 @@ const app = new Hono()
         });
       }
     }
-  );
+  )
+  .get("/dashboard", async (c) => {
+    try {
+      // Get basic counts
+      const totalOrders = await Order.countDocuments();
+      
+      // Get total revenue
+      const revenueResult = await Order.aggregate([
+        { $match: { status: { $ne: "canceled" } } },
+        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
+      ]);
+      const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+
+      // Get recent orders (last 5)
+      const recentOrders = await Order.find()
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select("_id totalAmount status createdAt");
+
+      return c.json({
+        success: true,
+        data: {
+          overview: {
+            totalUsers: 0, // Will be populated later
+            totalOrders,
+            totalRevenue,
+            totalProducts: 0, // Will be populated later
+          },
+          recentOrders
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      return c.json({ success: false, error: "Failed to fetch dashboard stats" }, 500);
+    }
+  });
 
 export default app;

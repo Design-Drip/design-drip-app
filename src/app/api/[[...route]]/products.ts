@@ -9,11 +9,11 @@ import {
 import { ProductsQueryOptions, ProductsSortOptions } from "@/types/request";
 import { ListResponse } from "@/types/response";
 import { auth } from "@clerk/nextjs/server";
-import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
-import { HTTPException } from "hono/http-exception";
 import mongoose from "mongoose";
 import { z } from "zod";
+import { Hono } from "hono";
+import { zValidator } from "@hono/zod-validator";
+import { HTTPException } from "hono/http-exception";
 
 const app = new Hono()
   .get(
@@ -245,7 +245,7 @@ const app = new Hono()
             .skip(skip)
             .limit(limit)
             .lean()
-            .select(["name", "base_price"]),
+            .select(["name", "base_price", "description"]),
           Shirt.countDocuments(query),
         ]);
 
@@ -254,9 +254,13 @@ const app = new Hono()
             shirt_id: product._id,
           }).select(["color", "color_value", "images"]);
 
-          const transformedColors = colors.map((color) => {
+          const transformedColors = await Promise.all(colors.map(async (color) => {
             const primaryImage =
               color.images?.find((img) => img.is_primary) || color.images?.[0];
+
+            const sizes = await ShirtSizeVariant.find({
+              shirtColor: color._id,
+            }).select(["shirtColor", "size"])
 
             return {
               id: color._id,
@@ -264,13 +268,14 @@ const app = new Hono()
               color_value: color.color_value,
               image: primaryImage
                 ? {
-                    id: primaryImage._id,
-                    url: primaryImage.url,
-                    view_side: primaryImage.view_side,
-                  }
+                  id: primaryImage._id,
+                  url: primaryImage.url,
+                  view_side: primaryImage.view_side,
+                }
                 : null,
+              sizes: sizes || [],
             };
-          });
+          }));
 
           results.push({
             ...product,
