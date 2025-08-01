@@ -432,12 +432,6 @@ const app = new Hono()
                         state: requestQuote.state,
                         postcode: requestQuote.postcode,
                         agreeTerms: requestQuote.agreeTerms,
-                        productDetails: {
-                            productId: requestQuote.productDetails?.productId?._id?.toString() || requestQuote.productDetails?.productId?.toString(),
-                            quantity: requestQuote.productDetails?.quantity,
-                            selectedColorId: requestQuote.productDetails?.selectedColorId?._id?.toString() || requestQuote.productDetails?.selectedColorId?.toString(),
-                            quantityBySize: requestQuote.productDetails?.quantityBySize,
-                        },
                         productDetails: enhancedProductDetails,
                         needDeliveryBy: requestQuote.needDeliveryBy,
                         extraInformation: requestQuote.extraInformation,
@@ -577,7 +571,7 @@ const app = new Hono()
             // Set specific timestamps based on status
             switch (responseData.status) {
                 case "quoted":
-                    updateData.quotedPrice = responseData.priceBreakdown?.totalPrice || responseData.quotedPrice;
+                    updateData.quotedPrice = responseData.quotedPrice;
                     updateData.quotedAt = new Date();
                     break;
                 case "rejected":

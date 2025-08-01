@@ -57,7 +57,7 @@ interface RequestQuoteDoc extends mongoose.Document {
         printingMethod?: PrintingMethod;
     };
 
-    designerId?: mongoose.Types.ObjectId;
+    designerId?: string;
     design_id?: mongoose.Types.ObjectId, // Reference to primary design for this quote
     designStatus?: string;
 
