@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { RoleBadge } from "@/components/ui/role-badge";
@@ -222,13 +221,6 @@ export function TableUsers({ staff }: UserTableProps) {
                         >
                           <ShieldCheck className="mr-2 h-4 w-4" />
                           Make Admin
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={isPending}
-                          onClick={() => handleSetRole(user.id, "staff")}
-                        >
-                          <Shield className="mr-2 h-4 w-4" />
-                          Make Staff
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={isPending}
