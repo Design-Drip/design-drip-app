@@ -229,13 +229,15 @@ export function TableUsers({ staff }: UserTableProps) {
                           <Palette className="mr-2 h-4 w-4" />
                           Make Designer
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={isPending}
-                          onClick={() => handleRemoveRole(user.id)}
-                        >
-                          <User className="mr-2 h-4 w-4" />
-                          Revoke Role
-                        </DropdownMenuItem>
+                        {user.role && user.role.toLowerCase() !== "user" && (
+                          <DropdownMenuItem
+                            disabled={isPending}
+                            onClick={() => handleRemoveRole(user.id)}
+                          >
+                            <User className="mr-2 h-4 w-4" />
+                            Revoke Role
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

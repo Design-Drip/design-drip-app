@@ -98,7 +98,7 @@ export default async function UsersManagementPage({
       (statusFilter === "active" && user.isActive) ||
       (statusFilter === "inactive" && !user.isActive) ||
       (statusFilter === "admin" && user.role === "admin") ||
-      (statusFilter === "user" && user.role === "user") ||
+      (statusFilter === "user" && user.role === "") ||
       (statusFilter === "designer" && user.role === "designer");
 
     return matchesSearch && matchesStatus;
@@ -109,7 +109,7 @@ export default async function UsersManagementPage({
     total: users.length,
     active: users.filter((user) => user.isActive).length,
     admin: users.filter((user) => user.role === "admin").length,
-    users: users.filter((user) => user.role?.toLowerCase() === "user").length,
+    users: users.filter((user) => user.role === "").length,
     designer: users.filter((user) => user.role === "designer").length,
   };
 
