@@ -30,10 +30,9 @@ import { SignOutButton } from "@clerk/nextjs";
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   config: SidebarConfig;
-  onLogout?: () => void;
 }
 
-export function AppSidebar({ config, onLogout, ...props }: AppSidebarProps) {
+export function AppSidebar({ config, ...props }: AppSidebarProps) {
   const { user, menuGroups, footer } = config;
 
   return (
@@ -79,7 +78,6 @@ export function AppSidebar({ config, onLogout, ...props }: AppSidebarProps) {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={onLogout}
                   className="cursor-pointer text-destructive focus:bg-destructive focus:text-destructive-foreground w-full"
                   asChild
                 >
