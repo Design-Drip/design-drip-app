@@ -28,6 +28,7 @@ import { formatPrice } from "@/lib/price";
 import { useCreateAdminResponse, useUpdateRequestQuoteStatusMutation } from "../services/mutations";
 import { toast } from "sonner";
 import RequestQuoteResponseForm from "./RequestQuoteResponseForm";
+import { PrintingMethod, QuoteStatus } from "@/constants/quoteStatus";
 
 interface RequestQuote {
     id: string;
@@ -35,15 +36,13 @@ interface RequestQuote {
     firstName: string;
     lastName: string;
     emailAddress: string;
-    type: "product" | "custom";
-    status: "pending" | "reviewing" | "quoted" | "approved" | "rejected" | "completed";
+    status: QuoteStatus;
     quotedPrice?: number;
     rejectionReason?: string;
     adminNotes?: string;
     responseMessage?: string;
     currentVersion?: number;
     totalRevisions?: number;
-    hasUnviewedResponse?: boolean;
     priceBreakdown?: {
         basePrice?: number;
         setupFee?: number;
@@ -54,12 +53,12 @@ interface RequestQuote {
     };
     productionDetails?: {
         estimatedDays?: number;
-        printingMethod?: "DTG" | "DTF" | "Screen Print" | "Vinyl" | "Embroidery";
+        printingMethod?: PrintingMethod;
         materialSpecs?: string;
     };
     validUntil?: string;
-    createdAt: string;
-    updatedAt: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 interface RequestQuoteStatusUpdateProps {
@@ -415,7 +414,6 @@ export function RequestQuoteStatusUpdate({ quote }: RequestQuoteStatusUpdateProp
                 initialStatus={selectedInitialStatus}
                 onSubmit={handleResponseSubmit}
                 isLoading={createResponseMutation.isPending}
-                mode="respond"
             />
         </>
     );

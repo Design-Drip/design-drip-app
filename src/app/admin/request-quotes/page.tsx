@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   Package,
@@ -29,7 +29,7 @@ import PaginationBtn from "@/components/pagination-button";
 import { getRequestQuotesQuery } from "@/features/request-quote/services/queries";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
-export default function RequestQuotesManagementPage() {
+function RequestQuotesContent() {
   const searchParams = useSearchParams();
 
   const page = parseInt(searchParams.get("page") || "1");
@@ -47,10 +47,6 @@ export default function RequestQuotesManagementPage() {
   });
 
   const { data, isLoading, error } = useQuery(getRequestQuotesQuery(filters));
-
-  const handleFiltersChange = (newFilters: Partial<typeof filters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters, page: 1 }));
-  };
 
   const handlePageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
@@ -132,12 +128,20 @@ export default function RequestQuotesManagementPage() {
   const requestQuotes = data?.items || [];
   const totalPages = data?.totalItems ? Math.ceil(data.totalItems / limit) : 0;
 
+  // Transform and ensure all required fields are present
+  const transformedRequestQuotes = requestQuotes.map((quote: any) => ({
+    ...quote,
+    createdAt: quote.createdAt || new Date().toISOString(),
+    updatedAt: quote.updatedAt || new Date().toISOString(),
+    status: quote.status || "pending",
+  }));
+
   const stats = {
-    total: requestQuotes.length,
-    pending: requestQuotes.filter((quote: any) => quote.status === "pending").length,
-    quoted: requestQuotes.filter((quote: any) => quote.status === "quoted").length,
-    approved: requestQuotes.filter((quote: any) => quote.status === "approved").length,
-    rejected: requestQuotes.filter((quote: any) => quote.status === "rejected").length,
+    total: transformedRequestQuotes.length,
+    pending: transformedRequestQuotes.filter((quote: any) => quote.status === "pending").length,
+    quoted: transformedRequestQuotes.filter((quote: any) => quote.status === "quoted").length,
+    approved: transformedRequestQuotes.filter((quote: any) => quote.status === "approved").length,
+    rejected: transformedRequestQuotes.filter((quote: any) => quote.status === "rejected").length,
   };
 
   return (
@@ -209,11 +213,8 @@ export default function RequestQuotesManagementPage() {
 
       {/* Filters */}
       <RequestQuoteFilters
-        filters={{
-          search: filters.search || "",
-          status: filters.status || "all",
-        }}
-        onFiltersChange={handleFiltersChange}
+        searchTerm={filters.search || ""}
+        statusFilter={filters.status || "all"}
       />
 
       {/* Request Quotes Table */}
@@ -233,7 +234,7 @@ export default function RequestQuotesManagementPage() {
         </Card>
       ) : (
         <>
-          <RequestQuotesTable requestQuotes={requestQuotes} />
+          <RequestQuotesTable requestQuotes={transformedRequestQuotes} />
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -284,5 +285,36 @@ export default function RequestQuotesManagementPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function RequestQuotesManagementPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-32 mt-1" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    }>
+      <RequestQuotesContent />
+    </Suspense>
   );
 }

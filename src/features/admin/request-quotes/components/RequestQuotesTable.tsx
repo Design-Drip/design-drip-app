@@ -52,8 +52,8 @@ interface RequestQuote {
         email: string;
     };
 
-    createdAt: string;
-    updatedAt: string;
+    createdAt?: string;
+    updatedAt?: string;
 }
 
 interface ClerkUser {
@@ -131,7 +131,6 @@ const StatusBadge = ({ status }: { status: string }) => {
     );
 };
 
-// ✅ NEW: Design Status Badge component
 const DesignStatusBadge = ({ design_id }: {
     design_id?: string;
 }) => {
@@ -277,10 +276,10 @@ export function RequestQuotesTable({ requestQuotes }: RequestQuotesTableProps) {
 
                                         <TableCell>
                                             <div className="text-sm">
-                                                {formatOrderDate(quote.createdAt)}
+                                                {quote.createdAt ? formatOrderDate(quote.createdAt) : '-'}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
-                                                {formatOrderDateTime(quote.createdAt).split(" ")[1]}
+                                                {quote.createdAt ? formatOrderDateTime(quote.createdAt).split(" ")[1] : '-'}
                                             </div>
                                         </TableCell>
 

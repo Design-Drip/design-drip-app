@@ -205,7 +205,11 @@ export default function AdminRequestQuoteDetailPage() {
                   {quote.productDetails.productId && (
                     <div>
                       <strong>Product:</strong>
-                      <p>{quote.productDetails.productId.name}</p>
+                      <p>
+                        {typeof quote.productDetails.productId === 'string'
+                          ? quote.productDetails.productId
+                          : (quote.productDetails.productId as any)?.name || 'N/A'}
+                      </p>
                     </div>
                   )}
                   <div>
@@ -215,10 +219,14 @@ export default function AdminRequestQuoteDetailPage() {
                   {quote.productDetails.selectedColorId && (
                     <div>
                       <strong>Color:</strong>
-                      <p>{quote.productDetails.selectedColorId.color}</p>
+                      <p>
+                        {typeof quote.productDetails.selectedColorId === 'string'
+                          ? quote.productDetails.selectedColorId
+                          : (quote.productDetails.selectedColorId as any)?.color || 'N/A'}
+                      </p>
                     </div>
                   )}
-                  {quote.productDetails.quantityBySize?.length > 0 && (
+                  {quote.productDetails && quote.productDetails.quantityBySize && quote.productDetails.quantityBySize.length > 0 && (
                     <div className="md:col-span-2">
                       <strong>Size Breakdown:</strong>
                       <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -265,7 +273,7 @@ export default function AdminRequestQuoteDetailPage() {
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <strong>Submitted:</strong>
-                    <span>{formatOrderDateTime(quote.createdAt)}</span>
+                    <span>{quote.createdAt ? formatOrderDateTime(quote.createdAt) : 'N/A'}</span>
                   </div>
                   {quote.quotedAt && (
                     <div className="flex justify-between">
@@ -287,7 +295,7 @@ export default function AdminRequestQuoteDetailPage() {
                   )}
                   <div className="flex justify-between border-t pt-2">
                     <strong>Last Updated:</strong>
-                    <span>{formatOrderDateTime(quote.updatedAt)}</span>
+                    <span>{quote.updatedAt ? formatOrderDateTime(quote.updatedAt) : 'N/A'}</span>
                   </div>
                 </div>
               </div>
