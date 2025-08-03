@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-
+import { Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,9 +14,12 @@ import {
 import { Button } from "@/components/ui/button";
 import OrderStatusBadge from "@/components/orders/OrderStatusBadge";
 import { useUpdateOrderStatus } from "@/features/orders/services/mutations";
+import { useQueryClient } from "@tanstack/react-query";
+import { OrdersKeys } from "@/features/orders/services/queries/keys";
 type OrderStatus =
   | "pending"
   | "processing"
+  | "shipping"
   | "shipped"
   | "delivered"
   | "canceled";
@@ -30,18 +33,29 @@ export default function OrderStatusUpdate({
   orderId,
   currentStatus,
 }: OrderStatusUpdateProps) {
-  const [status, setStatus] = useState<OrderStatus>(currentStatus);
-  const [isUpdating, setIsUpdating] = useState(false);
-  const router = useRouter();
   const updateOrderStatus = useUpdateOrderStatus();
-  const handleStatusChange = (newStatus: OrderStatus) => {
-    setStatus(newStatus);
-  };
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
   const handleOrderStatus = () => {
-    if (status === currentStatus) return;
+    let status: OrderStatus;
+    switch (currentStatus) {
+      case "pending":
+        status = "processing";
+        break;
+      case "processing":
+        status = "shipping";
+        break;
+      case "shipping":
+        status = "shipped";
+        break;
+      case "shipped":
+        status = "delivered";
+        break;
+      default:
+        status = "pending";
+    }
 
-    setIsUpdating(true);
     try {
       updateOrderStatus.mutate(
         {
@@ -52,6 +66,9 @@ export default function OrderStatusUpdate({
           onSuccess: () => {
             toast.success(`Order status updated to ${status}`);
             router.refresh();
+            queryClient.invalidateQueries({
+              queryKey: [OrdersKeys.GetOrderDetailQuery, orderId],
+            });
           },
           onError: (error) => {
             console.error("Error updating order status:", error);
@@ -62,48 +79,23 @@ export default function OrderStatusUpdate({
     } catch (error) {
       console.error("Error updating order status:", error);
       toast.error("Failed to update order status");
-    } finally {
-      setIsUpdating(false);
     }
   };
 
   return (
-    <div className="flex items-center gap-3">
-      <Select
-        value={status}
-        onValueChange={(value: OrderStatus) =>
-          handleStatusChange(value)
-        }
-      >
-        <SelectTrigger className="w-[180px]">
-          <SelectValue>
-            <OrderStatusBadge status={status} />
-          </SelectValue>
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="pending">
-            <OrderStatusBadge status="pending" />
-          </SelectItem>
-          <SelectItem value="processing">
-            <OrderStatusBadge status="processing" />
-          </SelectItem>
-          <SelectItem value="shipped">
-            <OrderStatusBadge status="shipped" />
-          </SelectItem>
-          <SelectItem value="delivered">
-            <OrderStatusBadge status="delivered" />
-          </SelectItem>
-          <SelectItem value="canceled">
-            <OrderStatusBadge status="canceled" />
-          </SelectItem>
-        </SelectContent>
-      </Select>
+    <div className="flex justify-end mb-3">
       <Button
         onClick={handleOrderStatus}
-        disabled={status === currentStatus || isUpdating}
-        variant={status === currentStatus ? "outline" : "default"}
+        disabled={updateOrderStatus.isPending || currentStatus !== "processing"}
+        variant={updateOrderStatus.isPending ? "outline" : "default"}
       >
-        {isUpdating ? "Updating..." : "Update Status"}
+        {updateOrderStatus.isPending ? (
+          <>
+            <Loader2 className="animate-spin" /> <span>Loading...</span>
+          </>
+        ) : (
+          "Continue"
+        )}
       </Button>
     </div>
   );
