@@ -1,6 +1,6 @@
 import { User } from "@clerk/nextjs/server";
 
-export type Roles = "admin" | "user" | "guest" | "designer";
+export type Roles = "admin" | "user" | "guest" | "designer" | "shipper";
 
 declare global {
   interface CustomJwtSessionClaims {

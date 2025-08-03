@@ -1,5 +1,5 @@
 "use client";
-import { User, Mail, Calendar, Clock, ShieldCheck, Shield } from "lucide-react";
+import { User, Mail, Calendar, Clock, ShieldCheck, Shield, Palette, Truck } from "lucide-react";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { RoleBadge } from "@/components/ui/role-badge";
 import {
   Card,
   CardContent,
@@ -114,11 +115,7 @@ export function UserDetailsDialog({
                       {staff.isActive ? "Active" : "Inactive"}
                     </Badge>
                     {staff.role && (
-                      <Badge
-                        variant={staff.role === "admin" ? "default" : "outline"}
-                      >
-                        {staff.role}
-                      </Badge>
+                      <RoleBadge role={staff.role} />
                     )}
                   </div>
                 </div>
@@ -171,11 +168,11 @@ export function UserDetailsDialog({
         </div>
 
         {/* Role management buttons */}
-        <DialogFooter className="mt-4 flex flex-col sm:flex-row gap-2">
-          <div className="flex-1 text-left mt-1 text-sm text-muted-foreground">
+        <DialogFooter className="mt-4 flex flex-col gap-2">
+          <div className="flex-1 text-left text-sm text-muted-foreground">
             {isPending && "Updating..."}
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
@@ -193,6 +190,24 @@ export function UserDetailsDialog({
             >
               <Shield className="mr-2 h-4 w-4" />
               Make Staff
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPending || staff.role === "designer"}
+              onClick={() => handleSetRole("designer")}
+            >
+              <Palette className="mr-2 h-4 w-4" />
+              Make Designer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isPending || staff.role === "shipper"}
+              onClick={() => handleSetRole("shipper")}
+            >
+              <Truck className="mr-2 h-4 w-4" />
+              Make Shipper
             </Button>
             <Button
               variant="outline"

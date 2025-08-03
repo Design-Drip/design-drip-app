@@ -16,6 +16,7 @@ import paymentMethods from "./payments/paymentMethods";
 import checkout from "./payments/checkout";
 import webhooks from "./payments/webhooks";
 import requestQuotes from "./requestQuotes";
+import shippingOrders from "./shipping-orders";
 
 await dbConnect();
 
@@ -38,7 +39,7 @@ const routes = app
   .route("/dashboard", dashboard)
   .route("/request-quotes", requestQuotes)
   .route("/feedback", feedback)
-  .route("/request-quotes", requestQuotes);
+  .route("/shipping-orders", shippingOrders);
 
 export const GET = handle(app);
 export const POST = handle(app);

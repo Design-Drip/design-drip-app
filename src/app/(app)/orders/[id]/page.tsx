@@ -34,6 +34,17 @@ import { getOrderDetailQuery } from "@/features/orders/services/queries";
 import { useCreateFeedbackMutation } from "@/features/feedback/services/mutations";
 import { toast } from "sonner";
 import { getFeedbackQuery } from "@/features/feedback/services/queries";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from "@/components/ui/dialog";
+import { useUpdateOrderStatus } from "@/features/orders/services/mutations";
+import { OrdersKeys } from "@/features/orders/services/queries/keys";
 
 export default function OrderDetailPage() {
   const params = useParams<{ id: string }>();
@@ -47,11 +58,13 @@ export default function OrderDetailPage() {
   } = useQuery(getOrderDetailQuery(orderId));
   const submitFeedback = useCreateFeedbackMutation();
   const productId = order?.items?.[0]?.designId?.shirt_color_id?.shirt_id?.id;
+  const updateOrderStatus = useUpdateOrderStatus();
 
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: feedbacks } = getFeedbackQuery(productId ?? "");
@@ -132,6 +145,61 @@ export default function OrderDetailPage() {
       alert("Failed to submit feedback. Please try again.");
     } finally {
       setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    try {
+      updateOrderStatus.mutate(
+        {
+          orderId,
+          status: "canceled",
+        },
+        {
+          onSuccess: () => {
+            toast.success(`Order canceled successfully`);
+            setShowCancelDialog(false);
+            router.refresh();
+            queryClient.invalidateQueries({
+              queryKey: [OrdersKeys.GetOrderDetailQuery, orderId],
+            });
+          },
+          onError: (error) => {
+            console.error("Error canceling order status:", error);
+            toast.error("Failed to cancel order status");
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error canceling order status:", error);
+      toast.error("Failed to cancel order status");
+    }
+  };
+
+  const handleConfirmShipped = () => {
+    try {
+      updateOrderStatus.mutate(
+        {
+          orderId,
+          status: "delivered",
+        },
+        {
+          onSuccess: () => {
+            toast.success(`Order delivered successfully`);
+            router.refresh();
+            queryClient.invalidateQueries({
+              queryKey: [OrdersKeys.GetOrderDetailQuery, orderId],
+            });
+          },
+          onError: (error) => {
+            console.error("Error delivering order status:", error);
+            toast.error("Failed to deliver order status");
+          },
+        }
+      );
+    } catch (error) {
+      console.error("Error delivering order status:", error);
+      toast.error("Failed to deliver order status");
     }
   };
 
@@ -225,34 +293,131 @@ export default function OrderDetailPage() {
               </div>
 
               {/* Delivery timeline */}
-              <div className="col-span-1 md:col-span-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-medium">Delivery Timeline</h3>
-                </div>
-                <div className="relative pt-1">
-                  <div className="flex mb-2 items-center justify-between">
-                    <div className="w-full bg-gray-200 rounded-full h-2.5">
-                      <div
-                        className={`h-2.5 rounded-full ${getProgressBarColor(
-                          order.status!
-                        )}`}
-                        style={{
-                          width: getProgressWidth(order.status!),
-                        }}
-                      ></div>
+              {order.status !== "canceled" && (
+                <div className="col-span-1 md:col-span-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="font-medium">Delivery Timeline</h3>
+                  </div>
+                  <div className="relative pt-1">
+                    <div className="flex mb-2 items-center justify-between">
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className={`h-2.5 rounded-full ${getProgressBarColor(
+                            order.status!
+                          )}`}
+                          style={{
+                            width: getProgressWidth(order.status!),
+                          }}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>Order Placed</span>
+                      <span>Processing</span>
+                      <span>Shipping</span>
+                      <span>Shipped</span>
+                      <span>Delivered</span>
                     </div>
                   </div>
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Order Placed</span>
-                    <span>Processing</span>
-                    <span>Shipped</span>
-                    <span>Delivered</span>
-                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
+
+          {/* Cancel Order Button */}
+          {(order.status === "pending" || order.status === "processing") && (
+            <div className="bg-yellow-50 border-yellow-200 text-yellow-800 p-4 rounded-md m-3 flex justify-between items-center">
+              <div>
+                Note:{" "}
+                <span className="font-medium">
+                  You can cancel this order if it is still in progressing .
+                </span>
+              </div>
+              <div>
+                {order.status === "pending" || order.status === "processing" ? (
+                  <>
+                    <Button
+                      variant="destructive"
+                      onClick={() => setShowCancelDialog(true)}
+                    >
+                      Cancel
+                    </Button>
+                    <Dialog
+                      open={showCancelDialog}
+                      onOpenChange={setShowCancelDialog}
+                    >
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Cancel Order</DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to cancel this order? This
+                            action cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <DialogClose asChild>
+                            <Button
+                              variant="outline"
+                              disabled={updateOrderStatus.isPending}
+                            >
+                              No, Keep Order
+                            </Button>
+                          </DialogClose>
+                          <Button
+                            variant="destructive"
+                            onClick={handleCancelOrder}
+                            disabled={updateOrderStatus.isPending}
+                          >
+                            {updateOrderStatus.isPending ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Cancelling...
+                              </>
+                            ) : (
+                              "Yes, Cancel Order"
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          )}
+
+          {/* Confirm Shipped Button  */}
+          {order.status === "shipped" && (
+            <div className="bg-green-50 border-green-200 text-green-800 p-4 rounded-md m-3 flex justify-between items-center">
+              <div>
+                Note:{" "}
+                <span className="font-medium">
+                  Click "Confirm" if you have received your product.
+                </span>
+              </div>
+              <div>
+                {order.status === "shipped" ? (
+                  <>
+                    <Button
+                      variant="default"
+                      className="bg-green-600 text-white hover:bg-green-700"
+                      onClick={handleConfirmShipped}
+                    >
+                      {updateOrderStatus.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        "Confirm"
+                      )}
+                    </Button>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          )}
         </Card>
 
         {/* Order details */}
@@ -431,9 +596,11 @@ export default function OrderDetailPage() {
 function getProgressWidth(status: string): string {
   switch (status) {
     case "pending":
-      return "25%";
+      return "10%";
     case "processing":
-      return "50%";
+      return "30%";
+    case "shipping":
+      return "55%";
     case "shipped":
       return "75%";
     case "delivered":
@@ -446,6 +613,20 @@ function getProgressWidth(status: string): string {
 }
 
 function getProgressBarColor(status: string): string {
-  if (status === "canceled") return "bg-red-500";
-  return "bg-primary";
+  switch (status) {
+    case "pending":
+      return "bg-yellow-500";
+    case "processing":
+      return "bg-blue-500";
+    case "shipping":
+      return "bg-blue-700";
+    case "shipped":
+      return "bg-green-500";
+    case "delivered":
+      return "bg-green-700";
+    case "canceled":
+      return "bg-red-500";
+    default:
+      return "bg-primary";
+  }
 }

@@ -118,12 +118,12 @@ const app = new Hono()
           _id: orderId,
           userId: user.id,
         }).populate({
-          path: "items.designId", 
+          path: "items.designId",
           populate: {
-            path: "shirt_color_id", 
+            path: "shirt_color_id",
             populate: {
               path: "shirt_id",
-              select: "name", 
+              select: "name",
             },
           },
         });
@@ -174,6 +174,7 @@ const app = new Hono()
         status: z.enum([
           "pending",
           "processing",
+          "shipping",
           "shipped",
           "delivered",
           "canceled",
@@ -182,18 +183,18 @@ const app = new Hono()
     ),
     async (c) => {
       const orderId = c.req.param("id");
-      const isAdmin = await checkRole("admin");
-      if (!isAdmin) {
-        throw new HTTPException(403, { message: "Forbidden" });
-      }
-
       const body = await c.req.json();
       const { status } = body;
 
       if (
-        !["pending", "processing", "shipped", "delivered", "canceled"].includes(
-          status
-        )
+        ![
+          "pending",
+          "processing",
+          "shipping",
+          "shipped",
+          "delivered",
+          "canceled",
+        ].includes(status)
       ) {
         throw new HTTPException(400, {
           message: "Invalid order status",
@@ -235,11 +236,11 @@ const app = new Hono()
     try {
       // Get basic counts
       const totalOrders = await Order.countDocuments();
-      
+
       // Get total revenue
       const revenueResult = await Order.aggregate([
         { $match: { status: { $ne: "canceled" } } },
-        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
+        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
       ]);
       const totalRevenue = revenueResult[0]?.totalRevenue || 0;
 
@@ -258,12 +259,15 @@ const app = new Hono()
             totalRevenue,
             totalProducts: 0, // Will be populated later
           },
-          recentOrders
-        }
+          recentOrders,
+        },
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
-      return c.json({ success: false, error: "Failed to fetch dashboard stats" }, 500);
+      return c.json(
+        { success: false, error: "Failed to fetch dashboard stats" },
+        500
+      );
     }
   });
 

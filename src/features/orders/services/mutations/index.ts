@@ -6,6 +6,7 @@ import { OrdersKeys } from "../queries/keys";
 type OrderStatus =
   | "pending"
   | "processing"
+  | "shipping"
   | "shipped"
   | "delivered"
   | "canceled";

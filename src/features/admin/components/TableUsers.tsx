@@ -1,5 +1,5 @@
 "use client";
-import { Eye, MoreHorizontal, User, ShieldCheck, Shield, Palette } from "lucide-react";
+import { Eye, MoreHorizontal, User, ShieldCheck, Shield, Palette, Truck } from "lucide-react";
 import { useState, useTransition, useMemo } from "react";
 
 import {
@@ -236,6 +236,13 @@ export function TableUsers({ staff }: UserTableProps) {
                         >
                           <Palette className="mr-2 h-4 w-4" />
                           Make Designer
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          disabled={isPending}
+                          onClick={() => handleSetRole(user.id, "shipper")}
+                        >
+                          <Truck className="mr-2 h-4 w-4" />
+                          Make Shipper
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={isPending}
