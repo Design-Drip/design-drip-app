@@ -19,7 +19,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { RoleBadge } from "@/components/ui/role-badge";
@@ -193,7 +192,7 @@ export function TableUsers({ staff }: UserTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <RoleBadge role={user.role || "User"} />
+                    <RoleBadge role={user.role || "user"} />
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">{formatDate(user.createdAt)}</div>
@@ -225,13 +224,6 @@ export function TableUsers({ staff }: UserTableProps) {
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={isPending}
-                          onClick={() => handleSetRole(user.id, "staff")}
-                        >
-                          <Shield className="mr-2 h-4 w-4" />
-                          Make Staff
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          disabled={isPending}
                           onClick={() => handleSetRole(user.id, "designer")}
                         >
                           <Palette className="mr-2 h-4 w-4" />
@@ -251,6 +243,15 @@ export function TableUsers({ staff }: UserTableProps) {
                           <User className="mr-2 h-4 w-4" />
                           Revoke Role
                         </DropdownMenuItem>
+                        {user.role && user.role.toLowerCase() !== "user" && (
+                          <DropdownMenuItem
+                            disabled={isPending}
+                            onClick={() => handleRemoveRole(user.id)}
+                          >
+                            <User className="mr-2 h-4 w-4" />
+                            Revoke Role
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

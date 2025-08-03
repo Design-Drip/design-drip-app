@@ -1,6 +1,7 @@
 import * as React from "react";
+
 import { Users, UserCheck, UserX, Eye, Palette, Truck } from "lucide-react";
-import { clerkClient } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,10 +31,17 @@ export default async function UsersManagementPage({
   const searchTerm = searchParams.search || "";
   const statusFilter = searchParams.status || "all";
 
+  // Get current user info
+  const { userId } = await auth();
+
   // Fetch users from Clerk
   const client = await clerkClient();
   const clerkUsersResponse = await client.users.getUserList({ limit: 100 });
   const clerkUsersList = clerkUsersResponse.data;
+
+  // Get current user's role
+  const currentUser = clerkUsersList.find(user => user.id === userId);
+  const currentUserRole = (currentUser?.publicMetadata.role as string) || "";
 
   // Transform Clerk users to our format
   const users: ClerkUser[] = clerkUsersList.map((user: User) => {
@@ -58,8 +66,32 @@ export default async function UsersManagementPage({
     };
   });
 
+  // Filter users based on role hierarchy and exclude current user
+  const filteredUsersByRole = users.filter((user) => {
+    // Exclude current user
+    if (user.id === userId) return false;
+
+    const userRole = user.role || "user";
+
+    // Role hierarchy: admin > designer > shipper > user
+    switch (currentUserRole) {
+      case "admin":
+        // Admin can see all roles except other admins
+        return userRole === "designer" || userRole === "shipper" || userRole === "user";
+      case "designer":
+        // Designer can see shipper and user roles
+        return userRole === "shipper" || userRole === "user";
+      case "shipper":
+        // Shipper can only see user roles
+        return userRole === "user";
+      case "user":
+      default:
+        return false;
+    }
+  });
+
   // Filter users based on search term and status
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = filteredUsersByRole.filter((user) => {
     const matchesSearch =
       !searchTerm ||
       user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -77,12 +109,12 @@ export default async function UsersManagementPage({
     return matchesSearch && matchesStatus;
   });
 
-  // Stats
+  // Stats based on filtered users by role
   const stats = {
     total: users.length,
     active: users.filter((user) => user.isActive).length,
     admin: users.filter((user) => user.role === "admin").length,
-    users: users.filter((user) => user.role === "user" || !user.role).length,
+    users: users.filter((user) => user.role === "user" || user.role === "").length,
     designer: users.filter((user) => user.role === "designer").length,
     shipper: users.filter((user) => user.role === "shipper").length,
   };
@@ -190,10 +222,8 @@ export default async function UsersManagementPage({
               >
                 <option value="all">All role</option>
                 <option value="user">Normal User</option>
-                <option value="staff">Staff</option>
                 <option value="designer">Designer</option>
                 <option value="shipper">Shipper</option>
-                <option value="admin">Admin</option>
               </select>
               <button
                 type="submit"

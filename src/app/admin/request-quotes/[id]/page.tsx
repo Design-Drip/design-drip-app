@@ -202,23 +202,31 @@ export default function AdminRequestQuoteDetailPage() {
                   <h4 className="font-semibold">Product Request</h4>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                     {quote.productDetails.productId && (
-                     <div>
-                       <strong>Product:</strong>
-                       <p>{typeof quote.productDetails.productId === 'string' ? quote.productDetails.productId : (quote.productDetails.productId as any).name}</p>
-                     </div>
-                   )}
+                  {quote.productDetails.productId && (
+                    <div>
+                      <strong>Product:</strong>
+                      <p>
+                        {typeof quote.productDetails.productId === 'string'
+                          ? quote.productDetails.productId
+                          : (quote.productDetails.productId as any)?.name || 'N/A'}
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <strong>Total Quantity:</strong>
                     <p>{quote.productDetails.quantity}</p>
                   </div>
-                                     {quote.productDetails.selectedColorId && (
-                     <div>
-                       <strong>Color:</strong>
-                       <p>{typeof quote.productDetails.selectedColorId === 'string' ? quote.productDetails.selectedColorId : (quote.productDetails.selectedColorId as any).color}</p>
-                     </div>
-                   )}
-                  {quote.productDetails.quantityBySize && quote.productDetails.quantityBySize.length > 0 && (
+                  {quote.productDetails.selectedColorId && (
+                    <div>
+                      <strong>Color:</strong>
+                      <p>
+                        {typeof quote.productDetails.selectedColorId === 'string'
+                          ? quote.productDetails.selectedColorId
+                          : (quote.productDetails.selectedColorId as any)?.color || 'N/A'}
+                      </p>
+                    </div>
+                  )}
+                  {quote.productDetails && quote.productDetails.quantityBySize && quote.productDetails.quantityBySize.length > 0 && (
                     <div className="md:col-span-2">
                       <strong>Size Breakdown:</strong>
                       <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-2">
@@ -309,12 +317,7 @@ export default function AdminRequestQuoteDetailPage() {
           {/* Status Update Actions */}
           <div>
             <h3 className="text-lg font-semibold mb-3">Admin Actions</h3>
-            <RequestQuoteStatusUpdate quote={{ 
-              ...quote, 
-              type: "product",
-              createdAt: quote.createdAt || new Date().toISOString(),
-              updatedAt: quote.updatedAt || new Date().toISOString()
-            }} />
+            <RequestQuoteStatusUpdate quote={quote} />
           </div>
         </CardContent>
       </Card>
