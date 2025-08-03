@@ -1,13 +1,26 @@
 "use client";
 
-
 import type React from "react";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import SidebarLayout from "@/components/layout/SidebarLayout"
-import { SidebarConfig } from "@/types/sidebar"
-import { BarChart3, Database, FileText, HelpCircle, Home, Images, MessageSquareQuote, Package, Settings, Shield, ShoppingCart, Tickets, Users } from "lucide-react"
-
+import SidebarLayout from "@/components/layout/SidebarLayout";
+import { SidebarConfig } from "@/types/sidebar";
+import {
+  BarChart3,
+  Database,
+  FileText,
+  HelpCircle,
+  Home,
+  Images,
+  MessageSquareQuote,
+  Package,
+  Settings,
+  Shield,
+  ShoppingCart,
+  Tickets,
+  Users,
+  WalletCards,
+} from "lucide-react";
 
 export default function AdminLayout({
   children,
@@ -35,55 +48,66 @@ export default function AdminLayout({
             icon: BarChart3,
             isActive: pathname === "/admin",
           },
-        ]
-      },
-      
-            {
-                title: "Management",
-                items: [
-                    {
-                        title: "Users",
-                        url: "/admin/users",
-                        icon: Users,
-                        isActive: pathname === "/admin/users" || pathname.startsWith("/admin/users/"),
-                    },
-                    {
-                        title: "Products",
-                        url: "/admin/products",
-                        icon: Package,
-                        isActive: pathname === "/admin/products" || pathname.startsWith("/admin/products/"),
-                    },
-                    {
-                        title: "Orders",
-                        url: "/admin/orders",
-                        icon: ShoppingCart,
-                        isActive: pathname === "/admin/orders" || pathname.startsWith("/admin/orders/"),
-                    },
-                    {
-                        title: "Design template",
-                        url: "/admin/design-template",
-                        icon: Images,
-                        isActive: pathname === "/admin/design-template" || pathname?.startsWith("/admin/design-template/"),
-                    },
-                    {
-                        title: "Request quotes",
-                        url: "/admin/request-quotes",
-                        icon: MessageSquareQuote,
-                        isActive: pathname === "/admin/request-quotes" || pathname.startsWith("/admin/request-quotes/"),
-                    },
-                ],
-            }
         ],
-  };
+      },
 
-  const handleLogout = () => {
-    // Handle logout logic here
-    console.log("Logout clicked");
+      {
+        title: "Management",
+        items: [
+          {
+            title: "Users",
+            url: "/admin/users",
+            icon: Users,
+            isActive:
+              pathname === "/admin/users" ||
+              pathname.startsWith("/admin/users/"),
+          },
+          {
+            title: "Products",
+            url: "/admin/products",
+            icon: Package,
+            isActive:
+              pathname === "/admin/products" ||
+              pathname.startsWith("/admin/products/"),
+          },
+          {
+            title: "Orders",
+            url: "/admin/orders",
+            icon: ShoppingCart,
+            isActive:
+              pathname === "/admin/orders" ||
+              pathname.startsWith("/admin/orders/"),
+          },
+          {
+            title: "Design template",
+            url: "/admin/design-template",
+            icon: Images,
+            isActive:
+              pathname === "/admin/design-template" ||
+              pathname?.startsWith("/admin/design-template/"),
+          },
+          {
+            title: "Request quotes",
+            url: "/admin/request-quotes",
+            icon: MessageSquareQuote,
+            isActive:
+              pathname === "/admin/request-quotes" ||
+              pathname.startsWith("/admin/request-quotes/"),
+          },
+          {
+            title: "Transactions",
+            url: "/admin/transactions",
+            icon: WalletCards,
+            isActive:
+              pathname === "/admin/transactions" ||
+              pathname.startsWith("/admin/transactions/"),
+          },
+        ],
+      },
+    ],
   };
 
   return (
-    <SidebarLayout sidebarConfig={adminSidebarConfig} onLogout={handleLogout}>
-      {children}
-    </SidebarLayout>
+    <SidebarLayout sidebarConfig={adminSidebarConfig}>{children}</SidebarLayout>
   );
 }

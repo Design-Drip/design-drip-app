@@ -104,7 +104,7 @@ const app = new Hono()
             z.object({
                 page: z.coerce.number().optional().default(1),
                 limit: z.coerce.number().optional().default(10),
-                status: z.enum(["pending", "reviewing", "quote", "approved", "rejected", "completed"]).optional(),
+                status: z.enum(["pending", "reviewing", "quoted", "approved", "rejected", "completed"]).optional(),
                 search: z.string().optional(),
                 sortBy: z.enum(["createdAt", "updatedAt", "status"]).optional().default("createdAt"),
                 sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
@@ -196,7 +196,7 @@ const app = new Hono()
                                 }
                             })
                         );
-                        
+
                         designerInfoMap = designerUsers
                             .filter(user => user !== null)
                             .reduce((acc, user) => {
@@ -604,11 +604,11 @@ const app = new Hono()
 
 
 
-    
 
-    
 
-    
+
+
+
 
     // Get assigned quotes for designer
     .get("/my-assigned",
@@ -617,17 +617,17 @@ const app = new Hono()
         })),
         async (c) => {
             console.log("=== ENTERING /my-assigned endpoint ===");
-            
+
             try {
                 console.log("=== Inside try block ===");
-                
+
                 const { designerId } = c.req.valid("query");
-                
+
                 console.log("Debug - designerId from query:", designerId);
-                
+
                 // Designer chỉ xem được quote được assign cho mình
                 const query = { designerId };
-                
+
                 console.log("Debug - query:", query);
 
                 const requestQuotes = await RequestQuote.find(query)
@@ -680,7 +680,7 @@ const app = new Hono()
     )
 
     // Assign designer to request quote
-    .post("/:id/assign-designer", 
+    .post("/:id/assign-designer",
         zValidator("param", z.object({
             id: z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
                 message: "Invalid request quote ID",
@@ -711,7 +711,6 @@ const app = new Hono()
                 }
 
                 quote.designerId = designerId;
-                quote.status = "pending"; // or status you want when assigning
                 await quote.save();
 
                 return c.json({
@@ -855,7 +854,7 @@ const app = new Hono()
                 // Log raw request body first
                 const rawBody = await c.req.json();
                 console.log("[API PATCH set-primary-design] Raw request body:", rawBody);
-                
+
                 const { id } = c.req.valid("param");
                 const { design_id } = c.req.valid("json");
                 const user = c.get("user");
