@@ -6,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
 import { Order } from "@/models/order";
 import { checkRole } from "@/lib/roles";
+import { stripe } from "@/lib/stripe";
 
 const app = new Hono()
   .use(verifyAuth)
@@ -27,9 +28,14 @@ const app = new Hono()
 
       if (
         status &&
-        ["pending", "processing", "shipped", "delivered", "canceled"].includes(
-          status
-        )
+        [
+          "pending",
+          "processing",
+          "shipped",
+          "shipping",
+          "delivered",
+          "canceled",
+        ].includes(status)
       ) {
         query.status = status;
       }
@@ -118,12 +124,12 @@ const app = new Hono()
           _id: orderId,
           userId: user.id,
         }).populate({
-          path: "items.designId", 
+          path: "items.designId",
           populate: {
-            path: "shirt_color_id", 
+            path: "shirt_color_id",
             populate: {
               path: "shirt_id",
-              select: "name", 
+              select: "name",
             },
           },
         });
@@ -174,6 +180,7 @@ const app = new Hono()
         status: z.enum([
           "pending",
           "processing",
+          "shipping",
           "shipped",
           "delivered",
           "canceled",
@@ -182,46 +189,47 @@ const app = new Hono()
     ),
     async (c) => {
       const orderId = c.req.param("id");
-      const isAdmin = await checkRole("admin");
-      if (!isAdmin) {
-        throw new HTTPException(403, { message: "Forbidden" });
-      }
-
       const body = await c.req.json();
       const { status } = body;
 
-      if (
-        !["pending", "processing", "shipped", "delivered", "canceled"].includes(
-          status
-        )
-      ) {
-        throw new HTTPException(400, {
-          message: "Invalid order status",
-        });
-      }
-
       try {
-        const updatedOrder = await Order.findByIdAndUpdate(
-          orderId,
-          { status },
-          { new: true, lean: true }
-        );
-
-        if (!updatedOrder) {
+        const currentOrder = await Order.findById(orderId);
+        if (!currentOrder) {
           throw new HTTPException(404, {
             message: "Order not found",
           });
         }
 
+        if (currentOrder.status === status) {
+          return c.json({
+            message: "Order status is already set to this value",
+            order: currentOrder,
+          });
+        }
+
+        if (currentOrder.status === "processing" && status === "canceled") {
+          await stripe.refunds.create({
+            payment_intent: currentOrder.stripePaymentIntentId,
+          });
+
+          return c.json({
+            message: "Refund initiated for canceled order",
+            order: currentOrder,
+          });
+        }
+
+        currentOrder.status = status;
+        await currentOrder.save();
+
         return c.json({
-          id: updatedOrder._id?.toString() as string,
-          userId: updatedOrder.userId,
-          items: updatedOrder.items,
-          totalAmount: updatedOrder.totalAmount,
-          status: updatedOrder.status,
-          createdAt: updatedOrder.createdAt,
-          updatedAt: updatedOrder.updatedAt,
-          paymentMethod: updatedOrder.paymentMethod,
+          id: currentOrder._id?.toString(),
+          userId: currentOrder.userId,
+          items: currentOrder.items,
+          totalAmount: currentOrder.totalAmount,
+          status: currentOrder.status,
+          createdAt: currentOrder.createdAt,
+          updatedAt: currentOrder.updatedAt,
+          paymentMethod: currentOrder.paymentMethod,
         });
       } catch (error) {
         console.error(`Error updating order ${orderId}:`, error);
@@ -235,11 +243,11 @@ const app = new Hono()
     try {
       // Get basic counts
       const totalOrders = await Order.countDocuments();
-      
+
       // Get total revenue
       const revenueResult = await Order.aggregate([
         { $match: { status: { $ne: "canceled" } } },
-        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
+        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
       ]);
       const totalRevenue = revenueResult[0]?.totalRevenue || 0;
 
@@ -258,12 +266,15 @@ const app = new Hono()
             totalRevenue,
             totalProducts: 0, // Will be populated later
           },
-          recentOrders
-        }
+          recentOrders,
+        },
       });
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
-      return c.json({ success: false, error: "Failed to fetch dashboard stats" }, 500);
+      return c.json(
+        { success: false, error: "Failed to fetch dashboard stats" },
+        500
+      );
     }
   });
 

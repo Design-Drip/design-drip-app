@@ -18,6 +18,7 @@ interface OrderItem {
 type OrderStatus =
   | "pending"
   | "processing"
+  | "shipping"
   | "shipped"
   | "delivered"
   | "canceled";
@@ -38,6 +39,11 @@ interface OrdersResponse {
   data: OrderData[];
   pagination: {
     totalOrders: number;
+    totalProcessing: number;
+    totalShipping: number;
+    totalShipped: number;
+    totalDelivered: number;
+    totalCanceled: number;
     totalPages: number;
     currentPage: number;
     hasNextPage: boolean;
@@ -63,9 +69,22 @@ export async function getOrders(
     }
     const skip = (page - 1) * limit;
 
-    const [orders, totalOrders] = await Promise.all([
+    const [
+      orders,
+      totalOrders,
+      totalProcessing,
+      totalShipping,
+      totalShipped,
+      totalDelivered,
+      totalCanceled,
+    ] = await Promise.all([
       Order.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       Order.countDocuments(query),
+      Order.countDocuments({ ...query, status: "processing" }),
+      Order.countDocuments({ ...query, status: "shipping" }),
+      Order.countDocuments({ ...query, status: "shipped" }),
+      Order.countDocuments({ ...query, status: "delivered" }),
+      Order.countDocuments({ ...query, status: "canceled" }),
     ]);
 
     const data = orders.map((order) => ({
@@ -92,6 +111,11 @@ export async function getOrders(
 
     const totalPages = Math.ceil(totalOrders / limit);
     const pagination = {
+      totalProcessing,
+      totalShipping,
+      totalShipped,
+      totalDelivered,
+      totalCanceled,
       totalOrders,
       totalPages,
       currentPage: page,

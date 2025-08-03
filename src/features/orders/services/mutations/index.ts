@@ -6,32 +6,10 @@ import { OrdersKeys } from "../queries/keys";
 type OrderStatus =
   | "pending"
   | "processing"
+  | "shipping"
   | "shipped"
   | "delivered"
   | "canceled";
-
-// Define the response type based on your API
-interface OrderResponse {
-  id: string;
-  userId: string;
-  items: Array<{
-    designId: string;
-    name: string;
-    color: string;
-    sizes: Array<{
-      size: string;
-      quantity: number;
-      pricePerUnit: number;
-    }>;
-    totalPrice: number;
-    imageUrl?: string;
-  }>;
-  totalAmount: number;
-  status: OrderStatus;
-  createdAt: string;
-  updatedAt: string;
-  paymentMethod: string;
-}
 
 export const useUpdateOrderStatus = () => {
   const queryClient = useQueryClient();
@@ -53,7 +31,7 @@ export const useUpdateOrderStatus = () => {
         throw new Error("Failed to update order status");
       }
 
-      return response.json() as Promise<OrderResponse>;
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

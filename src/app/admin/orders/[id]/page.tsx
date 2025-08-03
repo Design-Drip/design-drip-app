@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ArrowLeft, Clock, Package } from "lucide-react";
+import { ArrowLeft, Clock, Package, CarTaxiFront } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/price";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/date";
@@ -47,8 +47,7 @@ export default async function OrderDetailsPage({
       firstName: user.firstName || "",
       lastName: user.lastName || "",
       fullName:
-        `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
-        primaryEmail,
+        `${user.firstName || ""} ${user.lastName || ""}`.trim() || primaryEmail,
       imageUrl: user.imageUrl,
       isActive: !user.banned,
       lastSignInAt: user.lastSignInAt,
@@ -91,7 +90,8 @@ export default async function OrderDetailsPage({
     (total, item) =>
       total +
       item.sizes.reduce(
-        (itemTotal: number, size: { quantity: number }) => itemTotal + size.quantity,
+        (itemTotal: number, size: { quantity: number }) =>
+          itemTotal + size.quantity,
         0
       ),
     0
@@ -119,18 +119,53 @@ export default async function OrderDetailsPage({
 
       <div className="flex flex-col lg:flex-row justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Order #{order.id}</h1>
-          <div className="flex items-center gap-2 mt-2 text-muted-foreground">
-            <Clock className="h-4 w-4" />
-            <span>
-              Placed on {formatOrderDate(order.createdAt)} at{" "}
-              {formatOrderDateTime(order.createdAt)}
-            </span>
+          <CardTitle className="text-xl">Order #{order.id}</CardTitle>
+          <CardDescription>
+            Placed on {formatOrderDateTime(order.createdAt!)}
+          </CardDescription>
+        </div>
+        <OrderStatusBadge status={order.status!} />
+      </div>
+      <div>
+        <div className="col-span-1 md:col-span-2">
+          <div className="relative pt-1">
+            <div className="flex mb-2 items-center justify-between">
+              <div className="w-full bg-gray-200 rounded-full h-2.5">
+                <div
+                  className={`h-2.5 rounded-full ${getProgressBarColor(
+                    order.status!
+                  )}`}
+                  style={{
+                    width: getProgressWidth(order.status!),
+                  }}
+                ></div>
+              </div>
+            </div>
+            <div className="flex justify-between text-base text-muted-foreground mb-4">
+              <span>Order Placed</span>
+              <span>Processing</span>
+              <span>Shipping</span>
+              <span>Shipped</span>
+              <span>Delivered</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <OrderStatusUpdate orderId={order.id} currentStatus={order.status} />
-        </div>
+        <OrderStatusUpdate orderId={order.id} currentStatus={order.status} />
+      </div>
+      <div>
+        {order.status === "processing" && (
+          <div className="text-base text-muted-foreground mb-4">
+            <Clock className="inline mr-1" />
+            The order has been paid successfully, click "Continue" to proceed
+            with delivery.
+          </div>
+        )}
+        {order.status === "shipping" && (
+          <div className="text-base text-muted-foreground mb-4">
+            <CarTaxiFront className="inline mr-1" />
+            Order confirmed, waiting for shipper to pick up the package.
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -169,19 +204,30 @@ export default async function OrderDetailsPage({
                           Color: {item.color}
                         </p>
                         <div className="mt-1 space-y-1">
-                          {item.sizes.map((size: { size: string; quantity: number; pricePerUnit: number }, sizeIndex: number) => (
-                            <div
-                              key={`${size.size}-${sizeIndex}`}
-                              className="flex justify-between text-sm"
-                            >
-                              <span>
-                                Size: {size.size} x {size.quantity}
-                              </span>
-                              <span>
-                                {formatPrice(size.pricePerUnit * size.quantity)}
-                              </span>
-                            </div>
-                          ))}
+                          {item.sizes.map(
+                            (
+                              size: {
+                                size: string;
+                                quantity: number;
+                                pricePerUnit: number;
+                              },
+                              sizeIndex: number
+                            ) => (
+                              <div
+                                key={`${size.size}-${sizeIndex}`}
+                                className="flex justify-between text-sm"
+                              >
+                                <span>
+                                  Size: {size.size} x {size.quantity}
+                                </span>
+                                <span>
+                                  {formatPrice(
+                                    size.pricePerUnit * size.quantity
+                                  )}
+                                </span>
+                              </div>
+                            )
+                          )}
                         </div>
                       </div>
                     </div>
@@ -256,9 +302,7 @@ export default async function OrderDetailsPage({
                   )}
                   <div>
                     <h3 className="font-medium">{userFullName}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {userEmail}
-                    </p>
+                    <p className="text-sm text-muted-foreground">{userEmail}</p>
                   </div>
                 </div>
                 <div>
@@ -333,36 +377,46 @@ export default async function OrderDetailsPage({
               )}
             </CardContent>
           </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Order Status</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                    Current Status
-                  </h3>
-                  <OrderStatusBadge status={order.status} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                    Order Date
-                  </h3>
-                  <p>{formatOrderDate(order.createdAt)}</p>
-                </div>
-                <div>
-                  <h3 className="text-sm font-medium text-muted-foreground mb-1">
-                    Last Updated
-                  </h3>
-                  <p>{formatOrderDate(order.updatedAt)}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
     </div>
   );
+}
+
+function getProgressWidth(status: string): string {
+  switch (status) {
+    case "pending":
+      return "10%";
+    case "processing":
+      return "30%";
+    case "shipping":
+      return "55%";
+    case "shipped":
+      return "75%";
+    case "delivered":
+      return "100%";
+    case "canceled":
+      return "25%";
+    default:
+      return "25%";
+  }
+}
+
+function getProgressBarColor(status: string): string {
+  switch (status) {
+    case "pending":
+      return "bg-yellow-500";
+    case "processing":
+      return "bg-blue-500";
+    case "shipping":
+      return "bg-blue-700";
+    case "shipped":
+      return "bg-green-500";
+    case "delivered":
+      return "bg-green-700";
+    case "canceled":
+      return "bg-red-500";
+    default:
+      return "bg-primary";
+  }
 }

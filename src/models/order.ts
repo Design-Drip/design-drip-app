@@ -58,6 +58,7 @@ const orderSchema = new mongoose.Schema(
       enum: [
         "pending",
         "processing",
+        "shipping",
         "shipped",
         "delivered",
         "canceled",
@@ -136,6 +137,7 @@ interface OrderDoc extends mongoose.Document {
   status:
     | "pending"
     | "processing"
+    | "shipping"
     | "shipped"
     | "delivered"
     | "canceled";

@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 type OrderStatus =
   | "pending"
   | "processing"
+  | "shipping"
   | "shipped"
   | "delivered"
   | "canceled";
@@ -24,6 +25,11 @@ const statusStyles: Record<
     color: "text-blue-700",
     background: "bg-blue-50 border-blue-200",
     text: "Processing",
+  },
+  shipping: {
+    color: "text-indigo-700",
+    background: "bg-indigo-50 border-indigo-200",
+    text: "Shipping",
   },
   shipped: {
     color: "text-purple-700",
