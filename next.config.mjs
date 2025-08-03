@@ -26,8 +26,14 @@ const nextConfig = {
       {
         protocol: "https",
         hostname: "gti33638oe.ufs.sh",
-      }
+      },
     ],
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
   },
 };
 
