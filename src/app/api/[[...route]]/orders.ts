@@ -28,9 +28,14 @@ const app = new Hono()
 
       if (
         status &&
-        ["pending", "processing", "shipped", "delivered", "canceled"].includes(
-          status
-        )
+        [
+          "pending",
+          "processing",
+          "shipped",
+          "shipping",
+          "delivered",
+          "canceled",
+        ].includes(status)
       ) {
         query.status = status;
       }
