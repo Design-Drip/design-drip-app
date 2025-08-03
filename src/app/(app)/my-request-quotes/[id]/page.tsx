@@ -199,7 +199,6 @@ export default function RequestQuoteDetailPage() {
 
   // Type assertion to ensure design_id is available
   const quoteData = quote?.data as QuoteData | undefined;
-  console.log("quoteData:", quoteData);
 
   // Fetch design if quote has design_id
   const {
@@ -293,6 +292,39 @@ export default function RequestQuoteDetailPage() {
         </Card>
       </div>
     );
+  }
+
+  const handleRenderButtonAction = (quoteStatus: string) => {
+    if (quoteStatus === "quoted") {
+      return <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-green-200">
+        <Button
+          onClick={handleAcceptQuote}
+          className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+          disabled={updateStatusMutation.isPending}
+        >
+          {updateStatusMutation.isPending ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CheckCircle className="mr-2 h-4 w-4" />
+              Accept Quote
+            </>
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          onClick={handleRejectQuote}
+          className="flex-1 border-red-300 text-red-600 hover:bg-red-50 font-semibold py-3"
+          disabled={updateStatusMutation.isPending}
+        >
+          <XCircle className="mr-2 h-4 w-4" />
+          Decline Quote
+        </Button>
+      </div>
+    }
   }
 
   return (
@@ -478,7 +510,7 @@ export default function RequestQuoteDetailPage() {
                       <CheckCircle className="h-5 w-5 text-green-600" />
                       <span className="font-medium text-green-800">Design completed by designer</span>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       {Object.entries(design.design_images).map(([view, imageUrl]) => (
                         <div key={view} className="flex flex-col items-center">
@@ -495,7 +527,7 @@ export default function RequestQuoteDetailPage() {
                         </div>
                       ))}
                     </div>
-                    
+
                     {design.name && (
                       <div className="mt-4 pt-4 border-t border-green-200">
                         <p className="text-sm text-green-700">
@@ -582,7 +614,7 @@ export default function RequestQuoteDetailPage() {
           )}
 
           {/* ✅ ENHANCED: Detailed Quote Display (when status is quoted) */}
-          {quoteData.status === "quoted" && (
+          {quoteData.status === "quoted" || quoteData.status === "approved" && (
             <>
               <Separator />
               <div className="space-y-6">
@@ -919,63 +951,12 @@ export default function RequestQuoteDetailPage() {
                             </p>
                           </div>
                         )}
-
-                        {quoteData.productionDetails.materialSpecs && (
-                          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg md:col-span-2">
-                            <div className="flex items-center gap-2 mb-2">
-                              <FileText className="h-4 w-4 text-amber-600" />
-                              <span className="font-medium text-amber-800">Material Specifications</span>
-                            </div>
-                            <p className="text-sm text-amber-700">
-                              {quoteData.productionDetails.materialSpecs}
-                            </p>
-                          </div>
-                        )}
-
-                        {quoteData.productionDetails.colorLimitations && (
-                          <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg md:col-span-2">
-                            <div className="flex items-center gap-2 mb-2">
-                              <Palette className="h-4 w-4 text-orange-600" />
-                              <span className="font-medium text-orange-800">Color Information</span>
-                            </div>
-                            <p className="text-sm text-orange-700">
-                              {quoteData.productionDetails.colorLimitations}
-                            </p>
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-green-200">
-                    <Button
-                      onClick={handleAcceptQuote}
-                      className="flex-1 bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
-                      disabled={updateStatusMutation.isPending}
-                    >
-                      {updateStatusMutation.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle className="mr-2 h-4 w-4" />
-                          Accept Quote
-                        </>
-                      )}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={handleRejectQuote}
-                      className="flex-1 border-red-300 text-red-600 hover:bg-red-50 font-semibold py-3"
-                      disabled={updateStatusMutation.isPending}
-                    >
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Decline Quote
-                    </Button>
-                  </div>
+                  {handleRenderButtonAction(quoteData.status)}
 
                   {/* Quote Validity Notice */}
                   {quoteData.validUntil && (
@@ -1050,7 +1031,7 @@ export default function RequestQuoteDetailPage() {
               Order completed
             </div>
           )}
-        
+
         </CardFooter>
       </Card>
     </div>

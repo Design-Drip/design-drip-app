@@ -192,7 +192,7 @@ export function TableUsers({ staff }: UserTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <RoleBadge role={user.role || "User"} />
+                    <RoleBadge role={user.role || "user"} />
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">{formatDate(user.createdAt)}</div>
