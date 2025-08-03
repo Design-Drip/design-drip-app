@@ -17,16 +17,15 @@ interface SidebarLayoutProps {
     children: React.ReactNode
     sidebarConfig: SidebarConfig
     breadcrumbs?: { title: string; href?: string }[]
-    onLogout?: () => void
 }
 
-export function SidebarLayout({ children, sidebarConfig, breadcrumbs = [], onLogout }: SidebarLayoutProps) {
+export function SidebarLayout({ children, sidebarConfig, breadcrumbs = [] }: SidebarLayoutProps) {
     const pathname = usePathname();
     const isEditorPage = pathname?.includes('/designer-editor');
     
     return (
         <SidebarProvider>
-            <AppSidebar config={sidebarConfig} onLogout={onLogout} />
+            <AppSidebar config={sidebarConfig} />
             <SidebarInset>
                 {!isEditorPage && (
                     <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
