@@ -42,6 +42,7 @@ interface OrderItem {
 type OrderStatus =
   | "pending"
   | "processing"
+  | "shipping"
   | "shipped"
   | "delivered"
   | "canceled";
@@ -73,10 +74,7 @@ export function OrdersTable({ orders, users }: OrdersTableProps) {
     return items.reduce((total, item) => {
       return (
         total +
-        item.sizes.reduce(
-          (itemTotal, size) => itemTotal + size.quantity,
-          0
-        )
+        item.sizes.reduce((itemTotal, size) => itemTotal + size.quantity, 0)
       );
     }, 0);
   };
@@ -112,16 +110,10 @@ export function OrdersTable({ orders, users }: OrdersTableProps) {
               <TableCell>
                 <div className="text-sm">
                   <div className="font-medium">
-                    {
-                      users.find((user) => user.id === order.userId)
-                        ?.fullName
-                    }
+                    {users.find((user) => user.id === order.userId)?.fullName}
                   </div>
                   <div className="text-muted-foreground text-xs">
-                    {
-                      users.find((user) => user.id === order.userId)
-                        ?.email
-                    }
+                    {users.find((user) => user.id === order.userId)?.email}
                   </div>
                 </div>
               </TableCell>
@@ -165,10 +157,7 @@ export function OrdersTable({ orders, users }: OrdersTableProps) {
               </TableCell>
 
               <TableCell>
-                <Badge
-                  variant="outline"
-                  className="text-xs capitalize"
-                >
+                <Badge variant="outline" className="text-xs capitalize">
                   {order.paymentMethod}
                 </Badge>
               </TableCell>
