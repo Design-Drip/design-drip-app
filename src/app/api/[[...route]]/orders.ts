@@ -6,6 +6,7 @@ import { HTTPException } from "hono/http-exception";
 import verifyAuth from "@/lib/middlewares/verifyAuth";
 import { Order } from "@/models/order";
 import { checkRole } from "@/lib/roles";
+import { stripe } from "@/lib/stripe";
 
 const app = new Hono()
   .use(verifyAuth)
@@ -186,43 +187,44 @@ const app = new Hono()
       const body = await c.req.json();
       const { status } = body;
 
-      if (
-        ![
-          "pending",
-          "processing",
-          "shipping",
-          "shipped",
-          "delivered",
-          "canceled",
-        ].includes(status)
-      ) {
-        throw new HTTPException(400, {
-          message: "Invalid order status",
-        });
-      }
-
       try {
-        const updatedOrder = await Order.findByIdAndUpdate(
-          orderId,
-          { status },
-          { new: true, lean: true }
-        );
-
-        if (!updatedOrder) {
+        const currentOrder = await Order.findById(orderId);
+        if (!currentOrder) {
           throw new HTTPException(404, {
             message: "Order not found",
           });
         }
 
+        if (currentOrder.status === status) {
+          return c.json({
+            message: "Order status is already set to this value",
+            order: currentOrder,
+          });
+        }
+
+        if (currentOrder.status === "processing" && status === "canceled") {
+          await stripe.refunds.create({
+            payment_intent: currentOrder.stripePaymentIntentId,
+          });
+
+          return c.json({
+            message: "Refund initiated for canceled order",
+            order: currentOrder,
+          });
+        }
+
+        currentOrder.status = status;
+        await currentOrder.save();
+
         return c.json({
-          id: updatedOrder._id?.toString() as string,
-          userId: updatedOrder.userId,
-          items: updatedOrder.items,
-          totalAmount: updatedOrder.totalAmount,
-          status: updatedOrder.status,
-          createdAt: updatedOrder.createdAt,
-          updatedAt: updatedOrder.updatedAt,
-          paymentMethod: updatedOrder.paymentMethod,
+          id: currentOrder._id?.toString(),
+          userId: currentOrder.userId,
+          items: currentOrder.items,
+          totalAmount: currentOrder.totalAmount,
+          status: currentOrder.status,
+          createdAt: currentOrder.createdAt,
+          updatedAt: currentOrder.updatedAt,
+          paymentMethod: currentOrder.paymentMethod,
         });
       } catch (error) {
         console.error(`Error updating order ${orderId}:`, error);
