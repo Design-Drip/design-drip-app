@@ -135,4 +135,21 @@ export const useUploadShippingImage = () => {
       return response.json();
     },
   });
+};
+
+export const useUnassignOrder = () => {
+  return useMutation({
+    mutationFn: async ({ orderId }: { orderId: string }) => {
+      const response = await fetch(`/api/shipping-orders/${orderId}/unassign`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to unassign order");
+      }
+      return response.json();
+    },
+  });
 }; 

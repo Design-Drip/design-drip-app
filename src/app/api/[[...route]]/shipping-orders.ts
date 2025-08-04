@@ -547,6 +547,105 @@ const app = new Hono()
         });
       }
     }
+  )
+  .patch(
+    "/:id/unassign",
+    zValidator(
+      "param",
+      z.object({
+        id: z
+          .string()
+          .trim()
+          .refine((val) => {
+            if (!mongoose.isObjectIdOrHexString(val)) {
+              throw new HTTPException(400, {
+                message: "Invalid order ID",
+              });
+            }
+            return true;
+          }),
+      })
+    ),
+    async (c) => {
+      const orderId = c.req.param("id");
+      const user = c.get("user")!;
+      const isShipper = await checkRole("shipper");
+
+      if (!isShipper) {
+        throw new HTTPException(403, {
+          message: "Access denied. Shipper role required.",
+        });
+      }
+
+      try {
+        console.log("Unassigning order:", { orderId, userId: user.id });
+        
+        // Check if order exists and is assigned to this shipper
+        const existingOrder = await Order.findById(orderId).lean();
+        
+        if (!existingOrder) {
+          throw new HTTPException(404, {
+            message: "Order not found",
+          });
+        }
+
+        if (existingOrder.shipper_id !== user.id) {
+          throw new HTTPException(403, {
+            message: "Access denied. This order is not assigned to you.",
+          });
+        }
+
+        // Only allow unassign for orders with status "shipping"
+        if (existingOrder.status !== "shipping") {
+          throw new HTTPException(400, {
+            message: "Only orders with status 'shipping' can be unassigned.",
+          });
+        }
+
+        // Unassign order by removing shipper_id
+        console.log("Unassigning order by removing shipper_id");
+        
+        const db = mongoose.connection.db;
+        if (!db) {
+          throw new HTTPException(500, {
+            message: "Database connection not available",
+          });
+        }
+        const ordersCollection = db.collection('orders');
+        
+        const updateResult = await ordersCollection.updateOne(
+          { _id: new mongoose.Types.ObjectId(orderId) },
+          { 
+            $unset: { 
+              shipper_id: ""
+            },
+            $set: {
+              updatedAt: new Date()
+            }
+          }
+        );
+        
+        console.log("Unassign update result:", updateResult);
+
+        // Get the updated order
+        const updatedOrder = await Order.findById(orderId).lean();
+
+        console.log("Updated order after unassign:", updatedOrder);
+        
+        return c.json({ 
+          message: "Order unassigned successfully",
+          order: updatedOrder 
+        });
+      } catch (error) {
+        console.error("Error unassigning order:", error);
+        if (error instanceof HTTPException) {
+          throw error;
+        }
+        throw new HTTPException(500, {
+          message: "Failed to unassign order",
+        });
+      }
+    }
   );
 
 function formatAddress(shipping: any): string {

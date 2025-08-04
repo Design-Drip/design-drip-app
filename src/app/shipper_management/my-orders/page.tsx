@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Truck, MapPin, Clock, CheckCircle, AlertCircle, Package, Calendar, Loader2, Upload, Image } from "lucide-react";
-import { useMyOrders, useUploadShippingImage } from "@/features/shipper/services/queries";
+import { Truck, MapPin, Clock, CheckCircle, AlertCircle, Package, Calendar, Loader2, Upload, Image, X } from "lucide-react";
+import { useMyOrders, useUploadShippingImage, useUnassignOrder } from "@/features/shipper/services/queries";
 import { useRouter } from "next/navigation";
 import { useState, useRef } from "react";
 import { toast } from "sonner";
@@ -21,7 +21,9 @@ export default function MyOrdersPage() {
   const myOrders = data?.orders || [];
   
   const uploadShippingImageMutation = useUploadShippingImage();
+  const unassignOrderMutation = useUnassignOrder();
   const [uploadingOrderId, setUploadingOrderId] = useState<string | null>(null);
+  const [unassigningOrderId, setUnassigningOrderId] = useState<string | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   // UploadThing setup
@@ -127,6 +129,29 @@ export default function MyOrdersPage() {
     }
   };
 
+  const handleUnassignOrder = async (orderId: string) => {
+    setUnassigningOrderId(orderId);
+    
+    try {
+      await unassignOrderMutation.mutateAsync({ orderId });
+      
+      // Refresh data
+      queryClient.invalidateQueries({ queryKey: ["my-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["shipping-orders"] });
+      
+      toast.success("Order unassigned successfully!", {
+        description: "The order has been removed from your assigned orders.",
+      });
+    } catch (error) {
+      console.error("Failed to unassign order:", error);
+      toast.error("Failed to unassign order", {
+        description: error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      setUnassigningOrderId(null);
+    }
+  };
+
   const OrderActions = ({ order }: { order: any }) => (
     <div className="flex gap-2">
       <Button 
@@ -136,38 +161,61 @@ export default function MyOrdersPage() {
       >
         View Details
       </Button>
-             {(order.status === "shipping" || order.status === "shipped") && order.status !== "delivered" && (
-         <>
-           <input
-             type="file"
-             accept="image/*"
-             onChange={(e) => handleFileSelect(order.id, e)}
-             className="hidden"
-             disabled={uploadingOrderId === order.id}
-             ref={(el) => {
-               fileInputRefs.current[order.id] = el;
-             }}
-           />
-           <Button 
-             size="sm" 
-             variant={order.status === "shipped" ? "outline" : "secondary"}
-             disabled={uploadingOrderId === order.id || isUploading}
-             onClick={() => triggerFileInput(order.id)}
-           >
-             {uploadingOrderId === order.id || isUploading ? (
-               <>
-                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                 Uploading...
-               </>
-             ) : (
-               <>
-                 <Upload className="mr-2 h-4 w-4" />
-                 {order.status === "shipped" ? "Update Image" : "Upload Image"}
-               </>
-             )}
-           </Button>
-         </>
-       )}
+      
+      {/* Unassign button - only show for orders with status "shipping" */}
+      {order.status === "shipping" && (
+        <Button 
+          size="sm" 
+          variant="destructive"
+          disabled={unassigningOrderId === order.id}
+          onClick={() => handleUnassignOrder(order.id)}
+        >
+          {unassigningOrderId === order.id ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Unassigning...
+            </>
+          ) : (
+            <>
+              <X className="mr-2 h-4 w-4" />
+              Unassign
+            </>
+          )}
+        </Button>
+      )}
+      
+      {(order.status === "shipping" || order.status === "shipped") && order.status !== "delivered" && (
+        <>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={(e) => handleFileSelect(order.id, e)}
+            className="hidden"
+            disabled={uploadingOrderId === order.id}
+            ref={(el) => {
+              fileInputRefs.current[order.id] = el;
+            }}
+          />
+          <Button 
+            size="sm" 
+            variant={order.status === "shipped" ? "outline" : "secondary"}
+            disabled={uploadingOrderId === order.id || isUploading}
+            onClick={() => triggerFileInput(order.id)}
+          >
+            {uploadingOrderId === order.id || isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                {order.status === "shipped" ? "Update Image" : "Upload Image"}
+              </>
+            )}
+          </Button>
+        </>
+      )}
     </div>
   );
 
