@@ -47,7 +47,7 @@ const app = new Hono()
         // If search looks like an ObjectId or partial ObjectId, search by _id
         if (mongoose.isObjectIdOrHexString(search)) {
           query._id = search;
-        } else if (search.length >= 3 && /^[a-fA-F0-9]+$/.test(search)) {
+       } else if (search.length >= 3 && /^[a-fA-F0-9]+$/.test(search)) {
           // Partial ObjectId search (at least 3 hex characters)
           query._id = new RegExp(search, "i");
         } else {
@@ -207,10 +207,16 @@ const app = new Hono()
           });
         }
 
-        if (currentOrder.status === "processing" && status === "canceled") {
+        if (
+          currentOrder.status === "processing" &&
+          status === "canceled"
+        ) {
           await stripe.refunds.create({
             payment_intent: currentOrder.stripePaymentIntentId,
           });
+
+          currentOrder.status = "canceled";
+          await currentOrder.save();
 
           return c.json({
             message: "Refund initiated for canceled order",
@@ -247,7 +253,12 @@ const app = new Hono()
       // Get total revenue
       const revenueResult = await Order.aggregate([
         { $match: { status: { $ne: "canceled" } } },
-        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } },
+        {
+          $group: {
+            _id: null,
+            totalRevenue: { $sum: "$totalAmount" },
+          },
+        },
       ]);
       const totalRevenue = revenueResult[0]?.totalRevenue || 0;
 
