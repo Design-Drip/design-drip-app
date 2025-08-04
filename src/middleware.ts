@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 const isAdminRoute = createRouteMatcher(["/admin(.*)"]);
 const isDesignerRoute = createRouteMatcher(["/designer_management(.*)"]);
+const isShipperRoute = createRouteMatcher(["/shipper_management(.*)"]);
 const isProtectedRoute = createRouteMatcher(["/settings(.*)", "wishlist(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
@@ -18,6 +19,12 @@ export default clerkMiddleware(async (auth, req) => {
     const url = new URL("/", req.url);
     return NextResponse.redirect(url);
   }
+  
+  if (isShipperRoute(req) && sessionClaims?.metadata?.role !== "shipper" && sessionClaims?.metadata?.role !== "admin") {
+    const url = new URL("/", req.url);
+    return NextResponse.redirect(url);
+  }
+  
   if (isProtectedRoute(req)) {
     await auth.protect();
   }

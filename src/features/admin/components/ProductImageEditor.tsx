@@ -175,6 +175,30 @@ export function ProductImageEditor({
   // State for tracking UploadThing file keys
   const [pendingUploads, setPendingUploads] = useState<string[]>([]);
   const [savedUploads, setSavedUploads] = useState<string[]>([]);
+  const [imagesSaved, setImagesSaved] = useState(false);
+  
+  // Refs to track current state values for cleanup
+  const pendingUploadsRef = useRef<string[]>([]);
+  const savedUploadsRef = useRef<string[]>([]);
+  const imagesSavedRef = useRef(false);
+  const imagesRef = useRef(images);
+  
+  // Update refs when state changes
+  useEffect(() => {
+    pendingUploadsRef.current = pendingUploads;
+  }, [pendingUploads]);
+  
+  useEffect(() => {
+    savedUploadsRef.current = savedUploads;
+  }, [savedUploads]);
+  
+  useEffect(() => {
+    imagesSavedRef.current = imagesSaved;
+  }, [imagesSaved]);
+  
+  useEffect(() => {
+    imagesRef.current = images;
+  }, [images]);
 
   // Kiểm tra xem tất cả ảnh đã được tải lên chưa
   const allImagesUploaded = Boolean(
@@ -188,6 +212,8 @@ export function ProductImageEditor({
   useEffect(() => {
     if (color.images) {
       const initialImages: any = {};
+      const savedFileKeys: string[] = [];
+      
       color.images.forEach((img) => {
         initialImages[img.view_side] = img;
 
@@ -196,8 +222,22 @@ export function ProductImageEditor({
           setEditableArea(img.editable_area || DEFAULT_EDITABLE_AREA);
           setIsPrimary(img.is_primary);
         }
+        
+        // Extract file keys from saved images to prevent deletion
+        const fileKey = extractFileKeyFromUrl(img.url);
+        if (fileKey) {
+          savedFileKeys.push(fileKey);
+        }
       });
+      
       setImages(initialImages);
+      setSavedUploads(savedFileKeys); // Mark these as saved to prevent deletion
+      
+      // If there are existing images from the database, mark as saved
+      if (savedFileKeys.length > 0) {
+        setImagesSaved(true);
+        console.log(`Initialized with ${savedFileKeys.length} saved images`);
+      }
     }
   }, [color]);
 
@@ -345,12 +385,54 @@ export function ProductImageEditor({
   ) => {
     const isPrimaryView = viewSide === "front";
 
+    console.log("=== Image Upload Debug ===");
+    console.log("Uploading for view:", viewSide);
+    console.log("Image URL:", imageUrl);
+    console.log("Current pending uploads:", pendingUploads);
+    console.log("Current saved uploads:", savedUploads);
+    console.log("========================");
+
     // Extract file key from URL and track in pendingUploads
     const fileKey = extractFileKeyFromUrl(imageUrl);
     if (fileKey) {
-      console.log(`Adding file ${fileKey} to pending uploads`);
-      setPendingUploads((prev) => [...prev, fileKey]);
+      console.log(`Adding file ${fileKey} to pending uploads for ${viewSide} view`);
+      console.log(`Current pending uploads: ${pendingUploads.length} files`);
+      
+      // Check if there's an existing image for this view that needs to be cleaned up
+      const existingImage = images[viewSide];
+      if (existingImage?.url) {
+        const existingFileKey = extractFileKeyFromUrl(existingImage.url);
+        console.log("Existing image fileKey:", existingFileKey);
+        if (existingFileKey) {
+          // If the existing file is in pendingUploads, remove it and delete from UploadThing
+          if (pendingUploads.includes(existingFileKey)) {
+            console.log(`Removing old file ${existingFileKey} from pending uploads for ${viewSide} view`);
+            setPendingUploads((prev) => prev.filter(key => key !== existingFileKey));
+            await deleteUploadThingFile(existingFileKey);
+          }
+          // If the existing file is in savedUploads, remove it from savedUploads since we're replacing it
+          else if (savedUploads.includes(existingFileKey)) {
+            console.log(`Removing old file ${existingFileKey} from saved uploads for ${viewSide} view`);
+            setSavedUploads((prev) => prev.filter(key => key !== existingFileKey));
+            // Also delete the file from UploadThing since we're replacing it
+            await deleteUploadThingFile(existingFileKey);
+            console.log(`Deleted old file ${existingFileKey} from UploadThing`);
+          }
+          else {
+            console.log(`Existing file ${existingFileKey} not found in either pending or saved uploads`);
+          }
+        }
+      }
+      
+      setPendingUploads((prev) => {
+        const newPendingUploads = [...prev, fileKey];
+        console.log(`Updated pending uploads: ${newPendingUploads.length} files`);
+        return newPendingUploads;
+      });
     }
+
+    // Reset the saved flag when new uploads are made
+    setImagesSaved(false);
 
     setImages((prev) => ({
       ...prev,
@@ -770,8 +852,21 @@ export function ProductImageEditor({
       const result = await uploadProductImages(formData);
       if (result.success) {
         // Move all pending uploads to saved uploads once successfully saved to DB
-        setSavedUploads((prev) => [...prev, ...pendingUploads]);
+        console.log(`Moving ${pendingUploads.length} pending uploads to saved uploads`);
+        
+        // Update state synchronously to prevent race conditions
+        const newSavedUploads = [...savedUploads, ...pendingUploads];
+        setSavedUploads(newSavedUploads);
         setPendingUploads([]);
+        setImagesSaved(true); // Mark that images have been saved
+        
+        // Update refs immediately
+        savedUploadsRef.current = newSavedUploads;
+        pendingUploadsRef.current = [];
+        imagesSavedRef.current = true;
+        
+        console.log(`Updated saved uploads: ${newSavedUploads.length} files`);
+        console.log("State updated - images are now saved");
 
         toast.success("All images saved successfully");
         router.refresh();
@@ -789,22 +884,55 @@ export function ProductImageEditor({
   // Xoá ảnh hiện tại
   const handleDeleteImage = async () => {
     const imageToDelete = images[currentView];
-    if (!imageToDelete?.id) {
+    console.log("=== Delete Image Debug ===");
+    console.log("Image to delete:", imageToDelete);
+    console.log("Image ID:", imageToDelete?.id);
+    console.log("Image URL:", imageToDelete?.url);
+    console.log("Current pending uploads:", pendingUploads);
+    console.log("Current saved uploads:", savedUploads);
+    console.log("========================");
+    
+    if (!imageToDelete?.id || imageToDelete.id === "") {
       // If the image hasn't been saved in the database yet
       if (imageToDelete?.url) {
         // Extract fileKey from URL
         const fileKey = extractFileKeyFromUrl(imageToDelete.url);
+        console.log("Extracted fileKey:", fileKey);
 
         if (fileKey) {
+          console.log("Attempting to delete file with key:", fileKey);
+          
           // Delete from UploadThing if it's a pending upload
           if (pendingUploads.includes(fileKey)) {
-            await deleteUploadThingFile(fileKey);
+            console.log(`File ${fileKey} found in pending uploads, deleting...`);
+            const deleteResult = await deleteUploadThingFile(fileKey);
+            console.log("Delete result:", deleteResult);
 
             // Remove from pending uploads
             setPendingUploads((prev) => prev.filter((key) => key !== fileKey));
             console.log(`File ${fileKey} removed from pending uploads`);
           }
+          // Also check if it's in savedUploads (in case it was previously saved but now being replaced)
+          else if (savedUploads.includes(fileKey)) {
+            console.log(`File ${fileKey} found in saved uploads, deleting...`);
+            const deleteResult = await deleteUploadThingFile(fileKey);
+            console.log("Delete result:", deleteResult);
+            
+            setSavedUploads((prev) => prev.filter((key) => key !== fileKey));
+            console.log(`File ${fileKey} removed from saved uploads`);
+          }
+          else {
+            console.log(`File ${fileKey} not found in either pending or saved uploads`);
+            // Try to delete anyway if we have a valid fileKey
+            console.log("Attempting to delete file anyway...");
+            const deleteResult = await deleteUploadThingFile(fileKey);
+            console.log("Delete result:", deleteResult);
+          }
+        } else {
+          console.log("Could not extract fileKey from URL:", imageToDelete.url);
         }
+      } else {
+        console.log("No URL found for image to delete");
       }
 
       // Remove from state
@@ -862,8 +990,25 @@ export function ProductImageEditor({
   // Extract file key from UploadThing URL
   const extractFileKeyFromUrl = (url: string): string | null => {
     // UploadThing URLs typically have format: https://uploadthing.com/f/[FILE_KEY]
+    console.log("Extracting fileKey from URL:", url);
     const matches = url.match(/\/f\/([^?#]+)/);
-    return matches ? matches[1] : null;
+    const fileKey = matches ? matches[1] : null;
+    console.log("Extracted fileKey:", fileKey);
+    return fileKey;
+  };
+
+  // Function to log current state for debugging
+  const logCurrentState = () => {
+    console.log("=== Current State Debug ===");
+    console.log("Pending uploads:", pendingUploads);
+    console.log("Saved uploads:", savedUploads);
+    console.log("Images saved flag:", imagesSaved);
+    console.log("Current images:", Object.keys(images).map(key => ({
+      view: key,
+      url: images[key as keyof typeof images]?.url,
+      fileKey: extractFileKeyFromUrl(images[key as keyof typeof images]?.url || "")
+    })));
+    console.log("========================");
   };
 
   // Function to delete a file from UploadThing
@@ -879,7 +1024,11 @@ export function ProductImageEditor({
         body: JSON.stringify({ fileKey }),
       });
 
+      console.log("Delete API response status:", response.status);
+      console.log("Delete API response headers:", Object.fromEntries(response.headers.entries()));
+
       const result = await response.json();
+      console.log("Delete API response body:", result);
 
       if (result.success) {
         console.log(`Successfully deleted UploadThing file: ${fileKey}`);
@@ -900,24 +1049,59 @@ export function ProductImageEditor({
   // Cleanup effect to delete all pending uploads when leaving the page
   useEffect(() => {
     return () => {
-      // Only clean up if we haven't saved the images
-      if (pendingUploads.length > 0) {
-        console.log(
-          `Cleaning up ${pendingUploads.length} pending uploads on unmount`
-        );
+      // Use a ref to track if cleanup has already been performed
+      let cleanupPerformed = false;
+      
+      const performCleanup = () => {
+        if (cleanupPerformed) return;
+        cleanupPerformed = true;
+        
+        // Use refs to get the most current state values
+        const currentPendingUploads = pendingUploadsRef.current;
+        const currentSavedUploads = savedUploadsRef.current;
+        const currentImagesSaved = imagesSavedRef.current;
+        const currentImages = imagesRef.current;
+        
+        console.log("=== Cleanup Debug ===");
+        console.log("Current pending uploads:", currentPendingUploads);
+        console.log("Current saved uploads:", currentSavedUploads);
+        console.log("Current images saved flag:", currentImagesSaved);
+        console.log("=====================");
+        
+        // Only clean up if we haven't saved the images and there are pending uploads
+        if (!currentImagesSaved && currentPendingUploads.length > 0) {
+          console.log(
+            `Cleaning up ${currentPendingUploads.length} pending uploads on unmount (images not saved)`
+          );
 
-        // Delete all pending uploads that aren't in savedUploads
-        pendingUploads.forEach((fileKey) => {
-          if (!savedUploads.includes(fileKey)) {
-            // Use a self-executing async function since we can't use await directly in useEffect
-            (async () => {
-              await deleteUploadThingFile(fileKey);
-            })();
-          }
-        });
-      }
+          // Delete all pending uploads that aren't in savedUploads
+          currentPendingUploads.forEach((fileKey) => {
+            if (!currentSavedUploads.includes(fileKey)) {
+              console.log(`Attempting to delete UploadThing file: ${fileKey}`);
+              // Use a self-executing async function since we can't use await directly in useEffect
+              (async () => {
+                try {
+                  await deleteUploadThingFile(fileKey);
+                  console.log(`Successfully deleted UploadThing file: ${fileKey}`);
+                } catch (error) {
+                  console.error(`Failed to delete UploadThing file: ${fileKey}`, error);
+                }
+              })();
+            } else {
+              console.log(`Skipping deletion of saved file: ${fileKey}`);
+            }
+          });
+        } else if (currentImagesSaved) {
+          console.log(`Skipping cleanup - images have been saved`);
+        } else {
+          console.log(`No pending uploads to clean up`);
+        }
+      };
+      
+      // Perform cleanup with a small delay to ensure all state updates have completed
+      setTimeout(performCleanup, 100);
     };
-  }, [pendingUploads, savedUploads]);
+  }, []); // Empty dependency array to only run on unmount
 
   return (
     <div className="space-y-6">
@@ -1397,16 +1581,61 @@ export function ProductImageEditor({
                       />
                     </div>
                   ) : (
-                    <div className="flex justify-center">
+                    <div className="flex flex-col gap-2">
                       <Button
                         variant="outline"
                         size="sm"
                         className="w-full"
-                        onClick={() => handleDeleteImage()}
+                        onClick={async () => {
+                          const currentImage = images[currentView];
+                          if (currentImage?.url) {
+                            const fileKey = extractFileKeyFromUrl(currentImage.url);
+                            console.log("=== Delete Image ===");
+                            console.log("Current image URL:", currentImage.url);
+                            console.log("Extracted fileKey:", fileKey);
+                            if (fileKey) {
+                              const result = await deleteUploadThingFile(fileKey);
+                              console.log("Delete result:", result);
+                              
+                              if (result) {
+                                // Update local state to reflect the deletion
+                                // Remove from pending uploads if present
+                                setPendingUploads((prev) => prev.filter((key) => key !== fileKey));
+                                // Remove from saved uploads if present
+                                setSavedUploads((prev) => prev.filter((key) => key !== fileKey));
+                                // Remove from images state
+                                setImages((prev) => {
+                                  const newImages = { ...prev };
+                                  delete newImages[currentView];
+                                  return newImages;
+                                });
+                                
+                                toast.success(`Image deleted successfully from UploadThing and UI updated`);
+                              } else {
+                                toast.error("Failed to delete image from UploadThing");
+                              }
+                            } else {
+                              console.log("No fileKey extracted");
+                              toast.error("No fileKey extracted");
+                            }
+                            console.log("=== End Delete Image ===");
+                          } else {
+                            toast.error("No image to delete");
+                          }
+                        }}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete & re-upload {currentView} image
+                        Delete {currentView} image
                       </Button>
+                      {/* <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => logCurrentState()}
+                      >
+                        Debug State
+                      </Button> */}
+
                     </div>
                   )}
                 </CardContent>

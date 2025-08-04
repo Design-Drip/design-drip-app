@@ -15,6 +15,8 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
         return "destructive";
       case "staff":
         return "secondary";
+      case "shipper":
+        return "default";
       default:
         return "outline";
     }
@@ -28,6 +30,8 @@ export function RoleBadge({ role, className }: RoleBadgeProps) {
         return "bg-purple-500 text-white";
       case "staff":
         return "bg-green-500 text-white";
+      case "shipper":
+        return "bg-orange-500 text-white";
       default:
         return "bg-gray-500 text-white";
     }

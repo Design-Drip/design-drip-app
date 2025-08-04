@@ -48,6 +48,10 @@ const orderSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    shipper_id: {
+      type: String,
+      index: true,
+    },
     stripePaymentIntentId: {
       type: String,
       required: true,
@@ -117,6 +121,9 @@ const orderSchema = new mongoose.Schema(
     notes: {
       type: String,
     },
+    shippingImage: {
+      type: String,
+    },
   },
   {
     timestamps: true,
@@ -133,6 +140,7 @@ const orderSchema = new mongoose.Schema(
 interface OrderDoc extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
   userId: string;
+  shipper_id?: string;
   stripePaymentIntentId: string;
   status:
     | "pending"
@@ -173,6 +181,7 @@ interface OrderDoc extends mongoose.Document {
   refundAmount?: number;
   partiallyRefunded?: boolean;
   notes?: string;
+  shippingImage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
