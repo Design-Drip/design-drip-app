@@ -236,13 +236,13 @@ export function TableUsers({ staff }: UserTableProps) {
                           <Truck className="mr-2 h-4 w-4" />
                           Make Shipper
                         </DropdownMenuItem>
-                        <DropdownMenuItem
+                        {/* <DropdownMenuItem
                           disabled={isPending}
                           onClick={() => handleRemoveRole(user.id)}
                         >
                           <User className="mr-2 h-4 w-4" />
                           Revoke Role
-                        </DropdownMenuItem>
+                        </DropdownMenuItem> */}
                         {user.role && user.role.toLowerCase() !== "user" && (
                           <DropdownMenuItem
                             disabled={isPending}

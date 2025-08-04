@@ -14,12 +14,24 @@ const app = new Hono()
         Shirt.countDocuments(),
       ]);
 
-      // Get total revenue
+      // Get total revenue - tính theo logic mới: cộng processing, trừ canceled
       const revenueResult = await Order.aggregate([
-        { $match: { status: { $ne: "canceled" } } },
-        { $group: { _id: null, totalRevenue: { $sum: "$totalAmount" } } }
+        {
+          $group: {
+            _id: "$status",
+            totalRevenue: { $sum: "$totalAmount" }
+          }
+        }
       ]);
-      const totalRevenue = revenueResult[0]?.totalRevenue || 0;
+      
+      let totalRevenue = 0;
+      revenueResult.forEach(item => {
+        if (item._id === 'processing' || item._id === 'shipping' || item._id === 'shipped') {
+          totalRevenue += item.totalRevenue;
+        } else if (item._id === 'canceled') {
+          totalRevenue -= item.totalRevenue;
+        }
+      });
 
       // Get recent orders (last 5)
       const recentOrders = await Order.find()

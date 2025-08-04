@@ -614,7 +614,7 @@ export default function RequestQuoteDetailPage() {
           )}
 
           {/* ✅ ENHANCED: Detailed Quote Display (when status is quoted) */}
-          {quoteData.status === "quoted" || quoteData.status === "approved" && (
+          {(quoteData.status === "quoted" || quoteData.status === "approved" || quoteData.status === "completed") && (
             <>
               <Separator />
               <div className="space-y-6">
