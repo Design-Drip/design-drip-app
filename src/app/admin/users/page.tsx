@@ -1,5 +1,6 @@
 import * as React from "react";
-import { Users, UserCheck, UserX, Eye, Palette } from "lucide-react";
+
+import { Users, UserCheck, UserX, Eye, Palette, Truck } from "lucide-react";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import type { User } from "@clerk/nextjs/server";
 
@@ -72,14 +73,17 @@ export default async function UsersManagementPage({
 
     const userRole = user.role || "user";
 
-    // Role hierarchy: admin > designer > user
+    // Role hierarchy: admin > designer > shipper > user
     switch (currentUserRole) {
       case "admin":
-        // Admin can see designer and user roles, but not other admins
-        return userRole === "designer" || userRole === "user"
+        // Admin can see all roles except other admins
+        return userRole === "designer" || userRole === "shipper" || userRole === "user";
       case "designer":
-        // Designer can only see user roles
-        return userRole === "user"
+        // Designer can see shipper and user roles
+        return userRole === "shipper" || userRole === "user";
+      case "shipper":
+        // Shipper can only see user roles
+        return userRole === "user";
       case "user":
       default:
         return false;
@@ -98,8 +102,9 @@ export default async function UsersManagementPage({
       (statusFilter === "active" && user.isActive) ||
       (statusFilter === "inactive" && !user.isActive) ||
       (statusFilter === "admin" && user.role === "admin") ||
-      (statusFilter === "user" && user.role === "") ||
-      (statusFilter === "designer" && user.role === "designer");
+      (statusFilter === "user" && user.role === "user") ||
+      (statusFilter === "designer" && user.role === "designer") ||
+      (statusFilter === "shipper" && user.role === "shipper");
 
     return matchesSearch && matchesStatus;
   });
@@ -109,8 +114,9 @@ export default async function UsersManagementPage({
     total: users.length,
     active: users.filter((user) => user.isActive).length,
     admin: users.filter((user) => user.role === "admin").length,
-    users: users.filter((user) => user.role === "").length,
+    users: users.filter((user) => user.role === "user" || user.role === "").length,
     designer: users.filter((user) => user.role === "designer").length,
+    shipper: users.filter((user) => user.role === "shipper").length,
   };
 
   return (
@@ -126,7 +132,7 @@ export default async function UsersManagementPage({
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total user</CardTitle>
@@ -184,6 +190,16 @@ export default async function UsersManagementPage({
             <p className="text-xs text-muted-foreground">Design users</p>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Shipper</CardTitle>
+            <Truck className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.shipper}</div>
+            <p className="text-xs text-muted-foreground">Shipping users</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* User Management Section */}
@@ -205,8 +221,9 @@ export default async function UsersManagementPage({
                 className="flex h-9 w-[200px] rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors"
               >
                 <option value="all">All role</option>
-                <option value="user">User</option>
+                <option value="user">Normal User</option>
                 <option value="designer">Designer</option>
+                <option value="shipper">Shipper</option>
               </select>
               <button
                 type="submit"

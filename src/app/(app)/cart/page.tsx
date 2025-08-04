@@ -164,11 +164,6 @@ export default function Cart() {
         )
     : 0;
 
-  // Calculate shipping based on subtotal
-  // Assuming shipping is free for orders over 200000
-  const shipping = subtotal > 200000 ? 0 : 10000;
-  const total = subtotal + shipping;
-
   const allVisibleSelected =
     currentCartItems.length > 0 &&
     currentCartItems.every((item) => selectedItems.includes(item.id));
@@ -429,37 +424,13 @@ export default function Cart() {
                   <span className="font-medium">{selectedItems.length}</span>
                 </div>
 
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">{formatPrice(subtotal)}</span>
-                </div>
-
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">
-                    {shipping === 0 ? (
-                      <span className="text-green-600">FREE</span>
-                    ) : (
-                      `${formatPrice(shipping)}`
-                    )}
-                  </span>
-                </div>
-
                 <Separator />
 
                 <div className="flex justify-between text-lg font-semibold">
                   <span>Total</span>
-                  <span>{formatPrice(total)}</span>
+                  <span>{formatPrice(subtotal)}</span>
                 </div>
               </div>
-
-              {shipping > 0 && subtotal > 0 && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <p className="text-sm text-blue-700">
-                    Add {formatPrice(200000 - subtotal)} more for free shipping!
-                  </p>
-                </div>
-              )}
 
               <Button
                 className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-3"

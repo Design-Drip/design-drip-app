@@ -91,7 +91,7 @@ export async function getOrders(
       id: order._id.toString(),
       userId: order.userId.toString(),
       items: order.items.map((item) => ({
-        designId: item.designId.toString(),
+        designId: item.designId?.toString() || "",
         name: item.name,
         color: item.color,
         sizes: item.sizes.map((size) => ({
@@ -151,7 +151,7 @@ export async function getOrderById(orderId: string) {
       id: order._id.toString(),
       userId: order.userId.toString(),
       items: order.items.map((item) => ({
-        designId: item.designId.toString(),
+        designId: item.designId?.toString() || "",
         name: item.name,
         color: item.color,
         sizes: item.sizes.map((size) => ({
@@ -168,6 +168,8 @@ export async function getOrderById(orderId: string) {
       updatedAt: order.updatedAt.toISOString(),
       paymentMethod: order.paymentMethod,
       shipping: order.shipping,
+      shippingImage: order.shippingImage,
+      notes: order.notes,
     };
   } catch (error) {
     console.error("Error fetching order:", error);

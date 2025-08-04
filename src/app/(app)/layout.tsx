@@ -16,6 +16,10 @@ export default async function AppLayout({ children }: AppLayoutProps) {
     redirect("/designer_management/assigned-quotes");
   }
   
+  if (await checkRole("shipper")) {
+    redirect("shipper_management/shipping-orders");
+  }
+  
   return (
     <div className="flex min-h-screen flex-col">
       <Header />

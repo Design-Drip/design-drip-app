@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ArrowLeft, Clock, Package, CarTaxiFront } from "lucide-react";
+import { ArrowLeft, Clock, Package, CarTaxiFront, Image } from "lucide-react";
 import Link from "next/link";
 import { formatPrice } from "@/lib/price";
 import { formatOrderDate, formatOrderDateTime } from "@/lib/date";
@@ -276,6 +276,51 @@ export default async function OrderDetailsPage({
               </div>
             </CardContent>
           </Card>
+
+          {/* Shipping Image Card */}
+          {(order.status === "shipped" || order.status === "delivered") && order.shippingImage && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Image className="h-5 w-5" />
+                  Shipping Proof
+                </CardTitle>
+                <CardDescription>
+                  Image uploaded by shipper as proof of delivery
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <img
+                      src={order.shippingImage}
+                      alt="Shipping proof"
+                      className="w-full max-w-md rounded-lg border shadow-sm"
+                    />
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Uploaded when order status was changed to "shipped"</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Notes Card */}
+          {order.notes && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Order Notes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                    {order.notes}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Customer and Shipping Info - 1/3 width on desktop */}

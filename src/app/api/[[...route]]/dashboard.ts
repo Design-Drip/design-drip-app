@@ -26,22 +26,25 @@ const app = new Hono()
         }
       ]);
       
-      // Calculate order stats - chỉ lấy revenue từ delivered orders
+      // Calculate order stats - tính revenue theo logic mới
       let totalRevenue = 0;
       let pendingOrders = 0;
       let processingOrders = 0;
+      let shippingOrders = 0;
       let shippedOrders = 0;
       let deliveredOrders = 0;
       let canceledOrders = 0;
       
       ordersByStatus.forEach(item => {
-        // Chỉ tính revenue từ orders đã delivered
-        if (item._id === 'delivered') {
+        // Logic mới: cộng tiền khi processing, shipping, shipped; trừ tiền khi canceled
+        if (item._id === 'processing' || item._id === 'shipping' || item._id === 'shipped') {
           totalRevenue += item.totalRevenue;
-        }
+        } 
+        
         switch(item._id) {
           case 'pending': pendingOrders = item.count; break;
           case 'processing': processingOrders = item.count; break;
+          case 'shipping': shippingOrders = item.count; break;
           case 'shipped': shippedOrders = item.count; break;
           case 'delivered': deliveredOrders = item.count; break;
           case 'canceled': canceledOrders = item.count; break;
@@ -296,7 +299,7 @@ const app = new Hono()
           recentOrders,
           revenue: {
             total: totalRevenue,
-            average: deliveredOrders > 0 ? totalRevenue / deliveredOrders : 0
+            average: (processingOrders + shippingOrders + shippedOrders) > 0 ? totalRevenue / (processingOrders + shippingOrders + shippedOrders) : 0
           },
           topProducts: topProductsAgg,
           dailyStats: {

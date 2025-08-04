@@ -259,9 +259,9 @@ export default function ProductDetailPage({
                 </div>
               </div>
 
-              {/* Size Selection */}
+              {/* Available Sizes */}
               <div className="mb-6">
-                <h3 className="text-sm font-medium mb-2">Size</h3>
+                <h3 className="text-sm font-medium mb-2">Available Sizes</h3>
                 <div className="flex flex-wrap gap-2">
                   {uniqueSizes.map((size) => {
                     // Find size variant for current color to get quantity
@@ -275,17 +275,13 @@ export default function ProductDetailPage({
                     const isOutOfStock = stockQuantity === 0;
 
                     return (
-                      <button
+                      <div
                         key={size}
                         className={`px-4 py-2 ${
-                          selectedSize === size
-                            ? "bg-red-600 text-white"
-                            : isOutOfStock
+                          isOutOfStock
                             ? "border border-gray-300 text-gray-400 bg-gray-100"
-                            : "border border-gray-300 hover:border-gray-400"
+                            : "border border-gray-300 bg-white"
                         } rounded-md text-sm font-medium min-w-[50px] relative`}
-                        onClick={() => !isOutOfStock && setSelectedSize(size)}
-                        disabled={isOutOfStock}
                       >
                         {size}
                         <div className="text-xs mt-1 font-normal">
@@ -296,17 +292,17 @@ export default function ProductDetailPage({
                               Only {stockQuantity} left
                             </span>
                           ) : (
-                            <span className="font-bold">In stock</span>
+                            <span className="text-green-600 font-medium">In stock</span>
                           )}
                         </div>
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
               </div>
 
               {/* Quantity */}
-              <div className="mb-6">
+              {/* <div className="mb-6">
                 <h3 className="text-sm font-medium mb-2">Quantity</h3>
                 <div className="flex items-center">
                   <button
@@ -330,7 +326,7 @@ export default function ProductDetailPage({
                     minimum quantity: 1
                   </span>
                 </div>
-              </div>
+              </div> */}
 
               {/* Price and Add to Cart */}
               <div className="mb-6">
@@ -344,7 +340,7 @@ export default function ProductDetailPage({
                 </div>
 
                 {/* Stock Status */}
-                <div className="mb-3">
+                {/* <div className="mb-3">
                   {getMaxAvailableQuantity() > 10 ? (
                     <div className="text-green-600 flex items-center">
                       <Check className="h-4 w-4 mr-1" />
@@ -360,14 +356,14 @@ export default function ProductDetailPage({
                   ) : (
                     <div className="text-red-600">Out of stock</div>
                   )}
-                </div>
+                </div> */}
 
                 <div className="flex flex-col sm:flex-row gap-3">
                   <div className="flex-1">
                     <Button
                       className="w-full bg-red-600 hover:bg-red-700 text-white py-3 h-auto text-base"
                       onClick={() => createNewDesign()}
-                      disabled={getMaxAvailableQuantity() === 0}
+                      // disabled={getMaxAvailableQuantity() === 0}
                     >
                       Start Designing
                     </Button>
